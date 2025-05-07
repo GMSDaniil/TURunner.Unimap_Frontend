@@ -1,5 +1,7 @@
 import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
+import 'package:auth_app/presentation/home/pages/welcome.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'common/bloc/auth/auth_state.dart';
 import 'core/configs/theme/app_theme.dart';
 import 'presentation/auth/pages/signup.dart';
+import 'presentation/auth/pages/signin.dart';
 import 'service_locator.dart';
 
 void main() {
@@ -30,20 +33,25 @@ class MyApp extends StatelessWidget {
     SystemUiMode.manual, overlays: [SystemUiOverlay.bottom]);
     return BlocProvider(
       create: (context) => AuthStateCubit()..appStarted(),
+      
       child: MaterialApp(
           theme: AppTheme.appTheme,
           debugShowCheckedModeBanner: false,
-          home: BlocBuilder<AuthStateCubit,AuthState>(
+          home: BlocBuilder<AuthStateCubit, AuthState>(
             builder: (context, state) {
-              if (state is Authenticated){
+              if (state is Authenticated) {
                 return const HomePage();
               }
-              if (state is UnAuthenticated){
-                return SignupPage();
+              if (state is UnAuthenticated) {
+                return const WelcomePage();
               }
               return Container();
             },
-          )
+          ),
+          routes: {
+            '/signup': (_) => SignupPage(),
+            '/signin': (_) => SigninPage(),
+          },
         ),
     );
   }
