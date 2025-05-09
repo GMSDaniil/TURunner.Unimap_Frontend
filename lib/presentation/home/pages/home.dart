@@ -5,6 +5,7 @@ import 'package:auth_app/domain/usecases/logout.dart';
 import 'package:auth_app/presentation/auth/pages/signup.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_cubit.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_state.dart';
+import 'package:auth_app/presentation/home/pages/welcome.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,7 +28,7 @@ class HomePage extends StatelessWidget {
             if (state is ButtonSuccessState){
               Navigator.pushReplacement(
                context, 
-               MaterialPageRoute(builder: (context) => SignupPage(),)
+               MaterialPageRoute(builder: (context) => const WelcomePage(),)
              );
             }
           },

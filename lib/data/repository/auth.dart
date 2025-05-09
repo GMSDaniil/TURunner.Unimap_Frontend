@@ -39,6 +39,9 @@ class AuthRepositoryImpl extends AuthRepository {
     Either result = await sl<AuthApiService>().getUser();
     return result.fold(
       (error){
+        
+        logout();
+        
         return Left(error);
       },
       (data) {
@@ -65,7 +68,8 @@ class AuthRepositoryImpl extends AuthRepository {
       (data) async {
         Response response = data;
         SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-        sharedPreferences.setString('token', response.data['token']);
+        sharedPreferences.setString('accessToken', response.data['accessToken']);
+        sharedPreferences.setString('refreshToken', response.data['refreshToken']);
         return Right(response);
       }
     );
