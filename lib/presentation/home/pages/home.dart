@@ -2,7 +2,6 @@ import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
 import 'package:auth_app/common/widgets/button/basic_app_button.dart';
 import 'package:auth_app/domain/entities/user.dart';
 import 'package:auth_app/domain/usecases/logout.dart';
-import 'package:auth_app/presentation/auth/pages/signup.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_cubit.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_state.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';

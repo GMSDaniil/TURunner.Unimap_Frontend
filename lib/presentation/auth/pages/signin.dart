@@ -44,6 +44,7 @@ class SigninPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _signin(),
+                const Spacer(),
                 const SizedBox(height: 50),
                 _usernameField(),
                 const SizedBox(height: 20),
@@ -52,6 +53,7 @@ class SigninPage extends StatelessWidget {
                 _loginButton(context),
                 const SizedBox(height: 20),
                 _signupText(context),
+                const SizedBox(height: 18),
               ],
             ),
           ),
@@ -87,6 +89,9 @@ class SigninPage extends StatelessWidget {
           borderSide: BorderSide.none,
         ),
       ),
+      style: const TextStyle(
+        color: Colors.black, 
+      ),
       onChanged: (value) {
         _validateForm();
       },
@@ -109,6 +114,9 @@ class SigninPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
+      ),
+      style: const TextStyle(
+        color: Colors.black, 
       ),
       onChanged: (value) {
         _validateForm();
@@ -158,7 +166,7 @@ class SigninPage extends StatelessWidget {
           TextSpan(
             text: ' Sign Up',
             style: TextStyle(
-              color: Colors.red[500],
+              color: Theme.of(context).colorScheme.secondary,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),

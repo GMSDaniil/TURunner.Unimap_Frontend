@@ -75,24 +75,28 @@ class SignupPage extends StatelessWidget {
             },
             child: SafeArea(
               minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _signup(),
-                    const SizedBox(height: 50),
-                    _userNameField(),
-                    const SizedBox(height: 20),
-                    _emailField(),
-                    const SizedBox(height: 20),
-                    _passwordField(),
-                    const SizedBox(height: 60),
-                    _createAccountButton(context),
-                    const SizedBox(height: 20),
-                    _signinText(context),
-                  ],
-                ),
+              child: SafeArea(
+
+
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _signup(),
+                      const Spacer(),
+                      const SizedBox(height: 50),
+                      _userNameField(),
+                      const SizedBox(height: 20),
+                      _emailField(),
+                      const SizedBox(height: 20),
+                      _passwordField(),
+                      const SizedBox(height: 60),
+                      _createAccountButton(context),
+                      const SizedBox(height: 20),
+                      _signinText(context),
+                      const SizedBox(height: 18),
+                    ],
+                  ),
               ),
             ),
           ),
@@ -127,6 +131,10 @@ class SignupPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
+        
+      ),
+      style: const TextStyle(
+        color: Colors.black, 
       ),
     );
   }
@@ -150,6 +158,9 @@ class SignupPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
             ),
+          ),
+          style: const TextStyle(
+            color: Colors.black, 
           ),
           onChanged: (value) {
             if (!_emailRegex.hasMatch(value)) {
@@ -194,6 +205,9 @@ class SignupPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
+              ),
+              style: const TextStyle(
+                color: Colors.black, 
               ),
               onChanged: (value) {
                 _hasUppercase.value =
@@ -272,7 +286,7 @@ class SignupPage extends StatelessWidget {
           TextSpan(
             text: ' Sign In',
             style: TextStyle(
-              color: Colors.red[500],
+              color: Theme.of(context).colorScheme.secondary,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -318,7 +332,7 @@ class SignupPage extends StatelessWidget {
           children: [
             Icon(
               isValid ? Icons.check_circle : Icons.cancel,
-              color: isValid ? Colors.green : Colors.grey,
+              color: isValid ? Theme.of(context).colorScheme.secondary : Colors.grey,
               size: 16,
             ),
             const SizedBox(width: 8),

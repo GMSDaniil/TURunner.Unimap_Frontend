@@ -30,30 +30,34 @@ class WelcomePage extends StatelessWidget {
             const SizedBox(height: 100),
             BlocProvider(
               create: (_) => ButtonStateCubit(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: Column(
-                  children: [
-                    BasicAppButton(
-                      title: 'Create Account',
-                      onPressed: () {
-                        Navigator.of(context).pushNamed('/signup');
-                      },
-                      width: screenWidth,
-
-                      isEnabled: true,
-                    ),
-                    const SizedBox(height: 18),
-                    BasicAppButton(
-                      title: 'Sign In',
-                      onPressed: () {
-                        Navigator.of(context).pushNamed('/signin');
-                      },
-                      width: screenWidth,
-
-                      isEnabled: true,
-                    ),
-                  ],
+              child: Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      BasicAppButton(
+                        title: 'Create Account',
+                        onPressed: () {
+                          Navigator.of(context).pushNamed('/signup');
+                        },
+                        width: screenWidth,
+                
+                        isEnabled: true,
+                      ),
+                      const SizedBox(height: 18),
+                      BasicAppButton(
+                        title: 'Sign In',
+                        onPressed: () {
+                          Navigator.of(context).pushNamed('/signin');
+                        },
+                        width: screenWidth,
+                
+                        isEnabled: true,
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+                  ),
                 ),
               ),
             ),

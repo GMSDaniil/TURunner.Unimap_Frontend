@@ -1,4 +1,5 @@
 import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
+import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -52,18 +53,8 @@ class BasicAppButton extends StatelessWidget {
         width: width ?? MediaQuery.of(context).size.width,
         height: height ?? 60,
         decoration: BoxDecoration(
-          gradient:
-              isEnabled
-                  ? const LinearGradient(
-                    colors: [Color(0xFF833AB4), Color(0xFFFF5E3A)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  )
-                  : const LinearGradient(
-                    colors: [Color(0xFF833AB4), Color(0xFFFF5E3A)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
+          gradient: isEnabled ? Theme.of(context).primaryGradient : null,
+          color: isEnabled ? null : Colors.grey,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             if (isEnabled)
