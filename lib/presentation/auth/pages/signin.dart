@@ -24,79 +24,98 @@ class SigninPage extends StatelessWidget {
     return Scaffold(
       body: BlocProvider(
         create: (context) => ButtonStateCubit(),
-        child:  BlocListener<ButtonStateCubit,ButtonState>(
+        child: BlocListener<ButtonStateCubit, ButtonState>(
           listener: (context, state) {
             if (state is ButtonSuccessState) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const HomePage(),)
+                MaterialPageRoute(builder: (context) => const HomePage()),
               );
             }
-            if (state is ButtonFailureState){
+            if (state is ButtonFailureState) {
               var snackBar = SnackBar(content: Text(state.errorMessage));
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
           },
           child: SafeArea(
-            minimum: const EdgeInsets.only(top: 100,right: 16,left: 16),
+            minimum: const EdgeInsets.only(top: 100, right: 16, left: 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _signin(),
-                const SizedBox(height: 50,),
+                const SizedBox(height: 50),
                 _usernameField(),
-                const SizedBox(height: 20,),
+                const SizedBox(height: 20),
                 _passwordField(),
-                const SizedBox(height: 60,),
+                const SizedBox(height: 60),
                 _loginButton(context),
-                const SizedBox(height: 20,),
-                 _signupText(context)
+                const SizedBox(height: 20),
+                _signupText(context),
               ],
             ),
           ),
         ),
-      ) ,
-    );
-  }
-  Widget _signin(){
-    return const Text(
-      'Sign In',
-      style: TextStyle(
-        color: Color(0xff2A4ECA),
-        fontWeight: FontWeight.bold,
-        fontSize: 32
       ),
     );
   }
 
+  Widget _signin() {
+    return Text(
+      'Sign In',
+      style: TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.bold,
+        fontSize: 32,
+      ),
+    );
+  }
 
   Widget _usernameField() {
-
-        return TextField(
-          controller: _usernameCon,
-          decoration: InputDecoration(
-            hintText: 'Username',
-          ),
-          onChanged: (value) {
-            _validateForm();
-          },
-        );
+    return TextField(
+      controller: _usernameCon,
+      decoration: InputDecoration(
+        hintText: 'Username',
+        filled: true,
+        fillColor: Color(0xFFF5F6FA),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      onChanged: (value) {
+        _validateForm();
+      },
+    );
   }
 
   Widget _passwordField() {
-
-        return TextField(
-          controller: _passwordCon,
-          decoration: InputDecoration(
-            hintText: 'Password',
-          ),
-          onChanged: (value) {
-            _validateForm();
-          },
-          obscureText: true,
-        );
+    return TextField(
+      controller: _passwordCon,
+      obscureText: true,
+      decoration: InputDecoration(
+        hintText: 'Password',
+        filled: true,
+        fillColor: Color(0xFFF5F6FA),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      onChanged: (value) {
+        _validateForm();
+      },
+    );
   }
+
 
   void _validateForm() {
     final isUsernameValid = _usernameCon.text.isNotEmpty;
@@ -105,27 +124,27 @@ class SigninPage extends StatelessWidget {
   }
 
   Widget _loginButton(BuildContext context) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: _isFormValid,
-    builder: (context, isFormValid, child) {
-      return BasicAppButton(
-        title: 'Login',
-        isEnabled: isFormValid,
-        onPressed: () {
-                context.read<ButtonStateCubit>().execute(
-                  usecase: sl<SigninUseCase>(),
-                  params: SigninReqParams(
-                    username: _usernameCon.text,
-                    password: _passwordCon.text,
-                  ),
-                );
-              },
-      );
-    },
-  );
-}
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isFormValid,
+      builder: (context, isFormValid, child) {
+        return BasicAppButton(
+          title: 'Login',
+          isEnabled: isFormValid,
+          onPressed: () {
+            context.read<ButtonStateCubit>().execute(
+              usecase: sl<SigninUseCase>(),
+              params: SigninReqParams(
+                username: _usernameCon.text,
+                password: _passwordCon.text,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-  Widget _signupText(BuildContext context){
+  Widget _signupText(BuildContext context) {
     return Text.rich(
       TextSpan(
         children: [
@@ -133,24 +152,26 @@ class SigninPage extends StatelessWidget {
             text: "Don't you have account?",
             style: TextStyle(
               color: Color(0xff3B4054),
-              fontWeight: FontWeight.w500
-            )
-          ),
-           TextSpan(
-            text: ' Sign Up',
-            style: const TextStyle(
-              color: Color(0xff3461FD),
-              fontWeight: FontWeight.w500
+              fontWeight: FontWeight.w500,
             ),
-            recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                   Navigator.push(
-                     context,
-                     MaterialPageRoute(builder: (context) => SignupPage(), )
-                   );
-              }
-          )
-        ]
+          ),
+          TextSpan(
+            text: ' Sign Up',
+            style: TextStyle(
+              color: Colors.red[500],
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            recognizer:
+                TapGestureRecognizer()
+                  ..onTap = () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SignupPage()),
+                    );
+                  },
+          ),
+        ],
       ),
     );
   }

@@ -8,22 +8,22 @@ class BasicAppButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String title;
   final bool isEnabled;
-  final double ? height;
-  final double ? width;
+  final double? height;
+  final double? width;
   const BasicAppButton({
     required this.onPressed,
     this.title = '',
     this.isEnabled = true,
     this.height,
     this.width,
-    super.key
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ButtonStateCubit,ButtonState>(
+    return BlocBuilder<ButtonStateCubit, ButtonState>(
       builder: (context, state) {
-        if (state is ButtonLoadingState){
+        if (state is ButtonLoadingState) {
           return _loading(context);
         }
         return _initial(context);
@@ -38,45 +38,51 @@ class BasicAppButton extends StatelessWidget {
         disabledBackgroundColor: Colors.grey,
         minimumSize: Size(
           width ?? MediaQuery.of(context).size.width,
-          height ?? 60
+          height ?? 60,
         ),
       ),
-      child: const CircularProgressIndicator(color: Colors.white,)
+      child: const CircularProgressIndicator(color: Colors.white),
     );
   }
 
   Widget _initial(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          isEnabled ? BoxShadow(
-            //TODO
-            color: Theme.of(context).primaryColor.withOpacity(0.8),
-            offset: const Offset(0, 5),
-            blurRadius: 17,
-          ) : const BoxShadow(
-            color: Colors.transparent,
-            offset: Offset(0, 0),
-            blurRadius: 0,
-          )
-        ]
-      ),
-      child: ElevatedButton(
-        onPressed: isEnabled ? onPressed : null,
-        style: ElevatedButton.styleFrom(
-          minimumSize: Size(
-            width ?? MediaQuery.of(context).size.width,
-            height ?? 60
+    return GestureDetector(
+      onTap: isEnabled ? onPressed : null,
+      child: Container(
+        width: width ?? MediaQuery.of(context).size.width,
+        height: height ?? 60,
+        decoration: BoxDecoration(
+          gradient:
+              isEnabled
+                  ? const LinearGradient(
+                    colors: [Color(0xFF833AB4), Color(0xFFFF5E3A)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  )
+                  : const LinearGradient(
+                    colors: [Color(0xFF833AB4), Color(0xFFFF5E3A)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            if (isEnabled)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                offset: const Offset(0, 5),
+                blurRadius: 15,
+              ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
           ),
         ),
-        child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w400
-           ),
-         )
       ),
     );
   }

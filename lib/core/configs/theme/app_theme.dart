@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
 
-
   static final appTheme = ThemeData(
     primaryColor: const Color(0xff3461FD),
     scaffoldBackgroundColor: Colors.white,
@@ -11,11 +10,11 @@ class AppTheme {
       backgroundColor: Colors.black87,
       contentTextStyle: TextStyle(color: Colors.white),
     ),
-    inputDecorationTheme: InputDecorationTheme(   
+    inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xffF5F9FE),
         hintStyle: const TextStyle(
-          color: Color(0xff7C8BA0),
+          color: Color.fromARGB(255, 160, 126, 124), //Color(0xff7C8BA0)
           fontWeight: FontWeight.w400,
         ),
         contentPadding: const EdgeInsets.all(16),
@@ -30,7 +29,7 @@ class AppTheme {
       ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff3461FD),
+        backgroundColor: Colors.red[500],
         elevation: 0,
         textStyle: const TextStyle(fontSize: 16,fontWeight: FontWeight.w400),
         shape: RoundedRectangleBorder(

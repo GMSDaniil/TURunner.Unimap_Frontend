@@ -15,7 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class SignupPage extends StatelessWidget {
   SignupPage({super.key});
-   
+
   final TextEditingController _usernameCon = TextEditingController();
   final TextEditingController _emailCon = TextEditingController();
   final TextEditingController _passwordCon = TextEditingController();
@@ -100,13 +100,14 @@ class SignupPage extends StatelessWidget {
       ),
     );
   }
-  Widget _signup(){
+
+  Widget _signup() {
     return const Text(
       'Sign Up',
       style: TextStyle(
-        color: Color(0xff2A4ECA),
+        color: Colors.black,
         fontWeight: FontWeight.bold,
-        fontSize: 32
+        fontSize: 32,
       ),
     );
   }
@@ -114,8 +115,18 @@ class SignupPage extends StatelessWidget {
   Widget _userNameField() {
     return TextField(
       controller: _usernameCon,
-      decoration: const InputDecoration(
-        hintText: 'Username'
+      decoration: InputDecoration(
+        hintText: 'Username',
+        filled: true,
+        fillColor: Color(0xFFF5F6FA),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 20,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
@@ -129,6 +140,16 @@ class SignupPage extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'Email',
             errorText: error,
+            filled: true,
+            fillColor: Color(0xFFF5F6FA),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 16,
+              horizontal: 20,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
           ),
           onChanged: (value) {
             if (!_emailRegex.hasMatch(value)) {
@@ -145,84 +166,99 @@ class SignupPage extends StatelessWidget {
 
   void _validateForm() {
     final isEmailValid = _emailError.value == null && _emailCon.text.isNotEmpty;
-    final isPasswordValid = _passwordError.value == null && _passwordCon.text.isNotEmpty;
+    final isPasswordValid =
+        _passwordError.value == null && _passwordCon.text.isNotEmpty;
     _isFormValid.value = isEmailValid && isPasswordValid;
   }
 
   Widget _passwordField() {
-  return ValueListenableBuilder<String?>(
-    valueListenable: _passwordError,
-    builder: (context, error, child) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _passwordCon,
-            decoration: InputDecoration(
-              hintText: 'Password',
-              errorText: error,
+    return ValueListenableBuilder<String?>(
+      valueListenable: _passwordError,
+      builder: (context, error, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _passwordCon,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: 'Password',
+                errorText: error,
+                filled: true,
+                fillColor: Color(0xFFF5F6FA),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (value) {
+                _hasUppercase.value =
+                    PasswordRules.requireUppercase
+                        ? value.contains(RegExp(r'[A-Z]'))
+                        : true;
+                _hasLowercase.value =
+                    PasswordRules.requireLowercase
+                        ? value.contains(RegExp(r'[a-z]'))
+                        : true;
+                _hasNumber.value =
+                    PasswordRules.requireNumber
+                        ? value.contains(RegExp(r'\d'))
+                        : true;
+                _hasSpecialChar.value =
+                    PasswordRules.requireSpecialChar
+                        ? value.contains(PasswordRules.specialCharRegex)
+                        : true;
+                _hasMinLength.value = value.length >= PasswordRules.minLength;
+
+                if (_hasUppercase.value &&
+                    _hasLowercase.value &&
+                    _hasNumber.value &&
+                    _hasSpecialChar.value &&
+                    _hasMinLength.value) {
+                  _passwordError.value = null;
+                } else {
+                  _passwordError.value = 'Password must meet all requirements.';
+                }
+                _validateForm();
+              },
             ),
-            obscureText: true,
-            onChanged: (value) {
-              _hasUppercase.value = PasswordRules.requireUppercase
-                  ? value.contains(RegExp(r'[A-Z]'))
-                  : true;
-              _hasLowercase.value = PasswordRules.requireLowercase
-                  ? value.contains(RegExp(r'[a-z]'))
-                  : true;
-              _hasNumber.value = PasswordRules.requireNumber
-                  ? value.contains(RegExp(r'\d'))
-                  : true;
-              _hasSpecialChar.value = PasswordRules.requireSpecialChar
-                  ? value.contains(PasswordRules.specialCharRegex)
-                  : true;
-              _hasMinLength.value = value.length >= PasswordRules.minLength;
-
-              // Check if all rules are satisfied
-              if (_hasUppercase.value &&
-                  _hasLowercase.value &&
-                  _hasNumber.value &&
-                  _hasSpecialChar.value &&
-                  _hasMinLength.value) {
-                _passwordError.value = null;
-              } else {
-                _passwordError.value = 'Password must meet all requirements.';
-              }
-              _validateForm();
-            },
-          ),
-          const SizedBox(height: 10),
-          _passwordError.value == null && _passwordCon.text.isNotEmpty ? Container() :_passwordRequirements(), 
-        ],
-      );
-    },
-  );
-}
-
-  Widget _createAccountButton(BuildContext context) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: _isFormValid,
-    builder: (context, isFormValid, child) {
-      return BasicAppButton(
-        title: 'Create Account',
-        isEnabled: isFormValid,
-        onPressed: () {
-                  context.read<ButtonStateCubit>().execute(
-                    usecase: sl<SignupUseCase>(),
-                    params: SignupReqParams(
-                      email: _emailCon.text,
-                      password: _passwordCon.text,
-                      username: _usernameCon.text,
-                    ),
-                  );
-                },
-          
+            const SizedBox(height: 10),
+            _passwordError.value == null && _passwordCon.text.isNotEmpty
+                ? Container()
+                : _passwordRequirements(),
+          ],
         );
       },
     );
   }
 
-  Widget _signinText(BuildContext context){
+  Widget _createAccountButton(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isFormValid,
+      builder: (context, isFormValid, child) {
+        return BasicAppButton(
+          title: 'Create Account',
+          isEnabled: isFormValid,
+          onPressed: () {
+            context.read<ButtonStateCubit>().execute(
+              usecase: sl<SignupUseCase>(),
+              params: SignupReqParams(
+                email: _emailCon.text,
+                password: _passwordCon.text,
+                username: _usernameCon.text,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _signinText(BuildContext context) {
     return Text.rich(
       TextSpan(
         children: [
@@ -230,72 +266,75 @@ class SignupPage extends StatelessWidget {
             text: 'Do you have account?',
             style: TextStyle(
               color: Color(0xff3B4054),
-              fontWeight: FontWeight.w500
-            )
-          ),
-           TextSpan(
-            text: ' Sign In',
-            style: const TextStyle(
-              color: Color(0xff3461FD),
-              fontWeight: FontWeight.w500
+              fontWeight: FontWeight.w500,
             ),
-            recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  Navigator.push(
-                    context, 
-                    MaterialPageRoute(builder: (context) => SigninPage(),
-                  )
-                );
-              }
-          )
-        ]
+          ),
+          TextSpan(
+            text: ' Sign In',
+            style: TextStyle(
+              color: Colors.red[500],
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            recognizer:
+                TapGestureRecognizer()
+                  ..onTap = () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SigninPage()),
+                    );
+                  },
+          ),
+        ],
       ),
     );
   }
 
   Widget _passwordRequirements() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      
-      _requirementItem('At least ${PasswordRules.minLength} characters', _hasMinLength),
-      
-      _requirementItem('At least one uppercase letter', _hasUppercase),
-      
-      _requirementItem('At least one lowercase letter', _hasLowercase),
-      
-      _requirementItem('At least one number', _hasNumber),
-      
-      _requirementItem('At least one special character', _hasSpecialChar),
-    ],
-  );
-}
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _requirementItem(
+          'At least ${PasswordRules.minLength} characters',
+          _hasMinLength,
+        ),
 
-Widget _requirementItem(String text, ValueNotifier<bool> notifier) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: notifier,
-    builder: (context, isValid, child) {
-      return Row(
-        children: [
-          Icon(
-            isValid ? Icons.check_circle : Icons.cancel,
-            color: isValid ? Colors.green : Colors.grey,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              // color: isValid ? Colors.green : Colors.grey,
-              color: Colors.grey,
-              fontSize: 14,
+        _requirementItem('At least one uppercase letter', _hasUppercase),
+
+        _requirementItem('At least one lowercase letter', _hasLowercase),
+
+        _requirementItem('At least one number', _hasNumber),
+
+        _requirementItem('At least one special character', _hasSpecialChar),
+      ],
+    );
+  }
+
+  Widget _requirementItem(String text, ValueNotifier<bool> notifier) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: notifier,
+      builder: (context, isValid, child) {
+        return Row(
+          children: [
+            Icon(
+              isValid ? Icons.check_circle : Icons.cancel,
+              color: isValid ? Colors.green : Colors.grey,
+              size: 16,
             ),
-          ),
-        ],
-      );
-    },
-  );
-}
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                // color: isValid ? Colors.green : Colors.grey,
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class PasswordRules {
@@ -305,9 +344,7 @@ class PasswordRules {
   static const bool requireNumber = true;
   static const bool requireSpecialChar = true;
 
-  static final RegExp specialCharRegex = RegExp(r'''[/$\\&+,:;=?@#|<>.^*()%!'{}\_"[\]~`-]''');
-
-
+  static final RegExp specialCharRegex = RegExp(
+    r'''[/$\\&+,:;=?@#|<>.^*()%!'{}\_"[\]~`-]''',
+  );
 }
-
-

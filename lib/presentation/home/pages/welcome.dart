@@ -14,27 +14,24 @@ class WelcomePage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            const SizedBox(height: 60),
-
-            // ─── Logo ──────────────────────────────────────────────────────
+            const SizedBox(height: 100),
             Center(
               child: SizedBox(
-                width: 220,
-                height: 220,
+                width: 340,
+                height: 340,
                 child: Image.asset(
-                  'assets/images/logo.jpg', // Make sure this path and name match
+                  'assets/images/logo__.jpeg',
                   fit: BoxFit.contain,
                 ),
               ),
             ),
-
-            // ─── Buttons ───────────────────────────────────────────────────
+            const SizedBox(height: 100),
             BlocProvider(
               create: (_) => ButtonStateCubit(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40),
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Column(
                   children: [
                     BasicAppButton(
@@ -43,6 +40,7 @@ class WelcomePage extends StatelessWidget {
                         Navigator.of(context).pushNamed('/signup');
                       },
                       width: screenWidth,
+
                       isEnabled: true,
                     ),
                     const SizedBox(height: 18),
@@ -52,6 +50,7 @@ class WelcomePage extends StatelessWidget {
                         Navigator.of(context).pushNamed('/signin');
                       },
                       width: screenWidth,
+
                       isEnabled: true,
                     ),
                   ],
