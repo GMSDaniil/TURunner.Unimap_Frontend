@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:auth_app/core/configs/theme/app_theme.dart'; // Import the theme
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -79,51 +78,6 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          gradient: Theme.of(context).primaryGradient, // Use the theme gradient
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                onPressed: () {
-                  // No functionality for now
-                  print('Map button clicked');
-                },
-                icon: const Icon(Icons.map, color: Colors.white),
-                tooltip: 'Map',
-              ),
-              IconButton(
-                onPressed: () {
-                  // No functionality for now
-                  print('Profile button clicked');
-                },
-                icon: const Icon(Icons.person, color: Colors.white),
-                tooltip: 'Profile',
-              ),
-              IconButton(
-                onPressed: () {
-                  // No functionality for now
-                  print('Favourites button clicked');
-                },
-                icon: const Icon(Icons.favorite, color: Colors.white),
-                tooltip: 'Favourites',
-              ),
-              IconButton(
-                onPressed: () {
-                  // No functionality for now
-                  print('List button clicked');
-                },
-                icon: const Icon(Icons.list, color: Colors.white),
-                tooltip: 'List',
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
