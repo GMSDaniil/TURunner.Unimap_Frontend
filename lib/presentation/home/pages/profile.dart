@@ -24,6 +24,7 @@ class ProfilePage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Profile'),
+          automaticallyImplyLeading: false,
         ),
         body: BlocListener<ButtonStateCubit, ButtonState>(
           listener: (context, state) {

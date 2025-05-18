@@ -19,7 +19,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Map')),
+      // appBar: AppBar(title: const Text('Map'), automaticallyImplyLeading: false,),
       body: Stack(
         children: [
           FlutterMap(
@@ -44,20 +44,22 @@ class _MapPageState extends State<MapPage> {
           ),
           Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: GestureDetector(
-                  onTap: () {
-                    // No functionality for now
-                    print('Search bar clicked');
-                  },
-                  child: TextField(
-                    enabled: false, // Disable direct input
-                    decoration: InputDecoration(
-                      hintText: 'Search location',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      // No functionality for now
+                      print('Search bar clicked');
+                    },
+                    child: TextField(
+                      enabled: false, // Disable direct input
+                      decoration: InputDecoration(
+                        hintText: 'Search location',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
                       ),
                     ),
                   ),

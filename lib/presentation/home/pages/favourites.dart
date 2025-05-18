@@ -25,6 +25,7 @@ class _FavouritesPageState extends State<FavouritesPage> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Favourites'),
+        automaticallyImplyLeading: false,
       ),
       body: Stack(
         children: [
