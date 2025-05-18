@@ -23,8 +23,17 @@ class ProfilePage extends StatelessWidget {
       ],
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Profile'),
+          title: Text('Profile', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
           automaticallyImplyLeading: false,
+          centerTitle: true,
+          actions: [
+            // IconButton(
+            //   icon: const Icon(Icons.settings),
+            //   onPressed: () {
+            //     // navigate to Settings page
+            //   },
+            // ),
+          ],
         ),
         body: BlocListener<ButtonStateCubit, ButtonState>(
           listener: (context, state) {
@@ -35,60 +44,115 @@ class ProfilePage extends StatelessWidget {
               );
             }
           },
-          child: Center(
-            child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-              builder: (context, state) {
-                if (state is UserLoading) {
-                  return const CircularProgressIndicator();
-                }
-                if (state is UserLoaded) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+            builder: (context, state) {
+              if (state is UserLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (state is UserLoaded) {
+                final user = state.userEntity;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _username(state.userEntity),
-                      const SizedBox(height: 10),
-                      _email(state.userEntity),
-                      _logout(context),
+                      const SizedBox(height: 32),
+                      _buildProfilePicture(context),
+                      const SizedBox(height: 24),
+                      _buildUsername(user),
+                      const SizedBox(height: 8),
+                      _buildEmail(user),
+                      const SizedBox(height: 16),
+                      _buildDescription(),
+                      const SizedBox(height: 24),
+                      _buildLogoutButton(context),
+                      const SizedBox(height: 24),
                     ],
-                  );
-                }
-                if (state is LoadUserFailure) {
-                  return Text(state.errorMessage);
-                }
-                return const Text('No user data available.');
-              },
-            ),
+                  ),
+                );
+              }
+
+              if (state is LoadUserFailure) {
+                return Center(child: Text(state.errorMessage));
+              }
+
+              return const Center(child: Text('No user data available.'));
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _username(UserEntity user) {
+  Widget _buildProfilePicture(BuildContext context) {
+    return Center(
+      child: Stack(
+        children: [
+          ClipOval(
+            child: Material(
+              color: Colors.transparent,
+              child: Ink.image(
+                image: const AssetImage('assets/images/person_profile.png'),
+                width: 150,
+                height: 150,
+                fit: BoxFit.cover,
+                child: InkWell(
+                  onTap: () {
+                    // Edit Profile Page
+                  },
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 7,
+            child: ClipOval(
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                color: const Color.fromARGB(255, 218, 99, 99),
+                child: const Icon(Icons.edit, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsername(UserEntity user) {
     return Text(
       user.username,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19),
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
     );
   }
 
-  Widget _email(UserEntity user) {
+  Widget _buildEmail(UserEntity user) {
     return Text(
       user.email,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19),
+      style: const TextStyle(fontSize: 16, color: Colors.grey),
     );
   }
 
-  Widget _logout(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: BasicAppButton(
-        title: 'Logout',
-        onPressed: () {
-          context.read<ButtonStateCubit>().execute(
-                usecase: sl<LogoutUseCase>(),
-              );
-        },
+  Widget _buildDescription() {
+    return const Text(
+      'Empty Profile Description',
+      style: TextStyle(
+        fontStyle: FontStyle.italic,
+        fontSize: 16,
+        color: Colors.black,
       ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return BasicAppButton(
+      title: 'Logout',
+      onPressed: () {
+        context.read<ButtonStateCubit>().execute(usecase: sl<LogoutUseCase>());
+      },
     );
   }
 }

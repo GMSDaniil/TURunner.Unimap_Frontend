@@ -12,6 +12,8 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
 
+
+  
   void _resetCompass() {
     _mapController.rotate(0); // Reset the map's rotation to north
   }
