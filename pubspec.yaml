@@ -34,6 +34,7 @@ flutter:
   assets:
     - assets/images/
     - assets/campus_buildings.json
+    - assets/campus_buildings_centroids.json
 
 flutter_icons:
   android: true
