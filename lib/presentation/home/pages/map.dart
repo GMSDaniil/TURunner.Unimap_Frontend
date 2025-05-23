@@ -251,54 +251,13 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<void> _loadMockBuildings() async {
-    try {
-      print('🟡 Loading campus_buildings.json...');
-      final jsonStr = await rootBundle.loadString('assets/campus_buildings.json');
-      print('✅ JSON loaded: ${jsonStr.length} characters');
+  
 
-      final List data = jsonDecode(jsonStr);
-      print('📦 Total buildings found: ${data.length}');
 
-      final buildings = data.map((e) => Building.fromJson(e)).toList();
-
-      final markers = buildings.map((b) {
-        return Marker(
-          point: LatLng(b.lat, b.lng),
-          width: 80,
-          height: 80,
-          child: GestureDetector(
-            onTap: () => _showPointPopup(context, b.name, 'Building'),
-            child: const Icon(Icons.location_on, color: Colors.green),
-          ),
-        );
-      }).toList();
-
-      setState(() {
-        _buildingMarkers = markers;
-        _markers = [..._buildingMarkers, ..._pointerMarkers];
-      });
-
-      print('📍 Total markers added: ${markers.length}');
-    } catch (e) {
-      print('❌ Error loading buildings: $e');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMockBuildings();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mapController.move(LatLng(52.5125, 13.3269), 17.0);
-    });
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    _searchController.dispose(); // Dispose controller
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   _debounceTimer?.cancel();
+  //   _searchController.dispose(); // Dispose controller
+  //   super.dispose();
+  // }
 }
