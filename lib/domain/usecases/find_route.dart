@@ -3,14 +3,12 @@ import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:dartz/dartz.dart';
 import 'package:auth_app/core/usecase/usecase.dart';
+import 'package:auth_app/service_locator.dart';
 
 class FindRouteUseCase implements UseCase<Either<String, List<LatLng>>, FindRouteReqParams> {
-  final RouteRepository repository;
-
-  FindRouteUseCase(this.repository);
-
   @override
+  //Change function type.
   Future<Either<String, List<LatLng>>> call({FindRouteReqParams? param}) async {
-    return await repository.findRoute(param!);
+    return await sl<RouteRepository>().findRoute(param!);
   }
 }

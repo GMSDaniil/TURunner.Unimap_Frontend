@@ -38,6 +38,8 @@ class _MapPageState extends State<MapPage> {
     );
     final findRouteUseCase = sl<FindRouteUseCase>();
     final result = await findRouteUseCase.call(param: params);
+
+    //From findRouteUseCase you'll get either an error or points.
     result.fold(
       (error) {
         ScaffoldMessenger.of(

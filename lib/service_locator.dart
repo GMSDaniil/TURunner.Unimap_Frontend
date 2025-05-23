@@ -8,7 +8,6 @@ import 'package:auth_app/domain/usecases/is_logged_in.dart';
 import 'package:auth_app/domain/usecases/logout.dart';
 import 'package:auth_app/domain/usecases/signin.dart';
 import 'package:auth_app/domain/usecases/signup.dart';
-import 'package:dio/dio.dart';
 import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/data/repository/route_repository_impl.dart';
 import 'package:auth_app/domain/usecases/find_route.dart';
@@ -28,10 +27,22 @@ void setupServiceLocator() {
   // Services
   sl.registerSingleton<AuthApiService>(AuthApiServiceImpl());
 
-  sl.registerSingleton<AuthLocalService>(AuthLocalServiceImpl());
+  sl.registerSingleton<AuthLocalService>(
+    AuthLocalServiceImpl()
+  );
+
+  sl.registerSingleton<FindRouteApiService>(
+    FindRouteApiService()
+  );
 
   // Repositories
-  sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
+  sl.registerSingleton<AuthRepository>(
+    AuthRepositoryImpl()
+  );
+
+  sl.registerSingleton<RouteRepository>(
+    RouteRepositoryImpl()
+  );
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -44,32 +55,7 @@ void setupServiceLocator() {
 
   sl.registerSingleton<SigninUseCase>(SigninUseCase());
 
-  // Register DioClient if not already – for simplicity, here we create a Dio instance
-  final dio = Dio();
-
-  // Register FindRouteApiService
-  sl.registerSingleton<FindRouteApiService>(FindRouteApiService(dio));
-
-  // Register RouteRepository implementation
-  sl.registerSingleton<RouteRepository>(
-    RouteRepositoryImpl(apiService: sl<FindRouteApiService>()),
-  );
-
-  // Register FindRouteUseCase
   sl.registerSingleton<FindRouteUseCase>(
-    FindRouteUseCase(sl<RouteRepository>()),
+    FindRouteUseCase()
   );
-
-  /*Mensa API service to handle HTTP calls
-  sl.registerSingleton<MensaApiService>(MensaApiService(sl<DioClient>().dio));
-
-  // MensaRepo implementation
-  sl.registerSingleton<MensaRepository>(
-    MensaRepositoryImpl(sl<MensaApiService>()),
-  );
-
-  // Use case to fetch meals from a specific mensa
-  sl.registerSingleton<GetMensaMenuUseCase>(
-    GetMensaMenuUseCase(sl<MensaRepository>()),
-  );*/
 }
