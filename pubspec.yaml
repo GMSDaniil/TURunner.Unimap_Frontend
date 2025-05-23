@@ -33,6 +33,7 @@ flutter:
   
   assets:
     - assets/images/
+    - assets/campus_buildings.json
 
 flutter_icons:
   android: true
