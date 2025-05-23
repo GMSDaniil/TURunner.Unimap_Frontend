@@ -23,6 +23,7 @@ Timer? _debounceTimer;
 
 class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController(); // Add this
   List<Marker> _markers = [];
   List<Marker> _buildingMarkers = [];
   List<Marker> _pointerMarkers = [];
@@ -170,20 +171,20 @@ class _MapPageState extends State<MapPage> {
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: GestureDetector(
-                    onTap: () {
-                      print('Search bar clicked');
-                    },
-                    child: TextField(
-                      enabled: false,
-                      decoration: InputDecoration(
-                        hintText: 'Search location',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
+                  child: TextField(
+                    controller: _searchController,
+                    enabled: true,
+                    decoration: InputDecoration(
+                      hintText: 'Search location',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
+                    onSubmitted: (value) {
+                      print('User searched: $value');
+                      // TODO: Implement search logic here
+                    },
                   ),
                 ),
               ),
@@ -285,6 +286,7 @@ class _MapPageState extends State<MapPage> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _searchController.dispose(); // Dispose controller
     super.dispose();
   }
 }
