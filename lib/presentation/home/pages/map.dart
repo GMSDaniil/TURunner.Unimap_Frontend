@@ -1,15 +1,16 @@
-import 'package:auth_app/data/models/get_pointers_req_params.dart';
-import 'package:auth_app/data/models/pointer.dart';
+import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:auth_app/data/models/get_pointers_req_params.dart';
+import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/data/models/building.dart';
-import 'package:auth_app/data/source/pointer_api_service.dart'; // <-- Import the PointerApiService
-
+import 'package:auth_app/data/source/pointer_api_service.dart';
+import 'package:auth_app/domain/usecases/find_route.dart';
+import 'package:auth_app/data/models/findroute_req_params.dart';
+import 'package:auth_app/service_locator.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -25,14 +26,15 @@ class _MapPageState extends State<MapPage> {
   List<Marker> _markers = [];
   List<Marker> _buildingMarkers = [];
   List<Marker> _pointerMarkers = [];
-  String? _selectedCategory = 'All'; // Set default to 'All'
+  String? _selectedCategory = 'All';
+  List<LatLng> _path = [];
 
-  final pointerApi = PointerApiService(); // <-- Initialize the PointerApiService
+  final pointerApi = PointerApiService();
 
   void _onMapInteractionEnd() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 700), () {
-      _fetchPointersFromBackend(); // Enable this
+      _fetchPointersFromBackend();
     });
   }
 
@@ -84,15 +86,45 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-  
+
   void _resetCompass() {
-    _mapController.rotate(0); // Reset the map's rotation to north
+    _mapController.rotate(0);
+  }
+
+  /// Find route logic using FindRouteUseCase
+  Future<void> _findRoute() async {
+    // Use hardcoded coordinates for simplicity:
+    const double hauptLat = 52.5125;
+    const double hauptLon = 13.3269;
+    const double matheLat = 52.5135;
+    const double matheLon = 13.3245;
+    final params = FindRouteReqParams(
+      startLat: hauptLat,
+      startLon: hauptLon,
+      endLat: matheLat,
+      endLon: matheLon,
+      profile: 'foot',
+    );
+    final findRouteUseCase = sl<FindRouteUseCase>();
+    final result = await findRouteUseCase.call(param: params);
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+      },
+      (routePoints) {
+        setState(() {
+          _path = routePoints;
+        });
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: const Text('Map'), automaticallyImplyLeading: false,),
       body: Stack(
         children: [
           FlutterMap(
@@ -121,6 +153,16 @@ class _MapPageState extends State<MapPage> {
               MarkerLayer(
                 markers: _markers,
               ),
+              if (_path.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _path,
+                      color: Colors.blue,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
             ],
           ),
           Column(
@@ -130,11 +172,10 @@ class _MapPageState extends State<MapPage> {
                   padding: const EdgeInsets.all(8.0),
                   child: GestureDetector(
                     onTap: () {
-                      // No functionality for now
                       print('Search bar clicked');
                     },
                     child: TextField(
-                      enabled: false, // Disable direct input
+                      enabled: false,
                       decoration: InputDecoration(
                         hintText: 'Search location',
                         prefixIcon: const Icon(Icons.search),
@@ -157,6 +198,7 @@ class _MapPageState extends State<MapPage> {
                   });
                   _fetchPointersFromBackend();
                 },
+              ),
             ],
           ),
           Positioned(
@@ -178,7 +220,7 @@ class _MapPageState extends State<MapPage> {
                 'Find Route',
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
-            ],
+            ),
           ),
           Positioned(
             bottom: 20,
@@ -186,7 +228,7 @@ class _MapPageState extends State<MapPage> {
             child: FloatingActionButton(
               onPressed: _resetCompass,
               backgroundColor: Colors.white,
-              child: const Icon(Icons.explore, // Compass icon
+              child: const Icon(Icons.explore,
                 color: Colors.black,
               ),
             ),
@@ -211,7 +253,7 @@ class _MapPageState extends State<MapPage> {
         return Marker(
           point: LatLng(b.lat, b.lng),
           width: 80,
-          height: 80, // <-- Fix height to make markers visible!
+          height: 80,
           child: GestureDetector(
             onTap: () => _showPointPopup(context, b.name, 'Building'),
             child: const Icon(Icons.location_on, color: Colors.green),
