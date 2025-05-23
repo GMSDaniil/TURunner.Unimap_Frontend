@@ -42,7 +42,6 @@ class WelcomePage extends StatelessWidget {
                           Navigator.of(context).pushNamed('/signup');
                         },
                         width: screenWidth,
-                
                         isEnabled: true,
                       ),
                       const SizedBox(height: 18),
@@ -52,7 +51,15 @@ class WelcomePage extends StatelessWidget {
                           Navigator.of(context).pushNamed('/signin');
                         },
                         width: screenWidth,
-                
+                        isEnabled: true,
+                      ),
+                      const SizedBox(height: 18),
+                      BasicAppButton(
+                        title: 'Sign in later',
+                        onPressed: () {
+                          Navigator.of(context).pushNamed('/home', arguments: 0); // Navigate to HomePage with index 0 (MapPage)
+                        },
+                        width: screenWidth,
                         isEnabled: true,
                       ),
                       const SizedBox(height: 18),

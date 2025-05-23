@@ -74,11 +74,44 @@ class ProfilePage extends StatelessWidget {
                 );
               }
 
-              if (state is LoadUserFailure) {
-                return Center(child: Text(state.errorMessage));
-              }
-
-              return const Center(child: Text('No user data available.'));
+              // Not logged in or failed to load user
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "You're not logged in",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: 160,
+                        height: 36,
+                        child: _GradientButton(
+                          text: 'Log In',
+                          onPressed: () {
+                            Navigator.of(context).pushReplacementNamed('/signin');
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 160,
+                        height: 36,
+                        child: _GradientButton(
+                          text: 'Sign Up',
+                          onPressed: () {
+                            Navigator.of(context).pushReplacementNamed('/signup');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             },
           ),
         ),
@@ -153,6 +186,49 @@ class ProfilePage extends StatelessWidget {
       onPressed: () {
         context.read<ButtonStateCubit>().execute(usecase: sl<LogoutUseCase>());
       },
+    );
+  }
+}
+
+// Place this widget in the same file (outside your ProfilePage class):
+
+class _GradientButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const _GradientButton({
+    required this.text,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      borderRadius: BorderRadius.circular(8),
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF8E2DE2), Color(0xFFFF7E5F)], // Use your app's gradient colors
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Center(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

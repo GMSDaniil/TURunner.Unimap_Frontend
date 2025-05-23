@@ -51,13 +51,14 @@ class MyApp extends StatelessWidget {
               return const WelcomePage(); // Show WelcomePage when not authenticated
             }
             return const Center(
-              child: CircularProgressIndicator(), // Show a loading indicator while checking auth state
+              child: CircularProgressIndicator(),
             );
           },
         ),
         routes: {
           '/signup': (_) => SignupPage(),
           '/signin': (_) => SigninPage(),
+          '/home': (_) => const HomePage(), // Add this route for HomePage
         },
       ),
     );
