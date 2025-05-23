@@ -16,6 +16,7 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController(); // Add this
   List<Marker> _markers = [];
   List<LatLng> _path = [];
 
@@ -202,18 +203,20 @@ class _MapPageState extends State<MapPage> {
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: GestureDetector(
-                    onTap: () => print('Search bar clicked'),
-                    child: TextField(
-                      enabled: false,
-                      decoration: InputDecoration(
-                        hintText: 'Search location',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
+                  child: TextField(
+                    controller: _searchController,
+                    enabled: true,
+                    decoration: InputDecoration(
+                      hintText: 'Search location',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
+                    onSubmitted: (value) {
+                      print('User searched: $value');
+                      // TODO: Implement search logic here
+                    },
                   ),
                 ),
               ),
@@ -246,5 +249,56 @@ class _MapPageState extends State<MapPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _loadMockBuildings() async {
+    try {
+      print('🟡 Loading campus_buildings.json...');
+      final jsonStr = await rootBundle.loadString('assets/campus_buildings.json');
+      print('✅ JSON loaded: ${jsonStr.length} characters');
+
+      final List data = jsonDecode(jsonStr);
+      print('📦 Total buildings found: ${data.length}');
+
+      final buildings = data.map((e) => Building.fromJson(e)).toList();
+
+      final markers = buildings.map((b) {
+        return Marker(
+          point: LatLng(b.lat, b.lng),
+          width: 80,
+          height: 80,
+          child: GestureDetector(
+            onTap: () => _showPointPopup(context, b.name, 'Building'),
+            child: const Icon(Icons.location_on, color: Colors.green),
+          ),
+        );
+      }).toList();
+
+      setState(() {
+        _buildingMarkers = markers;
+        _markers = [..._buildingMarkers, ..._pointerMarkers];
+      });
+
+      print('📍 Total markers added: ${markers.length}');
+    } catch (e) {
+      print('❌ Error loading buildings: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMockBuildings();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapController.move(LatLng(52.5125, 13.3269), 17.0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose(); // Dispose controller
+    super.dispose();
   }
 }
