@@ -4,9 +4,8 @@ import 'package:auth_app/service_locator.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthStateCubit extends Cubit<AuthState> {
-
   AuthStateCubit() : super(AppInitialState());
-  
+
   void appStarted() async {
     var isLoggedIn = await sl<IsLoggedInUseCase>().call();
     if (isLoggedIn) {
@@ -16,4 +15,11 @@ class AuthStateCubit extends Cubit<AuthState> {
     }
   }
 
+  void loginAsGuest() {
+    emit(GuestAuthenticated());
+  }
+
+  void logout() {
+    emit(UnAuthenticated());
+  }
 }

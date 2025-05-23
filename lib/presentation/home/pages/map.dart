@@ -40,7 +40,9 @@ class _MapPageState extends State<MapPage> {
     final result = await findRouteUseCase.call(param: params);
     result.fold(
       (error) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
       },
       (routePoints) {
         setState(() {
@@ -117,7 +119,10 @@ class _MapPageState extends State<MapPage> {
               onPressed: _findRoute,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -134,10 +139,7 @@ class _MapPageState extends State<MapPage> {
             child: FloatingActionButton(
               onPressed: _resetCompass,
               backgroundColor: Colors.white,
-              child: const Icon(
-                Icons.explore,
-                color: Colors.black,
-              ),
+              child: const Icon(Icons.explore, color: Colors.black),
             ),
           ),
         ],

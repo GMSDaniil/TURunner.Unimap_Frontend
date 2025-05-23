@@ -7,6 +7,7 @@ import 'interceptors.dart';
 class DioClient {
 
   late final Dio _dio;
+
   DioClient(): _dio = Dio(
     BaseOptions(
       headers: {

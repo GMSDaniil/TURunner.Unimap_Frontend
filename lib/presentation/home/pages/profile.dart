@@ -11,6 +11,9 @@ import '../../home/bloc/user_display_state.dart';
 import '../../home/pages/welcome.dart';
 import '../../../service_locator.dart';
 
+import '../../../common/bloc/auth/auth_state.dart';
+import '../../../common/bloc/auth/auth_state_cubit.dart';
+
 class ProfilePage extends StatelessWidget {
   const ProfilePage({Key? key}) : super(key: key);
 
@@ -23,134 +26,58 @@ class ProfilePage extends StatelessWidget {
       ],
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Profile', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+          title: Text(
+            'Profile',
+            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+          ),
           automaticallyImplyLeading: false,
           centerTitle: true,
-          actions: [
-            // IconButton(
-            //   icon: const Icon(Icons.settings),
-            //   onPressed: () {
-            //     // navigate to Settings page
-            //   },
-            // ),
-          ],
         ),
-        body: BlocListener<ButtonStateCubit, ButtonState>(
-          listener: (context, state) {
-            if (state is ButtonSuccessState) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const WelcomePage()),
-              );
+        body: BlocBuilder<AuthStateCubit, AuthState>(
+          builder: (context, authState) {
+            if (authState is GuestAuthenticated) {
+              return _buildGuestView(context);
             }
+
+            return BlocBuilder<UserDisplayCubit, UserDisplayState>(
+              builder: (context, state) {
+                if (state is UserLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state is UserLoaded) {
+                  final user = state.userEntity;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 32),
+                        _buildProfilePicture(context),
+                        const SizedBox(height: 24),
+                        _buildUsername(user),
+                        const SizedBox(height: 8),
+                        _buildEmail(user),
+                        const SizedBox(height: 16),
+                        _buildDescription(),
+                        const SizedBox(height: 24),
+                        _buildLogoutButton(context),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  );
+                }
+
+                if (state is LoadUserFailure) {
+                  return Center(child: Text(state.errorMessage));
+                }
+
+                return const Center(child: Text('No user data available.'));
+              },
+            );
           },
-          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-            builder: (context, state) {
-              if (state is UserLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (state is UserLoaded) {
-                final user = state.userEntity;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 32),
-                      _buildProfilePicture(context),
-                      const SizedBox(height: 24),
-                      _buildUsername(user),
-                      const SizedBox(height: 8),
-                      _buildEmail(user),
-                      const SizedBox(height: 16),
-                      _buildDescription(),
-                      const SizedBox(height: 24),
-                      _buildLogoutButton(context),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                );
-              }
-
-              // Not logged in or failed to load user
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "You're not logged in",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: 160,
-                        height: 36,
-                        child: _GradientButton(
-                          text: 'Log In',
-                          onPressed: () {
-                            Navigator.of(context).pushReplacementNamed('/signin');
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: 160,
-                        height: 36,
-                        child: _GradientButton(
-                          text: 'Sign Up',
-                          onPressed: () {
-                            Navigator.of(context).pushReplacementNamed('/signup');
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProfilePicture(BuildContext context) {
-    return Center(
-      child: Stack(
-        children: [
-          ClipOval(
-            child: Material(
-              color: Colors.transparent,
-              child: Ink.image(
-                image: const AssetImage('assets/images/person_profile.png'),
-                width: 150,
-                height: 150,
-                fit: BoxFit.cover,
-                child: InkWell(
-                  onTap: () {
-                    // Edit Profile Page
-                  },
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            right: 7,
-            child: ClipOval(
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                color: const Color.fromARGB(255, 218, 99, 99),
-                child: const Icon(Icons.edit, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -188,46 +115,81 @@ class ProfilePage extends StatelessWidget {
       },
     );
   }
-}
 
-// Place this widget in the same file (outside your ProfilePage class):
+  // Guest
+  Widget _buildGuestView(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
 
-class _GradientButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-
-  const _GradientButton({
-    required this.text,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(8),
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF8E2DE2), Color(0xFFFF7E5F)], // Use your app's gradient colors
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 32),
+          _buildProfilePicture(context),
+          const SizedBox(height: 24),
+          const Text(
+            'Guest',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onPressed,
-          child: Center(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+          const SizedBox(height: 8),
+          const Text('-', style: TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(height: 16),
+          _buildDescription(),
+          const SizedBox(height: 24),
+          BasicAppButton(
+            title: 'Sign In',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/signin');
+            },
+            width: screenWidth,
+          ),
+          const SizedBox(height: 16),
+          BasicAppButton(
+            title: 'Create Account',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/signup');
+            },
+            width: screenWidth,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfilePicture(BuildContext context) {
+    return Center(
+      child: Stack(
+        children: [
+          ClipOval(
+            child: Material(
+              color: Colors.transparent,
+              child: Ink.image(
+                image: const AssetImage('assets/images/person_profile.png'),
+                width: 150,
+                height: 150,
+                fit: BoxFit.cover,
+                child: InkWell(
+                  onTap: () {
+                    // navigate to edit page
+                  },
+                ),
               ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: 0,
+            right: 7,
+            child: ClipOval(
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                color: const Color.fromARGB(255, 218, 99, 99),
+                child: const Icon(Icons.edit, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
