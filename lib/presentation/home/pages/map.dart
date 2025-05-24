@@ -8,6 +8,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:auth_app/service_locator.dart';
+import 'package:auth_app/data/models/pointer.dart';
+import 'package:auth_app/data/favourites_manager.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -18,45 +20,73 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
-  final TextEditingController _searchController =
-      TextEditingController(); // Add this
+  final TextEditingController _searchController = TextEditingController();
   List<Marker> _markers = [];
   List<LatLng> _path = [];
+  List<Pointer> _allPointers = [];
+  List<Pointer> _suggestions = [];
 
   @override
   void initState() {
     super.initState();
     _loadBuildingMarkers();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.trim().toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _suggestions = [];
+      } else {
+        _suggestions = _allPointers
+            .where((pointer) => pointer.name.toLowerCase().contains(query))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Loads the markers using the new JSON file which already contains centroid data.
   Future<void> _loadBuildingMarkers() async {
     try {
-      // Ensure that campus_buildings_centroids.json is declared in pubspec.yaml under assets.
       final jsonStr = await rootBundle.loadString(
         'assets/campus_buildings_centroids.json',
       );
       final List data = jsonDecode(jsonStr);
       print('Loaded ${data.length} building centroids');
 
-      // Create markers from the decoded data.
-      final markers =
-          data.map((entry) {
-            final double lat = (entry['latitude'] as num).toDouble();
-            final double lng = (entry['longitude'] as num).toDouble();
-            final String name = entry['name'] as String;
-            final String category = entry['category'] as String? ?? 'Building';
+      // Store all pointers for search
+      _allPointers = data.map((entry) {
+        final double lat = (entry['latitude'] as num).toDouble();
+        final double lng = (entry['longitude'] as num).toDouble();
+        final String name = entry['name'] as String;
+        final String category = entry['category'] as String? ?? 'Building';
+        return Pointer(
+          name: name,
+          lat: lat,
+          lng: lng,
+          category: category,
+        );
+      }).toList();
 
-            return Marker(
-              point: LatLng(lat, lng),
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                onTap: () => _showPointPopup(context, name, category),
-                child: const Icon(Icons.location_on, color: Colors.deepPurple),
-              ),
-            );
-          }).toList();
+      // Create markers from all pointers
+      final markers = _allPointers.map((pointer) {
+        return Marker(
+          point: LatLng(pointer.lat, pointer.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _showPointPopup(context, pointer),
+            child: const Icon(Icons.location_on, color: Colors.deepPurple),
+          ),
+        );
+      }).toList();
 
       setState(() {
         _markers = markers;
@@ -68,138 +98,178 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  /// Pops up an AlertDialog showing the building name.
-  /// +) Shows a bottom sheet with building info and, if category is 'Mensa', a button to show today's menu.
-  void _showPointPopup(BuildContext context, String name, String category) {
+  // Search logic: filter markers by name
+  void _searchMarkers(String query) {
+    final filtered = _allPointers.where((pointer) =>
+      pointer.name.toLowerCase().contains(query.toLowerCase())
+    ).toList();
+
+    final filteredMarkers = filtered.map((pointer) {
+      return Marker(
+        point: LatLng(pointer.lat, pointer.lng),
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _showPointPopup(context, pointer),
+          child: const Icon(Icons.location_on, color: Colors.deepPurple),
+        ),
+      );
+    }).toList();
+
+    setState(() {
+      _markers = filteredMarkers;
+    });
+
+    // Optionally move map to first result
+    if (filtered.isNotEmpty) {
+      _mapController.move(LatLng(filtered.first.lat, filtered.first.lng), 17.0);
+    }
+  }
+
+  /// Pops up a bottom sheet showing the building info and allows adding to favourites.
+  void _showPointPopup(BuildContext context, Pointer pointer) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // Makes the bottom sheet full width
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder:
-          (ctx) => SizedBox(
-            width: MediaQuery.of(context).size.width, // Ensures full width
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 24.0,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Drag handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  // Building name
-                  Text(
-                    name,
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  // Additional details
-                  const Text(
-                    'Additional details can be added here.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 20),
-                  // Show the menu button only for Mensa buildings
-                  if (category == 'Mensa')
-                    ElevatedButton(
-                      onPressed: () async {
-                        final jsonStr = await rootBundle.loadString(
-                          'assets/sample_mensa_menu.json',
-                        );
-
-                        final List data = jsonDecode(jsonStr);
-                        showDialog(
-                          context: context,
-                          builder:
-                              (_) => AlertDialog(
-                                title: const Text("Today's Menu"),
-                                content: SizedBox(
-                                  width: double.maxFinite,
-                                  child: ListView(
-                                    shrinkWrap: true,
-                                    children:
-                                        data
-                                            .map<Widget>(
-                                              (meal) => ListTile(
-                                                title: Text(meal['name']),
-                                                subtitle: Text(
-                                                  'Student: ${meal['priceStudent']} € | Employee: ${meal['priceEmployee']} € | Guest: ${meal['priceGast']} €',
-                                                ),
-                                                trailing:
-                                                    meal['vegan'] == true
-                                                        ? const Icon(
-                                                          Icons.eco,
-                                                          color: Colors.green,
-                                                        )
-                                                        : meal['vegetarian'] ==
-                                                            true
-                                                        ? const Icon(
-                                                          Icons.spa,
-                                                          color: Colors.orange,
-                                                        )
-                                                        : null,
-                                              ),
-                                            )
-                                            .toList(),
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Close'),
-                                  ),
-                                ],
-                              ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text("Today's Meal Menu"),
-                    ),
-                  // Close button
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
-            ),
+      builder: (ctx) => SizedBox(
+        width: MediaQuery.of(context).size.width,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 24.0,
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Building name
+              Text(
+                pointer.name,
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                pointer.category,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              // Show the menu button only for Mensa buildings
+              if (pointer.category == 'Mensa')
+                ElevatedButton(
+                  onPressed: () async {
+                    final jsonStr = await rootBundle.loadString(
+                      'assets/sample_mensa_menu.json',
+                    );
+                    final List data = jsonDecode(jsonStr);
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text("Today's Menu"),
+                        content: SizedBox(
+                          width: double.maxFinite,
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: data
+                                .map<Widget>(
+                                  (meal) => ListTile(
+                                    title: Text(meal['name']),
+                                    subtitle: Text(
+                                      'Student: ${meal['priceStudent']} € | Employee: ${meal['priceEmployee']} € | Guest: ${meal['priceGast']} €',
+                                    ),
+                                    trailing: meal['vegan'] == true
+                                        ? const Icon(
+                                            Icons.eco,
+                                            color: Colors.green,
+                                          )
+                                        : meal['vegetarian'] == true
+                                            ? const Icon(
+                                                Icons.spa,
+                                                color: Colors.orange,
+                                              )
+                                            : null,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text("Today's Meal Menu"),
+                ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  FavouritesManager().add(pointer);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${pointer.name} added to favourites!')),
+                  );
+                },
+                icon: const Icon(Icons.favorite, color: Colors.white),
+                label: const Text('Add to Favourites'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  elevation: 2,
+                ),
+              ),
+              // Close button
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -276,26 +346,86 @@ class _MapPageState extends State<MapPage> {
               MarkerLayer(markers: _markers),
             ],
           ),
-          // Search bar widget
+          // Search bar and suggestions
           Column(
             children: [
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: _searchController,
-                    enabled: true,
-                    decoration: InputDecoration(
-                      hintText: 'Search location',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        enabled: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search location',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _markers = _allPointers.map((pointer) {
+                                  return Marker(
+                                    point: LatLng(pointer.lat, pointer.lng),
+                                    width: 40,
+                                    height: 40,
+                                    child: GestureDetector(
+                                      onTap: () => _showPointPopup(context, pointer),
+                                      child: const Icon(Icons.location_on, color: Colors.deepPurple),
+                                    ),
+                                  );
+                                }).toList();
+                                _suggestions = [];
+                              });
+                            },
+                          ),
+                        ),
+                        onSubmitted: (value) {
+                          _searchMarkers(value);
+                          setState(() {
+                            _suggestions = [];
+                          });
+                        },
                       ),
-                    ),
-                    onSubmitted: (value) {
-                      print('User searched: $value');
-                      // TODO: Implement search logic here
-                    },
+                      if (_suggestions.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _suggestions.length,
+                            itemBuilder: (context, index) {
+                              final suggestion = _suggestions[index];
+                              return ListTile(
+                                title: Text(suggestion.name),
+                                onTap: () {
+                                  _searchController.text = suggestion.name;
+                                  _searchMarkers(suggestion.name);
+                                  setState(() {
+                                    _suggestions = [];
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
