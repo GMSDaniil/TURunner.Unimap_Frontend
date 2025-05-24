@@ -5,9 +5,7 @@ class MealModel extends MealEntity {
     required super.name,
     required super.vegan,
     required super.vegetarian,
-    required super.preisStudent,
-    required super.preisTeacher,
-    required super.preisOther,
+    required super.prices,
   });
 
   factory MealModel.fromJson(Map<String, dynamic> json) {
@@ -15,9 +13,11 @@ class MealModel extends MealEntity {
       name: json['name'],
       vegan: json['vegan'],
       vegetarian: json['vegetarian'],
-      preisStudent: (json['preisStudent'] as num).toDouble(),
-      preisTeacher: (json['preisTeacher'] as num).toDouble(),
-      preisOther: (json['preisOther'] as num).toDouble(),
+      prices: [
+        (json['priceStudent'] as num).toDouble(),
+        (json['priceEmployee'] as num).toDouble(),
+        (json['priceGast'] as num).toDouble(),
+      ],
     );
   }
 }

@@ -8,7 +8,7 @@ class MensaApiService {
 
   Future<List<MealModel>> fetchMensaMeals(String mensaName) async {
     final response = await dio.post(
-      '/getMensaMenu',
+      'baseURL/getMensaMenu',
       data: {'mensa': mensaName},
     );
     final List data = response.data;

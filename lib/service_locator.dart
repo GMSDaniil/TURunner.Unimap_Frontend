@@ -14,10 +14,10 @@ import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/domain/repository/route_repository.dart';
 import 'package:get_it/get_it.dart';
 
-/* import 'package:auth_app/domain/repository/mensa.dart';
+import 'package:auth_app/domain/repository/mensa.dart';
 import 'package:auth_app/data/repository/mensa.dart';
 import 'package:auth_app/data/source/mensa_api_service.dart';
-import 'package:auth_app/domain/usecases/get_mensa_menu.dart';*/
+import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 
 final sl = GetIt.instance;
 
@@ -27,21 +27,18 @@ void setupServiceLocator() {
   // Services
   sl.registerSingleton<AuthApiService>(AuthApiServiceImpl());
 
-  sl.registerSingleton<AuthLocalService>(
-    AuthLocalServiceImpl()
-  );
+  sl.registerSingleton<AuthLocalService>(AuthLocalServiceImpl());
 
-  sl.registerSingleton<FindRouteApiService>(
-    FindRouteApiService()
-  );
+  sl.registerSingleton<FindRouteApiService>(FindRouteApiService());
+  sl.registerSingleton<MensaApiService>(MensaApiService(sl<DioClient>().dio));
 
   // Repositories
-  sl.registerSingleton<AuthRepository>(
-    AuthRepositoryImpl()
-  );
+  sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
 
-  sl.registerSingleton<RouteRepository>(
-    RouteRepositoryImpl()
+  sl.registerSingleton<RouteRepository>(RouteRepositoryImpl());
+
+  sl.registerSingleton<MensaRepository>(
+    MensaRepositoryImpl(sl<MensaApiService>()),
   );
 
   // Usecases
@@ -55,7 +52,8 @@ void setupServiceLocator() {
 
   sl.registerSingleton<SigninUseCase>(SigninUseCase());
 
-  sl.registerSingleton<FindRouteUseCase>(
-    FindRouteUseCase()
+  sl.registerSingleton<FindRouteUseCase>(FindRouteUseCase());
+  sl.registerSingleton<GetMensaMenuUseCase>(
+    GetMensaMenuUseCase(sl<MensaRepository>()),
   );
 }
