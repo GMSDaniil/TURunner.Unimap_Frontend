@@ -1,266 +1,267 @@
 [
   {
-    "id":135,
-    "name":"Wasserbau u. Wasserwirtschaft",
-    "latitude":52.513661218,
-    "longitude":13.3250551842
+    "id": 135,
+    "name": "Wasserbau u. Wasserwirtschaft",
+    "latitude": 52.513661218,
+    "longitude": 13.3250551842
   },
   {
-    "id":144,
-    "name":"Bauingenieurgeb\u00e4ude",
-    "latitude":52.5115177612,
-    "longitude":13.3243129793
+    "id": 144,
+    "name": "Bauingenieurgeb\u00e4ude",
+    "latitude": 52.5115177612,
+    "longitude": 13.3243129793
   },
   {
-    "id":134,
-    "name":"Villa Bell",
-    "latitude":52.5145384027,
-    "longitude":13.3253040204
+    "id": 134,
+    "name": "Villa Bell",
+    "latitude": 52.5145384027,
+    "longitude": 13.3253040204
   },
   {
-    "id":148,
-    "name":"Ernst-Ruska-Geb\u00e4ude",
-    "latitude":52.5109335105,
-    "longitude":13.3257098301
+    "id": 148,
+    "name": "Ernst-Ruska-Geb\u00e4ude",
+    "latitude": 52.5109335105,
+    "longitude": 13.3257098301
   },
   {
-    "id":159,
-    "name":"Druckerei",
-    "latitude":52.5117859214,
-    "longitude":13.330245569
+    "id": 159,
+    "name": "Druckerei",
+    "latitude": 52.5117859214,
+    "longitude": 13.330245569
   },
   {
-    "id":145,
-    "name":"Alte Mineralogie",
-    "latitude":52.5112748,
-    "longitude":13.32410765
+    "id": 145,
+    "name": "Alte Mineralogie",
+    "latitude": 52.5112748,
+    "longitude": 13.32410765
   },
   {
-    "id":138,
-    "name":"Elektrotechnisches Institut (Altbau)",
-    "latitude":52.5148240075,
-    "longitude":13.3261768003
+    "id": 138,
+    "name": "Elektrotechnisches Institut (Altbau)",
+    "latitude": 52.5148240075,
+    "longitude": 13.3261768003
   },
   {
-    "id":153,
-    "name":"ehem. Kraft- und Fernheizwerk (KF)",
-    "latitude":52.5106005276,
-    "longitude":13.3291871364
+    "id": 153,
+    "name": "ehem. Kraft- und Fernheizwerk (KF)",
+    "latitude": 52.5106005276,
+    "longitude": 13.3291871364
   },
   {
-    "id":151,
-    "name":"Thermodynamik und K\u00e4ltetechnik",
-    "latitude":52.5108151171,
-    "longitude":13.3280359991
+    "id": 151,
+    "name": "Thermodynamik und K\u00e4ltetechnik",
+    "latitude": 52.5108151171,
+    "longitude": 13.3280359991
   },
   {
-    "id":140,
-    "name":"Technische Chemie",
-    "latitude":52.5136520017,
-    "longitude":13.3275505523
+    "id": 140,
+    "name": "Technische Chemie",
+    "latitude": 52.5136520017,
+    "longitude": 13.3275505523
   },
   {
-    "id":149,
-    "name":"Alte TU-Mensa",
-    "latitude":52.5100545704,
-    "longitude":13.32564155
+    "id": 149,
+    "name": "Alte TU-Mensa",
+    "latitude": 52.5100545704,
+    "longitude": 13.32564155,
+    "category": "Mensa"
   },
   {
-    "id":160,
-    "name":"Universit\u00e4tsbibliothek TU Berlin (Zentralbibliothek)",
-    "latitude":52.5104285549,
-    "longitude":13.3307089955
+    "id": 160,
+    "name": "Universit\u00e4tsbibliothek TU Berlin (Zentralbibliothek)",
+    "latitude": 52.5104285549,
+    "longitude": 13.3307089955
   },
   {
-    "id":162,
-    "name":"Lebensmittelchemie",
-    "latitude":52.5114425555,
-    "longitude":13.3332780793
+    "id": 162,
+    "name": "Lebensmittelchemie",
+    "latitude": 52.5114425555,
+    "longitude": 13.3332780793
   },
   {
-    "id":143,
-    "name":"Bergbau und H\u00fcttenwesen - Altbau",
-    "latitude":52.5115248539,
-    "longitude":13.3235760806
+    "id": 143,
+    "name": "Bergbau und H\u00fcttenwesen - Altbau",
+    "latitude": 52.5115248539,
+    "longitude": 13.3235760806
   },
   {
-    "id":131,
-    "name":"Architekturgeb\u00e4ude",
-    "latitude":52.5139610304,
-    "longitude":13.3230498305
+    "id": 131,
+    "name": "Architekturgeb\u00e4ude",
+    "latitude": 52.5139610304,
+    "longitude": 13.3230498305
   },
   {
-    "id":142,
-    "name":"Bergbau und H\u00fcttenwesen - Neubau",
-    "latitude":52.5118701622,
-    "longitude":13.3231966406
+    "id": 142,
+    "name": "Bergbau und H\u00fcttenwesen - Neubau",
+    "latitude": 52.5118701622,
+    "longitude": 13.3231966406
   },
   {
-    "id":121,
-    "name":"Telefunken-Haus",
-    "latitude":52.512953973,
-    "longitude":13.3200320896
+    "id": 121,
+    "name": "Telefunken-Haus",
+    "latitude": 52.512953973,
+    "longitude": 13.3200320896
   },
   {
-    "id":156,
-    "name":"Kraftfahrzeuge",
-    "latitude":52.5109154737,
-    "longitude":13.3296283432
+    "id": 156,
+    "name": "Kraftfahrzeuge",
+    "latitude": 52.5109154737,
+    "longitude": 13.3296283432
   },
   {
-    "id":157,
-    "name":"Mechanik",
-    "latitude":52.5114021145,
-    "longitude":13.3299595355
+    "id": 157,
+    "name": "Mechanik",
+    "latitude": 52.5114021145,
+    "longitude": 13.3299595355
   },
   {
-    "id":137,
-    "name":"Elektrotechnische Institute (Neubau)",
-    "latitude":52.5150612642,
-    "longitude":13.3267509
+    "id": 137,
+    "name": "Elektrotechnische Institute (Neubau)",
+    "latitude": 52.5150612642,
+    "longitude": 13.3267509
   },
   {
-    "id":164,
-    "name":"Physikalische Chemie",
-    "latitude":52.5116675813,
-    "longitude":13.3294810118
+    "id": 164,
+    "name": "Physikalische Chemie",
+    "latitude": 52.5116675813,
+    "longitude": 13.3294810118
   },
   {
-    "id":146,
-    "name":"Alter Bauingenieurfl\u00fcgel",
-    "latitude":52.5111891031,
-    "longitude":13.3246403418
+    "id": 146,
+    "name": "Alter Bauingenieurfl\u00fcgel",
+    "latitude": 52.5111891031,
+    "longitude": 13.3246403418
   },
   {
-    "id":141,
-    "name":"Mechanische Schwingungslehre",
-    "latitude":52.5141073925,
-    "longitude":13.3283333598
+    "id": 141,
+    "name": "Mechanische Schwingungslehre",
+    "latitude": 52.5141073925,
+    "longitude": 13.3283333598
   },
   {
-    "id":132,
-    "name":"Architekturgeb\u00e4ude Flachbau",
-    "latitude":52.5135747648,
-    "longitude":13.3238068828
+    "id": 132,
+    "name": "Architekturgeb\u00e4ude Flachbau",
+    "latitude": 52.5135747648,
+    "longitude": 13.3238068828
   },
   {
-    "id":136,
-    "name":"Mathematikgeb\u00e4ude",
-    "latitude":52.5139574219,
-    "longitude":13.3258161965
+    "id": 136,
+    "name": "Mathematikgeb\u00e4ude",
+    "latitude": 52.5139574219,
+    "longitude": 13.3258161965
   },
   {
-    "id":155,
-    "name":"V-Verformungskunde V und Zentraleinrichtung Hochschulsport (ZEH)",
-    "latitude":52.5110642089,
-    "longitude":13.3292283197
+    "id": 155,
+    "name": "V-Verformungskunde V und Zentraleinrichtung Hochschulsport (ZEH)",
+    "latitude": 52.5110642089,
+    "longitude": 13.3292283197
   },
   {
-    "id":154,
-    "name":"Geb\u00e4udeteil Reuleaux-Haus: Eisenbahnlehranlage",
-    "latitude":52.5111207971,
-    "longitude":13.3289280013
+    "id": 154,
+    "name": "Geb\u00e4udeteil Reuleaux-Haus: Eisenbahnlehranlage",
+    "latitude": 52.5111207971,
+    "longitude": 13.3289280013
   },
   {
-    "id":130,
-    "name":"Heizung und L\u00fcftung",
-    "latitude":52.5143729103,
-    "longitude":13.3238997596
+    "id": 130,
+    "name": "Heizung und L\u00fcftung",
+    "latitude": 52.5143729103,
+    "longitude": 13.3238997596
   },
   {
-    "id":133,
-    "name":"Transelektronenmikroskopie",
-    "latitude":52.5147216989,
-    "longitude":13.3246482302
+    "id": 133,
+    "name": "Transelektronenmikroskopie",
+    "latitude": 52.5147216989,
+    "longitude": 13.3246482302
   },
   {
-    "id":161,
-    "name":"Hermann-F\u00f6ttinger-Geb\u00e4ude",
-    "latitude":52.5115079828,
-    "longitude":13.3325161842
+    "id": 161,
+    "name": "Hermann-F\u00f6ttinger-Geb\u00e4ude",
+    "latitude": 52.5115079828,
+    "longitude": 13.3325161842
   },
   {
-    "id":123,
-    "name":"MAR",
-    "latitude":52.5165970173,
-    "longitude":13.323508683
+    "id": 123,
+    "name": "MAR",
+    "latitude": 52.5165970173,
+    "longitude": 13.323508683
   },
   {
-    "id":128,
-    "name":"HFT",
-    "latitude":52.515644893,
-    "longitude":13.3259100936
+    "id": 128,
+    "name": "HFT",
+    "latitude": 52.515644893,
+    "longitude": 13.3259100936
   },
   {
-    "id":147,
-    "name":"Eugene-Paul-Wigner-Geb\u00e4ude",
-    "latitude":52.5106617564,
-    "longitude":13.3248754809
+    "id": 147,
+    "name": "Eugene-Paul-Wigner-Geb\u00e4ude",
+    "latitude": 52.5106617564,
+    "longitude": 13.3248754809
   },
   {
-    "id":158,
-    "name":"Kraftwerkstechnik und Apparatebau",
-    "latitude":52.5113719222,
-    "longitude":13.3302850516
+    "id": 158,
+    "name": "Kraftwerkstechnik und Apparatebau",
+    "latitude": 52.5113719222,
+    "longitude": 13.3302850516
   },
   {
-    "id":122,
-    "name":"Zentraleinrichtung Wissenschaftliche Weiterbildung und Kooperation \u2013 ZEWK",
-    "latitude":52.5145027529,
-    "longitude":13.3212418358
+    "id": 122,
+    "name": "Zentraleinrichtung Wissenschaftliche Weiterbildung und Kooperation \u2013 ZEWK",
+    "latitude": 52.5145027529,
+    "longitude": 13.3212418358
   },
   {
-    "id":124,
-    "name":"Fraunhofer Heinrich-Hertz-Institut",
-    "latitude":52.5163069363,
-    "longitude":13.3248730625
+    "id": 124,
+    "name": "Fraunhofer Heinrich-Hertz-Institut",
+    "latitude": 52.5163069363,
+    "longitude": 13.3248730625
   },
   {
-    "id":126,
-    "name":"Technische Akustik Pr\u00fcfhalle",
-    "latitude":52.516047451,
-    "longitude":13.3255192132
+    "id": 126,
+    "name": "Technische Akustik Pr\u00fcfhalle",
+    "latitude": 52.516047451,
+    "longitude": 13.3255192132
   },
   {
-    "id":150,
-    "name":"Hauptgeb\u00e4ude",
-    "latitude":52.5120737149,
-    "longitude":13.3270425958
+    "id": 150,
+    "name": "Hauptgeb\u00e4ude",
+    "latitude": 52.5120737149,
+    "longitude": 13.3270425958
   },
   {
-    "id":127,
-    "name":"TA",
-    "latitude":52.5157058399,
-    "longitude":13.3253422767
+    "id": 127,
+    "name": "TA",
+    "latitude": 52.5157058399,
+    "longitude": 13.3253422767
   },
   {
-    "id":139,
-    "name":"Geb\u00e4udeteile Elektromaschinen (EM) und Hochspannungstechnik (HT)",
-    "latitude":52.5142592622,
-    "longitude":13.3271144884
+    "id": 139,
+    "name": "Geb\u00e4udeteile Elektromaschinen (EM) und Hochspannungstechnik (HT)",
+    "latitude": 52.5142592622,
+    "longitude": 13.3271144884
   },
   {
-    "id":125,
-    "name":"KT",
-    "latitude":52.5158508437,
-    "longitude":13.3244514294
+    "id": 125,
+    "name": "KT",
+    "latitude": 52.5158508437,
+    "longitude": 13.3244514294
   },
   {
-    "id":152,
-    "name":"Chemiegeb\u00e4ude",
-    "latitude":52.5122527794,
-    "longitude":13.3296731218
+    "id": 152,
+    "name": "Chemiegeb\u00e4ude",
+    "latitude": 52.5122527794,
+    "longitude": 13.3296731218
   },
   {
-    "id":163,
-    "name":"TU Berlin - Versuchsanstalt f\u00fcr Wasser- und Schiffbau",
-    "latitude":52.5121782339,
-    "longitude":13.3344837926
+    "id": 163,
+    "name": "TU Berlin - Versuchsanstalt f\u00fcr Wasser- und Schiffbau",
+    "latitude": 52.5121782339,
+    "longitude": 13.3344837926
   },
   {
-    "id":129,
-    "name":"Flugtechnik",
-    "latitude":52.5149721292,
-    "longitude":13.3236666314
+    "id": 129,
+    "name": "Flugtechnik",
+    "latitude": 52.5149721292,
+    "longitude": 13.3236666314
   }
 ]

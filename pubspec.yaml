@@ -1,6 +1,6 @@
 name: auth_app
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -30,11 +30,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/images/
     - assets/campus_buildings.json
     - assets/campus_buildings_centroids.json
+    - assets/sample_mensa_menu.json
 
 flutter_icons:
   android: true

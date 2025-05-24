@@ -16,7 +16,8 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> {
   final MapController _mapController = MapController();
-  final TextEditingController _searchController = TextEditingController(); // Add this
+  final TextEditingController _searchController =
+      TextEditingController(); // Add this
   List<Marker> _markers = [];
   List<LatLng> _path = [];
 
@@ -30,29 +31,30 @@ class _MapPageState extends State<MapPage> {
   Future<void> _loadBuildingMarkers() async {
     try {
       // Ensure that campus_buildings_centroids.json is declared in pubspec.yaml under assets.
-      final jsonStr = await rootBundle.loadString('assets/campus_buildings_centroids.json');
+      final jsonStr = await rootBundle.loadString(
+        'assets/campus_buildings_centroids.json',
+      );
       final List data = jsonDecode(jsonStr);
       print('Loaded ${data.length} building centroids');
 
       // Create markers from the decoded data.
-      final markers = data.map((entry) {
-        final double lat = (entry['latitude'] as num).toDouble();
-        final double lng = (entry['longitude'] as num).toDouble();
-        final String name = entry['name'] as String;
+      final markers =
+          data.map((entry) {
+            final double lat = (entry['latitude'] as num).toDouble();
+            final double lng = (entry['longitude'] as num).toDouble();
+            final String name = entry['name'] as String;
+            final String category = entry['category'] as String? ?? 'Building';
 
-        return Marker(
-          point: LatLng(lat, lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _showPointPopup(context, name),
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.deepPurple,
-            ),
-          ),
-        );
-      }).toList();
+            return Marker(
+              point: LatLng(lat, lng),
+              width: 40,
+              height: 40,
+              child: GestureDetector(
+                onTap: () => _showPointPopup(context, name, category),
+                child: const Icon(Icons.location_on, color: Colors.deepPurple),
+              ),
+            );
+          }).toList();
 
       setState(() {
         _markers = markers;
@@ -65,62 +67,136 @@ class _MapPageState extends State<MapPage> {
   }
 
   /// Pops up an AlertDialog showing the building name.
-  void _showPointPopup(BuildContext context, String name) {
+  /// +) Shows a bottom sheet with building info and, if category is 'Mensa', a button to show today's menu.
+  void _showPointPopup(BuildContext context, String name, String category) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // Makes the bottom sheet full width
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => SizedBox(
-        width: MediaQuery.of(context).size.width, // Ensures full width
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Drag handle
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder:
+          (ctx) => SizedBox(
+            width: MediaQuery.of(context).size.width, // Ensures full width
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 24.0,
               ),
-              // Building name
-              Text(
-                name,
-                style: Theme.of(context).textTheme.titleLarge, // Use theme-defined text style
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              // Additional details
-              const Text(
-                'Additional details can be added here.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              // Close button
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary, // Use primary color
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary, // Use onPrimary color
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                child: const Text('Close'),
+                  // Building name
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  // Additional details
+                  const Text(
+                    'Additional details can be added here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+                  // Show the menu button only for Mensa buildings
+                  if (category == 'Mensa')
+                    ElevatedButton(
+                      onPressed: () async {
+                        final jsonStr = await rootBundle.loadString(
+                          'assets/sample_mensa_menu.json',
+                        );
+                        final List data = jsonDecode(jsonStr);
+                        showDialog(
+                          context: context,
+                          builder:
+                              (_) => AlertDialog(
+                                title: const Text("Today's Menu"),
+                                content: SizedBox(
+                                  width: double.maxFinite,
+                                  child: ListView(
+                                    shrinkWrap: true,
+                                    children:
+                                        data
+                                            .map<Widget>(
+                                              (meal) => ListTile(
+                                                title: Text(meal['name']),
+                                                subtitle: Text(
+                                                  'Student: ${meal['priceStudent']} € | Employee: ${meal['priceEmployee']} € | Guest: ${meal['priceGast']} €',
+                                                ),
+                                                trailing:
+                                                    meal['vegan'] == true
+                                                        ? const Icon(
+                                                          Icons.eco,
+                                                          color: Colors.green,
+                                                        )
+                                                        : meal['vegetarian'] ==
+                                                            true
+                                                        ? const Icon(
+                                                          Icons.spa,
+                                                          color: Colors.orange,
+                                                        )
+                                                        : null,
+                                              ),
+                                            )
+                                            .toList(),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text("Today's Meal Menu"),
+                    ),
+                  // Close button
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -149,7 +225,9 @@ class _MapPageState extends State<MapPage> {
     // From findRouteUseCase you'll get either an error or points.
     result.fold(
       (error) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
       },
       (routePoints) {
         setState(() {
@@ -192,9 +270,7 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ],
                 ),
-              MarkerLayer(
-                markers: _markers,
-              ),
+              MarkerLayer(markers: _markers),
             ],
           ),
           // Search bar widget
@@ -230,10 +306,18 @@ class _MapPageState extends State<MapPage> {
               onPressed: _findRoute,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-              child: const Text('Find Route', style: TextStyle(color: Colors.white, fontSize: 16)),
+              child: const Text(
+                'Find Route',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
           ),
           // Reset compass FloatingActionButton
@@ -250,9 +334,6 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
-
-  
-
 
   // @override
   // void dispose() {
