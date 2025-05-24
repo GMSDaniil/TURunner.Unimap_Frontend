@@ -30,7 +30,7 @@ void setupServiceLocator() {
   sl.registerSingleton<AuthLocalService>(AuthLocalServiceImpl());
 
   sl.registerSingleton<FindRouteApiService>(FindRouteApiService());
-  sl.registerSingleton<MensaApiService>(MensaApiService(sl<DioClient>().dio));
+  sl.registerSingleton<MensaApiService>(MensaApiService());
 
   // Repositories
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
@@ -38,7 +38,7 @@ void setupServiceLocator() {
   sl.registerSingleton<RouteRepository>(RouteRepositoryImpl());
 
   sl.registerSingleton<MensaRepository>(
-    MensaRepositoryImpl(sl<MensaApiService>()),
+    MensaRepositoryImpl(),
   );
 
   // Usecases
@@ -54,6 +54,6 @@ void setupServiceLocator() {
 
   sl.registerSingleton<FindRouteUseCase>(FindRouteUseCase());
   sl.registerSingleton<GetMensaMenuUseCase>(
-    GetMensaMenuUseCase(sl<MensaRepository>()),
+    GetMensaMenuUseCase(),
   );
 }
