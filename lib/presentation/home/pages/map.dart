@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/data/models/get_pointers_req_params.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
+import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -59,6 +61,8 @@ class _MapPageState extends State<MapPage> {
         'assets/campus_buildings_centroids.json',
       );
       final List data = jsonDecode(jsonStr);
+
+      
       print('Loaded ${data.length} building centroids');
 
       // Store all pointers for search
@@ -293,21 +297,7 @@ class _MapPageState extends State<MapPage> {
       profile: 'foot',
     );
     final findRouteUseCase = sl<FindRouteUseCase>();
-    final result = await findRouteUseCase.call(param: params);
-
-    // From findRouteUseCase you'll get either an error or points.
-    result.fold(
-      (error) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
-      },
-      (routePoints) {
-        setState(() {
-          _path = routePoints;
-        });
-      },
-    );
+    final result = await findRouteUseCase.call(param: params);    
   }
 
   @override

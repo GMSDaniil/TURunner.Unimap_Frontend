@@ -25,58 +25,60 @@ class ProfilePage extends StatelessWidget {
         BlocProvider(create: (_) => ButtonStateCubit()),
       ],
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Profile',
-            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+        // appBar: AppBar(
+        //   title: Text(
+        //     'Profile',
+        //     style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+        //   ),
+        //   automaticallyImplyLeading: false,
+        //   centerTitle: true,
+        // ),
+        body: SafeArea(
+          child: BlocBuilder<AuthStateCubit, AuthState>(
+            builder: (context, authState) {
+              if (authState is GuestAuthenticated) {
+                return _buildGuestView(context);
+              }
+          
+              return BlocBuilder<UserDisplayCubit, UserDisplayState>(
+                builder: (context, state) {
+                  if (state is UserLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+          
+                  if (state is UserLoaded) {
+                    final user = state.userEntity;
+          
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 32),
+                          _buildProfilePicture(context),
+                          const SizedBox(height: 24),
+                          _buildUsername(user),
+                          const SizedBox(height: 8),
+                          _buildEmail(user),
+                          const SizedBox(height: 16),
+                          _buildDescription(),
+                          const SizedBox(height: 24),
+                          _buildLogoutButton(context),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    );
+                  }
+          
+                  if (state is LoadUserFailure) {
+                    return Center(child: Text(state.errorMessage));
+                  }
+          
+                  return const Center(child: Text('No user data available.'));
+                },
+              );
+            },
           ),
-          automaticallyImplyLeading: false,
-          centerTitle: true,
-        ),
-        body: BlocBuilder<AuthStateCubit, AuthState>(
-          builder: (context, authState) {
-            if (authState is GuestAuthenticated) {
-              return _buildGuestView(context);
-            }
-
-            return BlocBuilder<UserDisplayCubit, UserDisplayState>(
-              builder: (context, state) {
-                if (state is UserLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (state is UserLoaded) {
-                  final user = state.userEntity;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 32),
-                        _buildProfilePicture(context),
-                        const SizedBox(height: 24),
-                        _buildUsername(user),
-                        const SizedBox(height: 8),
-                        _buildEmail(user),
-                        const SizedBox(height: 16),
-                        _buildDescription(),
-                        const SizedBox(height: 24),
-                        _buildLogoutButton(context),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  );
-                }
-
-                if (state is LoadUserFailure) {
-                  return Center(child: Text(state.errorMessage));
-                }
-
-                return const Center(child: Text('No user data available.'));
-              },
-            );
-          },
         ),
       ),
     );

@@ -1,8 +1,12 @@
 import 'package:auth_app/core/network/dio_client.dart';
 import 'package:auth_app/data/repository/auth.dart';
+import 'package:auth_app/data/repository/pointers.dart';
 import 'package:auth_app/data/source/auth_api_service.dart';
 import 'package:auth_app/data/source/auth_local_service.dart';
+import 'package:auth_app/data/source/pointer_api_service.dart';
 import 'package:auth_app/domain/repository/auth.dart';
+import 'package:auth_app/domain/repository/pointers.dart';
+import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
 import 'package:auth_app/domain/usecases/get_user.dart';
 import 'package:auth_app/domain/usecases/is_logged_in.dart';
 import 'package:auth_app/domain/usecases/logout.dart';
@@ -31,6 +35,7 @@ void setupServiceLocator() {
 
   sl.registerSingleton<FindRouteApiService>(FindRouteApiService());
   sl.registerSingleton<MensaApiService>(MensaApiService());
+  sl.registerSingleton<PointerApiService>(PointerApiService());
 
   // Repositories
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
@@ -40,6 +45,8 @@ void setupServiceLocator() {
   sl.registerSingleton<MensaRepository>(
     MensaRepositoryImpl(),
   );
+
+  sl.registerSingleton<PointersRepository>(PointersRepositoryImpl());
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -56,4 +63,6 @@ void setupServiceLocator() {
   sl.registerSingleton<GetMensaMenuUseCase>(
     GetMensaMenuUseCase(),
   );
+
+  sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
 }
