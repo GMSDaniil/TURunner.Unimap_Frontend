@@ -17,53 +17,55 @@ class _FavouritesPageState extends State<FavouritesPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('Favourites', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-        centerTitle: true ,
-        automaticallyImplyLeading: false,
-      ),
-      body: Stack(
-        children: [
-          FavouritesManager().favourites.isEmpty
-              ? Center(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => gradient.createShader(
-                      Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                    ),
-                    blendMode: BlendMode.srcIn,
-                    child: const Text(
-                      'You haven’t added any favourites yet.',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+      // appBar: AppBar(
+      //   title: Text('Favourites', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+      //   centerTitle: true ,
+      //   automaticallyImplyLeading: false,
+      // ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            FavouritesManager().favourites.isEmpty
+                ? Center(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => gradient.createShader(
+                        Rect.fromLTWH(0, 0, bounds.width, bounds.height),
                       ),
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: FavouritesManager().favourites.length,
-                  itemBuilder: (context, index) {
-                    final pointer = FavouritesManager().favourites[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.favorite, color: Colors.pink),
-                        title: Text(pointer.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(pointer.category),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () {
-                            setState(() {
-                              FavouritesManager().remove(pointer);
-                            });
-                          },
+                      blendMode: BlendMode.srcIn,
+                      child: const Text(
+                        'You haven’t added any favourites yet.',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                ),
-        ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: FavouritesManager().favourites.length,
+                    itemBuilder: (context, index) {
+                      final pointer = FavouritesManager().favourites[index];
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: ListTile(
+                          leading: const Icon(Icons.favorite, color: Colors.pink),
+                          title: Text(pointer.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(pointer.category),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () {
+                              setState(() {
+                                FavouritesManager().remove(pointer);
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
       ),
     );
   }

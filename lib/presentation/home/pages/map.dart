@@ -296,7 +296,7 @@ class _MapPageState extends State<MapPage> {
 
   // FindRoute use case to fetch a route between Hauptgebäude and Mathegebäude.
   Future<void> _findRoute() async {
-    // Use hardcoded coordinates for simplicity:
+    // Coordinates for Hauptgebäude and Mathegebäude
     const double hauptLat = 52.5125;
     const double hauptLon = 13.3269;
     const double matheLat = 52.5135;
@@ -311,25 +311,9 @@ class _MapPageState extends State<MapPage> {
     );
     final findRouteUseCase = sl<FindRouteUseCase>();
     final result = await findRouteUseCase.call(param: params);
-
-    // From findRouteUseCase: error or pointers
-    result.fold(
-      (error) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error)));
-      },
-      (routePoints) {
-        setState(() {
-          _path = routePoints;
-        });
-      },
-    );
   }
 
   /// Filters markers by category and updates the map.
-  /// [category] is the category string (e.g., 'Library', 'Mensa').
-  /// [markerColor] is the color for the displayed markers.
   void _filterMarkersByCategory(String category, Color markerColor) {
     final filtered =
         _allPointers
@@ -373,7 +357,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  // main map widget with markers and polylines.
+  // main map widget with markers and polylines
   Widget _buildFlutterMap() {
     return FlutterMap(
       mapController: _mapController,
@@ -401,7 +385,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  // search bar and the horizontal category widgets
+  // search bar and category widgets
   Widget _buildSearchBarAndSuggestions() {
     return Column(
       children: [
@@ -453,7 +437,7 @@ class _MapPageState extends State<MapPage> {
                   },
                 ),
                 const SizedBox(height: 8),
-                _buildCategoryChips(),
+                _buildCategoryWidgets(),
                 if (_suggestions.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
@@ -496,22 +480,22 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  // category widgets under the search bar
-  Widget _buildCategoryChips() {
+  // category widgets below the search bar
+  Widget _buildCategoryWidgets() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children:
             [
-                  categoryChip(
+                  categoryWidgets(
                     icon: Icons.my_location,
                     label: 'Current Location',
                     iconColor: Colors.blue,
                     onTap: () {
-                      // TODO: Implement current location logic
+                      // TODO: current location functionality
                     },
                   ),
-                  categoryChip(
+                  categoryWidgets(
                     icon: Icons.local_cafe,
                     label: 'Cafe',
                     iconColor: Colors.orange,
@@ -519,25 +503,23 @@ class _MapPageState extends State<MapPage> {
                       // TODO: Show only cafes on the map (implement later)
                     },
                   ),
-                  categoryChip(
+                  categoryWidgets(
                     icon: Icons.local_library,
                     label: 'Library',
                     iconColor: Colors.yellow[800]!,
                     onTap: () {
-                      // Show only library buildings on the map
                       _filterMarkersByCategory('Library', Colors.yellow[800]!);
                     },
                   ),
-                  categoryChip(
+                  categoryWidgets(
                     icon: Icons.restaurant,
                     label: 'Mensa',
                     iconColor: Colors.green,
                     onTap: () {
-                      // Show only mensa buildings on the map
                       _filterMarkersByCategory('Mensa', Colors.green);
                     },
                   ),
-                  // Add more chips as needed
+                  // Add more
                 ]
                 .map(
                   (chip) => Padding(
@@ -550,7 +532,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Widget categoryChip({
+  Widget categoryWidgets({
     required IconData icon,
     required String label,
     required Color iconColor,

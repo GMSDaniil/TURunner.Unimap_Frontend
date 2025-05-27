@@ -11,4 +11,5 @@ class ApiUrls {
   //TODO
   static const findRoute = '${baseURL}api/Routes/findRoute';
   static const getMensaMenu = '${baseURL}api/Mensa/getMensaMenu';
+  static const getPointers = '${baseURL}api/Pointers/getPointers';
 }

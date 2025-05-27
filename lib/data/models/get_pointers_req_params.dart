@@ -14,7 +14,7 @@ class GetPointersRequest {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'northEastLat': northEastLat,
       'northEastLng': northEastLng,
       'southWestLat': southWestLat,
