@@ -70,7 +70,8 @@
     "id": 160,
     "name": "Universit\u00e4tsbibliothek TU Berlin (Zentralbibliothek)",
     "latitude": 52.5104285549,
-    "longitude": 13.3307089955
+    "longitude": 13.3307089955,
+    "category": "Library"
   },
   {
     "id": 162,
