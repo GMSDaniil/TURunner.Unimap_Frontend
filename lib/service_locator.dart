@@ -23,6 +23,11 @@ import 'package:auth_app/data/repository/mensa.dart';
 import 'package:auth_app/data/source/mensa_api_service.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 
+import 'package:auth_app/data/source/building_data_source.dart';
+import 'package:auth_app/data/repository/building_repository_impl.dart';
+import 'package:auth_app/domain/usecases/find_building_at_point.dart';
+
+
 final sl = GetIt.instance;
 
 void setupServiceLocator() {
@@ -47,6 +52,10 @@ void setupServiceLocator() {
   );
 
   sl.registerSingleton<PointersRepository>(PointersRepositoryImpl());
+
+  sl.registerLazySingleton<BuildingDataSource>(() => BuildingDataSource());
+  sl.registerLazySingleton<BuildingRepositoryImpl>(() => BuildingRepositoryImpl(sl()));
+  sl.registerLazySingleton<FindBuildingAtPoint>(() => FindBuildingAtPoint(sl<BuildingRepositoryImpl>()));
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());

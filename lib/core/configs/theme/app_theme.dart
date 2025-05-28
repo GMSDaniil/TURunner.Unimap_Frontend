@@ -8,6 +8,7 @@ class AppTheme {
   );
 
   static final appTheme = ThemeData(
+    fontFamily: 'Nunito', // <-- Add this line
     primaryColor: const Color(0xff3461FD),
     scaffoldBackgroundColor: Colors.white,
     brightness: Brightness.light,

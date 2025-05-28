@@ -21,12 +21,14 @@ dependencies:
   latlong2: ^0.9.0
   xml: ^6.5.0
   flutter_polyline_points: ^2.1.0
+  geolocator: ^11.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+  google_nav_bar: ^5.0.7
 
 flutter:
   uses-material-design: true
@@ -36,6 +38,14 @@ flutter:
     - assets/campus_buildings.json
     - assets/campus_buildings_centroids.json
     - assets/sample_mensa_menu.json
+
+  fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
+  
 
 flutter_icons:
   android: true
