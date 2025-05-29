@@ -7,7 +7,6 @@ import 'package:dartz/dartz.dart';
 
 class FindRouteUseCase implements UseCase<Either<String, FindRouteResponse>, FindRouteReqParams> {
   @override
-  @override
   Future<Either<String, FindRouteResponse>> call({FindRouteReqParams? param}) async {
     if (param == null) return Left("Parameters can't be null");
 
