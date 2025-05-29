@@ -10,17 +10,24 @@ import 'package:dio/dio.dart';
 
 
 class FindRouteApiService {
-  Future<Either> getRoute(FindRouteReqParams params) async {
-
+  Future<Either<String, Response>> getRoute(FindRouteReqParams params) async {
     try {
-     var response = await sl<DioClient>().post(
+      final response = await sl<DioClient>().get(
         ApiUrls.findRoute,
-        data: params.toMap()
+        queryParameters: params.toMap(),
       );
+
+      if (response.statusCode != 200) {
+        return Left('Failed to fetch route data');
+      }
+
       return Right(response);
 
-    } on DioException catch(e) {
-      return Left(e.response!.data['message']);
+    } on DioException catch (e) {
+      final message = e.response?.data['message'] ?? 'Unknown error occurred';
+      return Left(message);
+    } catch (e) {
+      return Left('Unexpected error occurred');
     }
   }
 }

@@ -152,11 +152,10 @@ class _MapPageState extends State<MapPage>
     const double matheLon = 13.3245;
 
     final params = FindRouteReqParams(
-      startLat: hauptLat,
-      startLon: hauptLon,
-      endLat: matheLat,
-      endLon: matheLon,
-      profile: 'foot',
+      fromLat: hauptLat,
+      fromLon: hauptLon,
+      toLat: matheLat,
+      toLon: matheLon,
     );
     final findRouteUseCase = sl<FindRouteUseCase>();
     final result = await findRouteUseCase.call(param: params);
@@ -374,6 +373,36 @@ class _MapPageState extends State<MapPage>
         category: pointer.category,
         location: latlng,
         onClose: () => Navigator.of(context).pop(),
+        onCreateRoute: () async {
+          
+
+          
+          const double matheLat = 52.5135;
+          const double matheLon = 13.3245;
+          final params = FindRouteReqParams(
+            fromLat: matheLat,
+            fromLon: matheLon,
+            toLat: latlng.latitude,
+            toLon: latlng.longitude,
+          );
+          print('Finding route from ${params.fromLat}, ${params.fromLon} to ${params.toLat}, ${params.toLon}');
+          final result = await sl<FindRouteUseCase>().call(param: params); 
+          result.fold(
+            (error) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error finding route: $error')),
+              );
+            },
+            (route) {
+              setState(() {
+                _path = route.foot;
+              });
+              
+            },
+          );
+        
+        },
+        
       );
     } else {
       BuildingPopupManager.showBuildingOrCoordinatesPopup(
@@ -381,6 +410,7 @@ class _MapPageState extends State<MapPage>
         latlng: latlng,
         buildingName: null,
         category: null,
+        
       );
     }
   }

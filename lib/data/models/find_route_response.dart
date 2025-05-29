@@ -1,21 +1,28 @@
 import 'package:latlong2/latlong.dart';
 
 class FindRouteResponse{
+  final LatLng start;
+  final LatLng end;
+  final double distanceMeters;
+  final int durationMilliseconds;
   final List<LatLng> foot;
-  final List<LatLng> bus;
-  final List<LatLng> scooter;
+
 
   FindRouteResponse({
+    required this.start,
+    required this.end,
+    required this.distanceMeters,
+    required this.durationMilliseconds,
     required this.foot,
-    required this.bus,
-    required this.scooter,
   });
 
   factory FindRouteResponse.fromJson(Map<String, dynamic> map) {
     return FindRouteResponse(
-      foot: (map['foot'] as List).map((e) => LatLng(e[0], e[1])).toList(),
-      bus: (map['bus'] as List).map((e) => LatLng(e[0], e[1])).toList(),
-      scooter: (map['scooter'] as List).map((e) => LatLng(e[0], e[1])).toList(),
+      start: LatLng(map['Start'][0], map['Start'][1]),
+      end: LatLng(map['End'][0], map['End'][1]),
+      distanceMeters: map['DistanceMeters'].toDouble(),
+      durationMilliseconds: map['DurationSeconds'], // It's actually milliseconds
+      foot: (map['Polyline'] as List).map((e) => LatLng(e[0], e[1])).toList(),
     );
   }
 }

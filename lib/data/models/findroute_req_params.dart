@@ -1,23 +1,25 @@
 class FindRouteReqParams {
-  final double startLat;
-  final double startLon;
-  final double endLat;
-  final double endLon;
-  final String profile; // e.g., 'foot', 'car', etc.
+  final double fromLat;
+  final double fromLon;
+  final double toLat;
+  final double toLon;
+  // final String profile; // e.g., 'foot', 'car', etc.
 
   FindRouteReqParams({
-    required this.startLat,
-    required this.startLon,
-    required this.endLat,
-    required this.endLon,
-    this.profile = 'foot',
+    required this.fromLat,
+    required this.fromLon,
+    required this.toLat,
+    required this.toLon,
+    // this.profile = 'foot',
   });
   
   Map<String, String> toMap() {
     return {
-      'point1': '$startLat,$startLon',
-      'point2': '$endLat,$endLon',
-      'profile': profile,
+      'fromLat': fromLat.toString(),
+      'fromLon': fromLon.toString(),
+      'toLat': toLat.toString(),
+      'toLon': toLon.toString(),
+      // 'profile': profile,
     };
   }
 }
