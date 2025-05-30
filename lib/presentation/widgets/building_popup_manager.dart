@@ -13,6 +13,7 @@ class BuildingPopupManager {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true, // Makes the bottom sheet full width
+     //barrierColor: Colors.transparent, // Disable the dark overlay
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -186,6 +187,7 @@ class BuildingPopupManager {
     
     showModalBottomSheet(
       context: context,
+      barrierColor: Colors.transparent, // Disable the dark overlay
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -271,6 +273,7 @@ class BuildingPopupManager {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
+        barrierColor: Colors.transparent, // Disable the dark overlay
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),

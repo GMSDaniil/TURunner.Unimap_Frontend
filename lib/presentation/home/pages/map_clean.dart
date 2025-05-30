@@ -1,31 +1,19 @@
 import 'dart:convert';
-import 'package:auth_app/data/models/get_menu_req_params.dart';
-import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
+    as FMTC;
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/data/models/pointer.dart';
-import 'package:auth_app/data/favourites_manager.dart';
-import 'package:auth_app/presentation/widgets/building_popup.dart'; // Make sure this is imported
 import 'package:auth_app/presentation/widgets/building_popup_manager.dart';
-import 'package:auth_app/presentation/widgets/building_slide_window.dart';
-import 'package:auth_app/presentation/widgets/category_navigation.dart'
-    show CategoryNavigationBar;
 import 'package:auth_app/presentation/widgets/search_bar.dart';
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
-import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'package:auth_app/domain/usecases/find_building_at_point.dart'; // Ensure this is imported
-import 'package:geolocator/geolocator.dart'; // Add this import at the top
-import 'package:flutter/animation.dart';  // ensure this is available
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
-       as FMTC;
-
-
+import 'package:auth_app/domain/usecases/find_building_at_point.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -37,21 +25,41 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _isFlyToActive = false;
   final MapController _mapController = MapController();
-  AnimationController? _mapAnimController;  // <-- new field
+  AnimationController? _mapAnimController;
   final TextEditingController _searchController = TextEditingController();
   List<Marker> _markers = [];
   List<LatLng> _path = [];
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
-  LatLng? _currentLocation; // Add this line
+  LatLng? _currentLocation;
   late final TileProvider _cachedTileProvider;
+
+  // Animation system for bouncing markers
+  AnimationController? _bounceAnimationController;
+  late Animation<double> _bounceAnimation;
+  LatLng? _selectedMarkerPosition;
+  bool _isAnimationActive = false;
 
   @override
   void initState() {
     super.initState();
     _loadBuildingMarkers();
     _searchController.addListener(_onSearchChanged);
-    _goToCurrentLocation(); // <-- Add this line
+    _goToCurrentLocation();
+
+    // Initialize bouncing animation
+    _bounceAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _bounceAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _bounceAnimationController!,
+      curve: Curves.elasticOut,
+    ));
 
     // Browse‐cache strategy: read from mapStore, fetch missing from network & create
     _cachedTileProvider = FMTC.FMTCTileProvider(
@@ -75,9 +83,62 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _mapAnimController?.dispose();         // <-- dispose animation controller
+    _mapAnimController?.dispose();
+    _bounceAnimationController?.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Unified handler for marker selection that handles animation and bottom sheet
+  void _handleMarkerSelection(LatLng position) {
+    setState(() {
+      _selectedMarkerPosition = position;
+      _isAnimationActive = true;
+    });
+    
+    // Start bounce animation
+    _bounceAnimationController?.reset();
+    _bounceAnimationController?.forward();
+    
+    // Call existing map tap logic
+    _onMapTap(position);
+  }
+
+  /// Builds marker icon with animation and color based on selection state
+  Widget _buildMarkerIcon(LatLng position) {
+    final isSelected = _selectedMarkerPosition == position;
+    final color = isSelected ? Colors.red : Colors.deepPurple;
+    
+    if (isSelected && _isAnimationActive) {
+      return AnimatedBuilder(
+        animation: _bounceAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _bounceAnimation.value,
+            child: Icon(
+              Icons.location_on,
+              color: color,
+              size: 30,
+            ),
+          );
+        },
+      );
+    }
+    
+    return Icon(
+      Icons.location_on,
+      color: color,
+      size: 30,
+    );
+  }
+
+  /// Resets marker animation and selection state
+  void _resetMarkerSelection() {
+    setState(() {
+      _selectedMarkerPosition = null;
+      _isAnimationActive = false;
+    });
+    _bounceAnimationController?.reset();
   }
 
   // Loads the markers using the new JSON file which already contains centroid data.
@@ -99,19 +160,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             return Pointer(name: name, lat: lat, lng: lng, category: category);
           }).toList();
 
-      // Create markers from all pointers
+      // Create markers from all pointers using the unified handler
       final markers = _allPointers.map((pointer) {
+        final position = LatLng(pointer.lat, pointer.lng);
         return Marker(
-          point: LatLng(pointer.lat, pointer.lng),
+          point: position,
           width: 40,
           height: 40,
           child: GestureDetector(
-            // old:
-            // onTap: () => _showPointPopup(context, pointer),
-
-            // new:
-            onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
-            child: const Icon(Icons.location_on, color: Colors.deepPurple),
+            onTap: () => _handleMarkerSelection(position),
+            child: _buildMarkerIcon(position),
           ),
         );
       }).toList();
@@ -133,12 +191,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             pointer.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
-    setState(() {
-      _markers = MapMarkerManager.searchMarkersByName(
-        allPointers: _allPointers,
-        query: query,
-        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
+    // Create filtered markers with unified handler
+    final filteredMarkers = filtered.map((pointer) {
+      final position = LatLng(pointer.lat, pointer.lng);
+      return Marker(
+        point: position,
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _handleMarkerSelection(position),
+          child: _buildMarkerIcon(position),
+        ),
       );
+    }).toList();
+
+    setState(() {
+      _markers = filteredMarkers;
     });
 
     // Center map on first result
@@ -147,13 +215,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       filtered: filtered
     );
   }
-
-  /// Pops up a bottom sheet showing the building info and allows adding to favourites.
-  void _showPointPopup(BuildContext context, Pointer pointer) {
-    BuildingPopupManager.showBuildingPopup(context, pointer);
-  }
-
-
 
   // FindRoute use case to fetch a route between Hauptgebäude and Mathegebäude.
   Future<void> _findRoute() async {
@@ -176,16 +237,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // /// Filters markers by category and updates the map - using our new utility class
   void _filterMarkersByCategory(String? category, Color? markerColor) {
     if (category == null) {
-      // no filter → show all
+      // no filter → show all markers with unified handler
       setState(() {
         _markers = _allPointers.map((pointer) {
+          final position = LatLng(pointer.lat, pointer.lng);
           return Marker(
-            point: LatLng(pointer.lat, pointer.lng),
+            point: position,
             width: 40,
             height: 40,
             child: GestureDetector(
-              onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
-              child: const Icon(Icons.location_on, color: Colors.deepPurple),
+              onTap: () => _handleMarkerSelection(position),
+              child: _buildMarkerIcon(position),
             ),
           );
         }).toList();
@@ -198,14 +260,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         .where((p) => p.category.toLowerCase() == category.toLowerCase())
         .toList();
 
-    setState(() {
-      _markers = MapMarkerManager.filterMarkersByCategory(
-        allPointers: _allPointers,
-        category: category,
-        markerColor: markerColor!,
-        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
+    // Create filtered markers with unified handler
+    final filteredMarkers = filtered.map((pointer) {
+      final position = LatLng(pointer.lat, pointer.lng);
+      return Marker(
+        point: position,
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _handleMarkerSelection(position),
+          child: _buildMarkerIcon(position),
+        ),
       );
+    }).toList();
+
+    setState(() {
+      _markers = filteredMarkers;
     });
+    
     MapMarkerManager.centerMapOnFilteredResults(
       mapController: _mapController,
       filtered: filtered,
@@ -234,8 +306,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               final target = LatLng(pointer.lat, pointer.lng);
               // animate map move & zoom smoothly
               _animatedMapMove(target, 18.0);
-              // then open detail sheet
-              _onMapTap(target);
+              // then open detail sheet with animation
+              _handleMarkerSelection(target);
             },
           ),
           _buildCurrentLocationButton(),
@@ -264,8 +336,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ),
         ),
         backgroundColor: Colors.grey.shade200,
-        onTap: (tapPos, latlng) => _onMapTap(latlng),
-        
+        onTap: (tapPos, latlng) => _handleMarkerSelection(latlng),
       ),
       children: [
         TileLayer(
@@ -343,8 +414,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       bottom: 20,
       right: 20,
       child: FloatingActionButton(
-        // before: onPressed: _goToCurrentLocation,
-        onPressed: () => _goToCurrentLocation(moveMap: true),  // <-- pass moveMap:true
+        onPressed: () => _goToCurrentLocation(moveMap: true),
         backgroundColor: Colors.white,
         child: const Icon(Icons.my_location, color: Colors.blue),
       ),
@@ -376,7 +446,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         title: building.name,
         category: pointer.category,
         location: latlng,
-        onClose: () => Navigator.of(context).pop(),
+        onClose: () {
+          Navigator.of(context).pop();
+          _resetMarkerSelection(); // Reset animation when sheet closes
+        },
         onCreateRoute: () async {
           const double matheLat = 52.5135, matheLon = 13.3245;
           final params = FindRouteReqParams(
@@ -399,6 +472,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               if (mounted && Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
               }
+              _resetMarkerSelection(); // Reset animation when route is created
             },
           );
         },
@@ -428,32 +502,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               if (mounted && Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
               }
+              _resetMarkerSelection(); // Reset animation when route is created
             },
           );
         },
-        //onClose: () => Navigator.of(context).pop(),
       );
     }
-  }
-
-  void _onMarkerTap(String buildingName, LatLng latlng) {
-    final pointer = _allPointers.firstWhere(
-      (p) => p.name == buildingName,
-      orElse: () => Pointer(
-        name: buildingName,
-        lat: latlng.latitude,
-        lng: latlng.longitude,
-        category: 'Building',
-      ),
-    );
-
-    BuildingPopupManager.showBuildingSlideWindow(
-      context: context,
-      title: buildingName,
-      category: pointer.category,
-      location: latlng,
-      onClose: () => Navigator.of(context).pop(),
-    );
   }
 
   Future<void> _goToCurrentLocation({bool moveMap = false}) async {
@@ -543,11 +597,4 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     _mapAnimController!.forward();
   }
-
-  // @override
-  // void dispose() {
-  //   _debounceTimer?.cancel();
-  //   _searchController.dispose(); // Dispose controller
-  //   super.dispose();
-  // }
 }
