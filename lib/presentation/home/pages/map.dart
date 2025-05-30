@@ -20,6 +20,9 @@ import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
 import 'package:auth_app/domain/usecases/find_building_at_point.dart'; // Ensure this is imported
 import 'package:geolocator/geolocator.dart'; // Add this import at the top
 import 'package:flutter/animation.dart';  // ensure this is available
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
+       as FMTC;
+
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -28,8 +31,8 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage>
-    with TickerProviderStateMixin {        // <-- add mixin
+class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  bool _isFlyToActive = false;
   final MapController _mapController = MapController();
   AnimationController? _mapAnimController;  // <-- new field
   final TextEditingController _searchController = TextEditingController();
@@ -98,7 +101,7 @@ class _MapPageState extends State<MapPage>
             // onTap: () => _showPointPopup(context, pointer),
 
             // new:
-            onTap: () => _onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+            onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
             child: const Icon(Icons.location_on, color: Colors.deepPurple),
           ),
         );
@@ -125,7 +128,7 @@ class _MapPageState extends State<MapPage>
       _markers = MapMarkerManager.searchMarkersByName(
         allPointers: _allPointers,
         query: query,
-        onMarkerTap: _onMarkerTap
+        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
       );
     });
 
@@ -172,7 +175,7 @@ class _MapPageState extends State<MapPage>
             width: 40,
             height: 40,
             child: GestureDetector(
-              onTap: () => _onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+              onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
               child: const Icon(Icons.location_on, color: Colors.deepPurple),
             ),
           );
@@ -191,7 +194,7 @@ class _MapPageState extends State<MapPage>
         allPointers: _allPointers,
         category: category,
         markerColor: markerColor!,
-        onMarkerTap: _onMarkerTap,
+        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
       );
     });
     MapMarkerManager.centerMapOnFilteredResults(
@@ -211,40 +214,21 @@ class _MapPageState extends State<MapPage>
             suggestions: _suggestions,
             onSearch: (value) {
               _searchMarkers(value);
-              setState(() {
-                _suggestions = [];
-              });
+              setState(() => _suggestions = []);
             },
             onClear: () {
               _searchController.clear();
-              setState(() {
-                _markers = _allPointers.map((pointer) {
-                  return Marker(
-                    point: LatLng(pointer.lat, pointer.lng),
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showPointPopup(context, pointer),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                  );
-                }).toList();
-                _suggestions = [];
-              });
+              setState(() => _suggestions = []);
             },
             onCategorySelected: _filterMarkersByCategory,
-            onSuggestionSelected: (suggestion) {
-              _searchController.text = suggestion.name;
-              _searchMarkers(suggestion.name);
-              setState(() {
-                _suggestions = [];
-              });
+            onSuggestionSelected: (pointer) {
+              final target = LatLng(pointer.lat, pointer.lng);
+              // animate map move & zoom smoothly
+              _animatedMapMove(target, 18.0);
+              // then open detail sheet
+              _onMapTap(target);
             },
           ),
-          _buildFindRouteButton(),
           _buildCurrentLocationButton(),
         ],
       ),
@@ -262,12 +246,19 @@ class _MapPageState extends State<MapPage>
         cameraConstraint: CameraConstraint.contain(
           bounds: LatLngBounds(LatLng(52.507, 13.317), LatLng(52.519, 13.335)),
         ),
-        onTap: (tapPosition, latlng) async {
-          _onMapTap(latlng);
-        },
+        onTap: (tapPosition, latlng) => _onMapTap(latlng),
         interactionOptions: const InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate, // <-- Use this instead
+          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
+
+        // cancel any ongoing fly‐to when user drags/pinches
+        onPositionChanged: (pos, hasGesture) {
+          // if the user gestures while flying → cancel once and forever
+          if (hasGesture && _isFlyToActive) {
+            _mapAnimController?.stop();
+            _isFlyToActive = false;
+          }
+        },
       ),
       children: [
         TileLayer(
@@ -353,7 +344,12 @@ class _MapPageState extends State<MapPage>
   }
 
   void _onMapTap(LatLng latlng) async {
-    final findBuildingAtPoint = sl<FindBuildingAtPoint>(); 
+    // 1) Close any open bottom-sheet
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    final findBuildingAtPoint = sl<FindBuildingAtPoint>();
     final building = await findBuildingAtPoint.call(latlng);
 
     if (building != null) {
@@ -374,35 +370,30 @@ class _MapPageState extends State<MapPage>
         location: latlng,
         onClose: () => Navigator.of(context).pop(),
         onCreateRoute: () async {
-          
-
-          
-          const double matheLat = 52.5135;
-          const double matheLon = 13.3245;
+          const double matheLat = 52.5135, matheLon = 13.3245;
           final params = FindRouteReqParams(
             fromLat: matheLat,
             fromLon: matheLon,
             toLat: latlng.latitude,
             toLon: latlng.longitude,
           );
-          print('Finding route from ${params.fromLat}, ${params.fromLon} to ${params.toLat}, ${params.toLon}');
-          final result = await sl<FindRouteUseCase>().call(param: params); 
+          final result = await sl<FindRouteUseCase>().call(param: params);
           result.fold(
             (error) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error finding route: $error')),
-              );
+              ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('Error: $error')));
             },
             (route) {
               setState(() {
                 _path = route.foot;
               });
-              
+              // 2) Safely pop only if the sheet is still there
+              if (mounted && Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
             },
           );
-        
         },
-        
       );
     } else {
       BuildingPopupManager.showBuildingOrCoordinatesPopup(
@@ -410,7 +401,29 @@ class _MapPageState extends State<MapPage>
         latlng: latlng,
         buildingName: null,
         category: null,
-        
+        onCreateRoute: () async {
+          const double matheLat = 52.5135, matheLon = 13.3245;
+          final params = FindRouteReqParams(
+            fromLat: matheLat,
+            fromLon: matheLon,
+            toLat: latlng.latitude,
+            toLon: latlng.longitude,
+          );
+          final result = await sl<FindRouteUseCase>().call(param: params);
+          result.fold(
+            (error) {
+              ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text('Error: $error')));
+            },
+            (route) {
+              setState(() => _path = route.foot);
+              if (mounted && Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
+          );
+        },
+        //onClose: () => Navigator.of(context).pop(),
       );
     }
   }
@@ -455,8 +468,9 @@ class _MapPageState extends State<MapPage>
           LatLng(lastKnown.latitude, lastKnown.longitude);
       });
       if (moveMap) {
-        final zoom = _mapController.zoom < 17.0 ? 17.0 : _mapController.zoom.toDouble();
-        _animatedMapMove(_currentLocation!, zoom as double);
+        final currentZoom = _mapController.camera.zoom;
+        final zoom = currentZoom < 17.0 ? 17.0 : currentZoom;
+        _animatedMapMove(_currentLocation!, zoom);
       }
     }
 
@@ -468,35 +482,55 @@ class _MapPageState extends State<MapPage>
         LatLng(position.latitude, position.longitude);
     });
     if (moveMap) {
-      final zoom = _mapController.zoom < 17.0 ? 17.0 : _mapController.zoom.toDouble();
+      final currentZoom = _mapController.camera.zoom;
+      final zoom = currentZoom < 17.0 ? 17.0 : currentZoom;
       _animatedMapMove(_currentLocation!, zoom);
     }
   }
 
   // <-- new helper to animate center & zoom
   void _animatedMapMove(LatLng dest, double destZoom) {
-    final latTween =
-      Tween(begin: _mapController.center.latitude, end: dest.latitude);
-    final lngTween =
-      Tween(begin: _mapController.center.longitude, end: dest.longitude);
-    final zoomTween       = Tween(begin: _mapController.zoom, end: destZoom);
-
+    // dispose any old one
     _mapAnimController?.dispose();
+
+    // new controller
     _mapAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    final animation = CurvedAnimation(
+    _isFlyToActive = true;       // start flying
+
+    final latTween = Tween(
+      begin: _mapController.camera.center.latitude,
+      end: dest.latitude,
+    );
+    final lngTween = Tween(
+      begin: _mapController.camera.center.longitude,
+      end: dest.longitude,
+    );
+    final zoomTween = Tween(
+      begin: _mapController.camera.zoom,
+      end: destZoom,
+    );
+
+    final anim = CurvedAnimation(
       parent: _mapAnimController!,
       curve: Curves.easeInOut,
     );
 
-    animation.addListener(() {
+    anim.addListener(() {
       _mapController.move(
-        LatLng(latTween.evaluate(animation),
-              lngTween.evaluate(animation)),
-        zoomTween.evaluate(animation),
+        LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
+        zoomTween.evaluate(anim),
       );
+    });
+
+    // when the fly-to finishes naturally, clear the flag
+    _mapAnimController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        _isFlyToActive = false;
+      }
     });
 
     _mapAnimController!.forward();

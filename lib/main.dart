@@ -12,9 +12,13 @@ import 'presentation/auth/pages/signin.dart';
 import 'service_locator.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // initialize tile cache store
+  //await FMTC.instance('mapStore').manage.create();   // or .manage.open()
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarBrightness: Brightness.light,
@@ -22,6 +26,7 @@ void main() {
     ),
   );
   setupServiceLocator();
+  
   runApp(const MyApp());
 }
 
