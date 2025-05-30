@@ -29,7 +29,9 @@ import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
 //import 'package:flutter_map/plugin_api.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
+
+  const MapPage({super.key, required this.scaffoldKeyForBottomSheet});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -48,6 +50,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation; // Add this line
   late final TileProvider _cachedTileProvider;
+
+  PersistentBottomSheetController? _routeSheetController;
 
   @override
   void initState() {
@@ -263,6 +267,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         initialZoom: 17.0,
         minZoom: 15.0, // prevent zooming out below campus level
         maxZoom: 18.0, // prevent zooming in beyond detail level
+        cameraConstraint: CameraConstraint.contain(
+          bounds: LatLngBounds(LatLng(52.507, 13.317), LatLng(52.519, 13.335)),
+        ),
         // disable all rotation gestures
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
@@ -372,6 +379,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   void _onMapTap(LatLng latlng) async {
     // 1) Close any open bottom-sheet
+    if (_routeSheetController != null) {
+      return;
+    }
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -432,13 +442,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               );
               // show persistent, interactive route‐options sheet
               showRouteOptionsSheet(
-                context: context,
-                route:    _path,
+                route: _path,
                 distance: _routeDistance!,
                 duration: _routeDuration!,
-                onModeChanged: (m) { /* switch profile later */ },
+                onModeChanged: (mode) {
+                  // Handle travel mode change if needed
+                  print('Travel mode changed to: $mode');
+                },
                 onClose: () {
-                  setState(() => _path = []);
+                  // Close the bottom sheet
+                  setState(() {
+                    _path = [];
+                    _routeDistance = null;
+                    _routeDuration = null;
+                  });
+                  if (mounted && Navigator.of(context).canPop()) {
+
+                    Navigator.of(context).pop();
+                  }
                 },
               );
             },
@@ -584,28 +605,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   /// Shows a persistent (non-modal) bottom sheet so the map remains interactive.
-  void showRouteOptionsSheet({
-    required BuildContext context,
-    required List<LatLng> route,
-    required double distance,
-    required int duration,
-    required ValueChanged<TravelMode> onModeChanged,
-    required VoidCallback onClose,
-  }) {
-    final scaffold = Scaffold.maybeOf(context);
-    if (scaffold == null) return;
-    scaffold.showBottomSheet(
-      (ctx) => RouteOptionsSheet(
-        route: route,
-        distance: distance,
-        duration: duration,
-        onClose: onClose,
-        onModeChanged: onModeChanged,
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
-  }
+void showRouteOptionsSheet({
+  required List<LatLng> route,
+  required double distance,
+  required int duration,
+  required ValueChanged<TravelMode> onModeChanged,
+  required VoidCallback onClose,
+}) {
+  // If already open, do nothing or close the previous one first
+  if (_routeSheetController != null) return;
+
+  _routeSheetController = widget.scaffoldKeyForBottomSheet.currentState?.showBottomSheet(
+    (ctx) => RouteOptionsSheet(
+      route: route,
+      distance: distance,
+      duration: duration,
+      onClose: onClose,
+      onModeChanged: onModeChanged,
+    ),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+  );
+
+  _routeSheetController?.closed.then((_) {
+    _routeSheetController = null; // Reset when closed
+    onClose();
+  });
+}
 
   // @override
   // void dispose() {

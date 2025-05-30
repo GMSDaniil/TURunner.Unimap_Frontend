@@ -67,6 +67,17 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Drag-handle mimic
+              Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               // ── Header row ───────────────────────────────────────────
               Row(
                 children: [
@@ -85,17 +96,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                 ],
               ),
               const SizedBox(height: 8),
-              // Drag-handle mimic
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              
               const SizedBox(height: 20),
               _ModeSelector(
                 selected: _mode,
