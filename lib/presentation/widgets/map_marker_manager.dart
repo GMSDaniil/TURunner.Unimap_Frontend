@@ -9,7 +9,7 @@ class MapMarkerManager {
     required List<Pointer> allPointers,
     required String category,
     required Color markerColor,
-    required Function(String, LatLng) onMarkerTap,
+    required Function(Pointer) onMarkerTap,
   }) {
     final filtered = allPointers
         .where((p) => p.category.toLowerCase() == category.toLowerCase())
@@ -21,7 +21,7 @@ class MapMarkerManager {
         width: 40,
         height: 40,
         child: GestureDetector(
-          onTap: () => onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+          onTap: () => onMarkerTap(pointer),
           child: Icon(Icons.location_on, color: markerColor),
         ),
       );
@@ -46,7 +46,7 @@ class MapMarkerManager {
   static List<Marker> searchMarkersByName({
     required List<Pointer> allPointers,
     required String query,
-    required Function(String, LatLng) onMarkerTap,
+    required Function(Pointer) onMarkerTap,
   }) {
     final filtered = allPointers
         .where((pointer) =>
@@ -59,7 +59,7 @@ class MapMarkerManager {
         width: 40,
         height: 40,
         child: GestureDetector(
-          onTap: () => onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+          onTap: () => onMarkerTap(pointer),
           child: const Icon(Icons.location_on, color: Colors.deepPurple),
         ),
       );
@@ -71,7 +71,7 @@ class MapMarkerManager {
     required List<Pointer> allPointers,
     String? highlightedCategory,
     Color? highlightColor,
-    required Function(String, LatLng) onMarkerTap,
+    required Function(Pointer) onMarkerTap,
   }) {
     return allPointers.map((pointer) {
       final isHighlighted = highlightedCategory != null &&
@@ -81,7 +81,7 @@ class MapMarkerManager {
         width: isHighlighted ? 56 : 36,
         height: isHighlighted ? 56 : 36,
         child: GestureDetector(
-          onTap: () => onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+          onTap: () => onMarkerTap(pointer),
           child: Icon(
             Icons.location_on,
             color: isHighlighted

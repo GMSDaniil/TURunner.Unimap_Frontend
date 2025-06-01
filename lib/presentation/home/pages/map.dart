@@ -144,7 +144,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _markers = MapMarkerManager.searchMarkersByName(
         allPointers: _allPointers,
         query: query,
-        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
+        onMarkerTap: (Pointer pointer) => _onMarkerTap(pointer),
       );
     });
 
@@ -185,7 +185,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         allPointers: _allPointers,
         highlightedCategory: category,
         highlightColor: markerColor,
-        onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
+        onMarkerTap: (Pointer pointer) => _onMarkerTap(pointer),
       );
     });
 
