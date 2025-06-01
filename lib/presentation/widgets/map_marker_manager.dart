@@ -7,7 +7,7 @@ class MapMarkerManager {
   /// Filters markers by category and returns a list of filtered markers.
   static List<Marker> filterMarkersByCategory({
     required List<Pointer> allPointers,
-    required String category, 
+    required String category,
     required Color markerColor,
     required Function(String, LatLng) onMarkerTap,
   }) {
@@ -49,7 +49,7 @@ class MapMarkerManager {
     required Function(String, LatLng) onMarkerTap,
   }) {
     final filtered = allPointers
-        .where((pointer) => 
+        .where((pointer) =>
             pointer.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
@@ -61,6 +61,34 @@ class MapMarkerManager {
         child: GestureDetector(
           onTap: () => onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
           child: const Icon(Icons.location_on, color: Colors.deepPurple),
+        ),
+      );
+    }).toList();
+  }
+
+  /// Returns all markers, optionally highlighting a specific category.
+  static List<Marker> allMarkersWithHighlight({
+    required List<Pointer> allPointers,
+    String? highlightedCategory,
+    Color? highlightColor,
+    required Function(String, LatLng) onMarkerTap,
+  }) {
+    return allPointers.map((pointer) {
+      final isHighlighted = highlightedCategory != null &&
+          pointer.category.toLowerCase() == highlightedCategory.toLowerCase();
+      return Marker(
+        point: LatLng(pointer.lat, pointer.lng),
+        width: isHighlighted ? 56 : 36,
+        height: isHighlighted ? 56 : 36,
+        child: GestureDetector(
+          onTap: () => onMarkerTap(pointer.name, LatLng(pointer.lat, pointer.lng)),
+          child: Icon(
+            Icons.location_on,
+            color: isHighlighted
+                ? (highlightColor ?? Colors.deepPurple)
+                : Colors.deepPurple.withOpacity(0.5),
+            size: isHighlighted ? 48 : 32,
+          ),
         ),
       );
     }).toList();

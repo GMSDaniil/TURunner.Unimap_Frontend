@@ -114,11 +114,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               width: 40,
               height: 40,
               child: GestureDetector(
-                // old:
-                // onTap: () => _showPointPopup(context, pointer),
-
-                // new:
-                onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
+                onTap: () => _onMarkerTap(pointer), // <-- Use pointer directly
                 child: const Icon(Icons.location_on, color: Colors.deepPurple),
               ),
             );
@@ -184,46 +180,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // /// Filters markers by category and updates the map - using our new utility class
   void _filterMarkersByCategory(String? category, Color? markerColor) {
-    if (category == null) {
-      // no filter → show all
-      setState(() {
-        _markers =
-            _allPointers.map((pointer) {
-              return Marker(
-                point: LatLng(pointer.lat, pointer.lng),
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () => _onMapTap(LatLng(pointer.lat, pointer.lng)),
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-              );
-            }).toList();
-      });
-      return;
-    }
-
-    // apply category filter
-    final filtered =
-        _allPointers
-            .where((p) => p.category.toLowerCase() == category.toLowerCase())
-            .toList();
-
     setState(() {
-      _markers = MapMarkerManager.filterMarkersByCategory(
+      _markers = MapMarkerManager.allMarkersWithHighlight(
         allPointers: _allPointers,
-        category: category,
-        markerColor: markerColor!,
+        highlightedCategory: category,
+        highlightColor: markerColor,
         onMarkerTap: (String _, LatLng latlng) => _onMapTap(latlng),
       );
     });
-    MapMarkerManager.centerMapOnFilteredResults(
-      mapController: _mapController,
-      filtered: filtered,
-    );
+
+    if (category != null) {
+      final filtered = _allPointers
+          .where((p) => p.category.toLowerCase() == category.toLowerCase())
+          .toList();
+      if (filtered.isNotEmpty) {
+        final bounds = LatLngBounds.fromPoints(
+          filtered.map((p) => LatLng(p.lat, p.lng)).toList(),
+        );
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.all(40),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -500,23 +481,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  void _onMarkerTap(String buildingName, LatLng latlng) {
-    final pointer = _allPointers.firstWhere(
-      (p) => p.name == buildingName,
-      orElse:
-          () => Pointer(
-            name: buildingName,
-            lat: latlng.latitude,
-            lng: latlng.longitude,
-            category: 'Building',
-          ),
-    );
+  void _onMarkerTap(Pointer pointer) {
+    // Fix 2: Zoom in on this marker
+    _animatedMapMove(LatLng(pointer.lat, pointer.lng), 18.0);
 
+    // Always show the popup for this pointer (Mensa, Cafe, etc.)
     BuildingPopupManager.showBuildingSlideWindow(
       context: context,
-      title: buildingName,
+      title: pointer.name,
       category: pointer.category,
-      location: latlng,
+      location: LatLng(pointer.lat, pointer.lng),
       onClose: () => Navigator.of(context).pop(),
     );
   }
