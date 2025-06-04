@@ -10,6 +10,6 @@ class ApiUrls {
 
   //TODO
   static const findRoute = '${baseURL}Route/walking';
-  static const getMensaMenu = '${baseURL}Mensa/getMensaMenu';
+  static const getMensaMenu = '${baseURL}mensa/all-menus';
   static const getPointers = '${baseURL}Pointers/getPointers';
 }
