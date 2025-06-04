@@ -359,13 +359,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _onMapTap(LatLng latlng) async {
-    // 1) Close any open bottom-sheet
-    if (_routeSheetController != null) {
-      return;
-    }
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
+    // Remove this to prevent closing your signed-in page:
+    // if (Navigator.of(context).canPop()) {
+    //   Navigator.of(context).pop();
+    // }
 
     final findBuildingAtPoint = sl<FindBuildingAtPoint>();
     final building = await findBuildingAtPoint.call(latlng);
@@ -373,13 +370,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (building != null) {
       final pointer = _allPointers.firstWhere(
         (p) => p.name == building.name,
-        orElse:
-            () => Pointer(
-              name: building.name,
-              lat: latlng.latitude,
-              lng: latlng.longitude,
-              category: 'Building',
-            ),
+        orElse: () => Pointer(
+          name: building.name,
+          lat: latlng.latitude,
+          lng: latlng.longitude,
+          category: 'Building',
+        ),
       );
 
       BuildingPopupManager.showBuildingSlideWindow(
@@ -387,6 +383,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         title: building.name,
         category: pointer.category,
         location: latlng,
+        // Modified onClose callback - removed Navigator.of(context).pop()
         onClose: () => Navigator.of(context).pop(),
         onCreateRoute: () async {
           const double matheLat = 52.5135, matheLon = 13.3245;
