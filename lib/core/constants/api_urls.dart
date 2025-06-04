@@ -1,16 +1,15 @@
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 
 class ApiUrls {
-  static const baseURL = 'http://188.245.63.53:5000/';
-  static const baseRouteURL = 'http://188.245.63.53:5500/';
-  static const register = '${baseURL}api/Users/register';
-  static const login = '${baseURL}api/Users/login';
-  static const refreshToken = '${baseURL}api/Tokens/refreshToken';
+  static const baseURL = 'https://dev.cherep.co/tubify/api/';
+  static const register = '${baseURL}Users/register';
+  static const login = '${baseURL}Users/login';
+  static const refreshToken = '${baseURL}Tokens/refreshToken';
 
-  static const userProfile = '${baseURL}api/Users/getUser';
+  static const userProfile = '${baseURL}Users/getUser';
 
   //TODO
-  static const findRoute = '${baseRouteURL}api/Route/walking';
-  static const getMensaMenu = '${baseURL}api/Mensa/getMensaMenu';
-  static const getPointers = '${baseRouteURL}api/Pointers/getPointers';
+  static const findRoute = '${baseURL}Route/walking';
+  static const getMensaMenu = '${baseURL}Mensa/getMensaMenu';
+  static const getPointers = '${baseURL}Pointers/getPointers';
 }
