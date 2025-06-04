@@ -156,8 +156,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   /// Pops up a bottom sheet showing the building info and allows adding to favourites.
+  // 1) Update your helper:
   void _showPointPopup(BuildContext context, Pointer pointer) {
-    BuildingPopupManager.showBuildingPopup(context, pointer);
+    BuildingPopupManager.showBuildingPopup(
+      context: context,
+      scaffoldKey: widget.scaffoldKeyForBottomSheet, // ← NEW
+      pointer: pointer,
+    );
   }
 
   // FindRoute use case to fetch a route between Hauptgebäude and Mathegebäude.
@@ -380,11 +385,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
       BuildingPopupManager.showBuildingSlideWindow(
         context: context,
+        scaffoldKey: widget.scaffoldKeyForBottomSheet,
         title: building.name,
         category: pointer.category,
         location: latlng,
-        // Modified onClose callback - removed Navigator.of(context).pop()
-        onClose: () => Navigator.of(context).pop(),
+        onClose: () {},                // ← was Navigator.of(context).pop()
         onCreateRoute: () async {
           const double matheLat = 52.5135, matheLon = 13.3245;
           final params = FindRouteReqParams(
@@ -447,6 +452,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     } else {
       BuildingPopupManager.showBuildingOrCoordinatesPopup(
         context: context,
+        scaffoldKey: widget.scaffoldKeyForBottomSheet, // ← NEW
         latlng: latlng,
         buildingName: null,
         category: null,
@@ -485,10 +491,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // Always show the popup for this pointer (Mensa, Cafe, etc.)
     BuildingPopupManager.showBuildingSlideWindow(
       context: context,
+      scaffoldKey: widget.scaffoldKeyForBottomSheet,
       title: pointer.name,
       category: pointer.category,
       location: LatLng(pointer.lat, pointer.lng),
-      onClose: () => Navigator.of(context).pop(),
+      onClose: () {},                // ← was Navigator.of(context).pop()
     );
   }
 
