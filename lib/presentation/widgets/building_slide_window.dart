@@ -36,9 +36,9 @@ class GradientActionButton extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -105,7 +105,8 @@ class BuildingSlideWindow extends StatelessWidget {
 
                 // Header: title & small circular close button aligned with top of title
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start, // align children to top
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start, // align children to top
                   children: [
                     // Title + category
                     Expanded(
@@ -114,9 +115,7 @@ class BuildingSlideWindow extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
@@ -148,17 +147,6 @@ class BuildingSlideWindow extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // Optional Mensa plan button (full-width, green)
-                if (onShowMenu != null) ...[
-                  GradientActionButton(
-                    onPressed: onShowMenu!,
-                    icon: Icons.restaurant_menu,
-                    label: 'Show Mensa Plan',
-                    colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
                 // Row of action buttons
                 Row(
                   children: [
@@ -181,6 +169,15 @@ class BuildingSlideWindow extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (onShowMenu != null) ...[
+                  const SizedBox(height: 16),
+                  GradientActionButton(
+                    onPressed: onShowMenu!,
+                    icon: Icons.restaurant_menu,
+                    label: 'Show Mensa Plan',
+                    colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
+                  ),
+                ],
               ],
             ),
           ),

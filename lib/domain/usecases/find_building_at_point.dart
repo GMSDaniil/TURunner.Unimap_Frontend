@@ -8,5 +8,7 @@ class FindBuildingAtPoint {
 
   Future<BuildingEntity?> call(LatLng point) {
     return repository.findBuildingAt(point);
-  }
+  } 
+
+  
 }
