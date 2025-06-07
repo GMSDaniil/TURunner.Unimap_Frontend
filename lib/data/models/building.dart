@@ -7,111 +7,42 @@ class BuildingModel extends BuildingEntity {
       : super(name: name, polygon: polygon);
 
   factory BuildingModel.fromJson(Map<String, dynamic> json) {
+    // ÄNDERUNG: Die Feldnamen an das campus_buildings.json angepasst
     return BuildingModel(
-      name: json['name'],
-      polygon: parsePolygonOrMultiPolygonFromWKB(json['geom']),
+      name: json['Name'], // vorher: json['name']
+      polygon: parsePolygonOrMultiPolygonFromWKT(json['Contour']),
     );
   }
 }
 
-/// Parses an EWKB hex string for Polygon or MultiPolygon and returns the largest ring as List<LatLng>.
-///
-/// This function reads the byte order (first byte) then the 4-byte geometry type which may include an SRID flag
-/// (0x20000000). If that flag is set, the next 4 bytes are the SRID (which we discard) and the geometry type is
-/// masked to its lower bits. Then, depending on whether the geometry is a Polygon (3) or MultiPolygon (6), we parse accordingly.
-/// Finally, we return the largest ring (outer boundary) among all rings.
-List<LatLng> parsePolygonOrMultiPolygonFromWKB(String wkbHex) {
-  // Remove optional "0x" prefix.
-  if (wkbHex.startsWith('0x')) wkbHex = wkbHex.substring(2);
-  
-  final bytes = Uint8List.fromList([
-    for (int i = 0; i < wkbHex.length; i += 2)
-      int.parse(wkbHex.substring(i, i + 2), radix: 16)
-  ]);
-  final byteData = ByteData.sublistView(bytes);
+/// Parsen von WKT-MULTIPOLYGON für campus_buildings.json.
+/// Gibt den größten Ring als List<LatLng> zurück.
+/// ÄNDERUNG: Funktioniert jetzt direkt mit dem WKT-Format aus campus_buildings.json.
+List<LatLng> parsePolygonOrMultiPolygonFromWKT(String wkt) {
+  // Entfernt "MULTIPOLYGON (((" und ")))"
+  final cleaned = wkt
+      .replaceAll('MULTIPOLYGON (((', '')
+      .replaceAll(')))', '')
+      .replaceAll('(', '')
+      .replaceAll(')', '');
 
-  int offset = 0;
-
-  // Read byte order.
-  bool isLE = byteData.getUint8(offset) == 1;
-  offset += 1;
-
-  // Read the raw geometry type.
-  int rawGeomType = _readUint32(byteData, offset, isLE);
-  offset += 4;
-  
-  // Check if SRID flag is present (0x20000000). If so, read and skip SRID.
-  if ((rawGeomType & 0x20000000) != 0) {
-    int srid = _readUint32(byteData, offset, isLE);
-    offset += 4;
-    // Mask out the SRID flag to get the actual geometry type.
-    rawGeomType = rawGeomType & 0xFF;
+  // Jeder Ring ist durch "), (" getrennt, wir nehmen den größten Ring
+  final rings = cleaned.split('), (');
+  List<LatLng> largestRing = [];
+  for (final ring in rings) {
+    final points = ring.trim().split(',');
+    final latlngs = points.map((point) {
+      final coords = point.trim().split(' ');
+      // WKT ist "lng lat"
+      final lng = double.parse(coords[0]);
+      final lat = double.parse(coords[1]);
+      return LatLng(lat, lng);
+    }).toList();
+    if (latlngs.length > largestRing.length) {
+      largestRing = latlngs;
+    }
   }
-  
-  // Now rawGeomType should be 3 (Polygon) or 6 (MultiPolygon)
-  List<List<LatLng>> allRings = [];
-
-  // Function to parse a single Polygon at the given start offset.
-  void parsePolygon(int startOffset) {
-    int localOffset = startOffset;
-    // Each polygon has its own byte order.
-    final bool polyIsLE = byteData.getUint8(localOffset) == 1;
-    localOffset += 1;
-    final int polyGeomType = _readUint32(byteData, localOffset, polyIsLE);
-    localOffset += 4;
-    if (polyGeomType != 3) {
-      throw Exception('Expected Polygon geometry type, got $polyGeomType');
-    }
-    final int numRings = _readUint32(byteData, localOffset, polyIsLE);
-    localOffset += 4;
-    for (int r = 0; r < numRings; r++) {
-      final int numPoints = _readUint32(byteData, localOffset, polyIsLE);
-      localOffset += 4;
-      final List<LatLng> points = [];
-      for (int i = 0; i < numPoints; i++) {
-        final double x = _readFloat64(byteData, localOffset, polyIsLE);
-        localOffset += 8;
-        final double y = _readFloat64(byteData, localOffset, polyIsLE);
-        localOffset += 8;
-        points.add(LatLng(y, x));
-      }
-      allRings.add(points);
-    }
-    offset = localOffset;
-  }
-
-  // Now parse based on geometry type.
-  if (rawGeomType == 3) {
-    // Single Polygon
-    final int numRings = _readUint32(byteData, offset, isLE);
-    offset += 4;
-    for (int r = 0; r < numRings; r++) {
-      final int numPoints = _readUint32(byteData, offset, isLE);
-      offset += 4;
-      final List<LatLng> points = [];
-      for (int i = 0; i < numPoints; i++) {
-        final double x = _readFloat64(byteData, offset, isLE);
-        offset += 8;
-        final double y = _readFloat64(byteData, offset, isLE);
-        offset += 8;
-        points.add(LatLng(y, x));
-      }
-      allRings.add(points);
-    }
-  } else if (rawGeomType == 6) {
-    // MultiPolygon
-    final int numPolygons = _readUint32(byteData, offset, isLE);
-    offset += 4;
-    for (int p = 0; p < numPolygons; p++) {
-      parsePolygon(offset);
-    }
-  } else {
-    throw Exception('Unsupported geometry type: $rawGeomType');
-  }
-
-  // Return the largest ring (by point count) – typically the outer boundary.
-  allRings.sort((a, b) => b.length.compareTo(a.length));
-  return allRings.isNotEmpty ? allRings.first : [];
+  return largestRing;
 }
 
 // Helper to read a 32-bit unsigned integer.
@@ -121,3 +52,7 @@ int _readUint32(ByteData byteData, int offset, bool isLE) =>
 // Helper to read a 64-bit float.
 double _readFloat64(ByteData byteData, int offset, bool isLE) =>
     isLE ? byteData.getFloat64(offset, Endian.little) : byteData.getFloat64(offset, Endian.big);
+
+// Änderungen:
+// - Feldnamen in fromJson an campus_buildings.json angepasst (Name statt name)
+// - parsePolygonOrMultiPolygonFromWKT für campus_buildings.json optimiert (WKT statt WKB)

@@ -87,22 +87,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Loads the markers using the new JSON file which already contains centroid data.
+// Loads the markers using the new JSON file which already contains centroid data.
   Future<void> _loadBuildingMarkers() async {
     try {
       final jsonStr = await rootBundle.loadString(
-        'assets/campus_buildings_centroids.json',
+        'assets/campus_buildings.json',
       );
       final List data = jsonDecode(jsonStr);
-      print('Loaded ${data.length} building centroids');
+      print('Loaded ${data.length} buildings');
 
       // Store all pointers for search
       _allPointers =
           data.map((entry) {
-            final double lat = (entry['latitude'] as num).toDouble();
-            final double lng = (entry['longitude'] as num).toDouble();
-            final String name = entry['name'] as String;
-            final String category = entry['category'] as String? ?? 'Building';
+            final double lat = (entry['Latitude'] as num).toDouble();
+            final double lng = (entry['Longitude'] as num).toDouble();
+            final String name = entry['Name'] as String;
+            final String category = entry['Category'] as String? ?? 'Building';
             return Pointer(name: name, lat: lat, lng: lng, category: category);
           }).toList();
 
@@ -484,18 +484,25 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  void _onMarkerTap(Pointer pointer) {
-    // Fix 2: Zoom in on this marker
+  void _onMarkerTap(Pointer pointer) async {
+    // Close any open popup/bottom sheet first
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      // Wait a frame to ensure the old popup is closed before opening a new one
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    // Zoom in on this marker
     _animatedMapMove(LatLng(pointer.lat, pointer.lng), 18.0);
 
-    // Always show the popup for this pointer (Mensa, Cafe, etc.)
+    // Show the popup for this pointer
     BuildingPopupManager.showBuildingSlideWindow(
       context: context,
       scaffoldKey: widget.scaffoldKeyForBottomSheet,
       title: pointer.name,
       category: pointer.category,
       location: LatLng(pointer.lat, pointer.lng),
-      onClose: () {},                // ← was Navigator.of(context).pop()
+      onClose: () {},
     );
   }
 
