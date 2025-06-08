@@ -1,7 +1,15 @@
 import 'package:auth_app/data/models/get_menu_req_params.dart';
-import 'package:auth_app/data/models/meal_model.dart';
-
+import 'package:auth_app/data/models/mensa_menu_response.dart';
+import 'package:dartz/dartz.dart';
 
 abstract class MensaRepository {
-  Future<List<MealModel>> getMensaMenu(GetMenuReqParams mensaName);
+  Future<Either<String, MensaMenuResponse>> getMensaMenu(
+    GetMenuReqParams params,
+  );
 }
+
+
+/*
+abstract class MensaRepository {
+  Future<List<MealModel>> getMensaMenu(GetMenuReqParams mensaName);
+}*/

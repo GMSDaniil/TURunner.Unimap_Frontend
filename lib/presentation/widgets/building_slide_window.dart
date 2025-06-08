@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:auth_app/presentation/widgets/todays_mensa_plan.dart';
+import 'package:auth_app/presentation/home/pages/mensa.dart';
 
 /// Re-usable gradient pill button used throughout the bottom sheet.
 class GradientActionButton extends StatelessWidget {
@@ -177,6 +179,8 @@ class BuildingSlideWindow extends StatelessWidget {
                     label: 'Show Mensa Plan',
                     colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
                   ),
+                  const SizedBox(height: 16),
+                  TodaysMensaPlan(mensaName: title),
                 ],
               ],
             ),
