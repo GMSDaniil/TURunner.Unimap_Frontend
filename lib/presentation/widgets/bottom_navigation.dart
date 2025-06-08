@@ -29,25 +29,21 @@ class CategoryNavigationBar extends StatelessWidget {
                   ),
                   _categoryWidget(
                     icon: Icons.local_cafe,
-                    label: 'Cafe',
+                    label: 'Café', // <-- with accent!
                     iconColor: Colors.orange,
-                    onTap: () {
-                      // TODO: Show only cafes on the map (implement later)
-                    },
+                    onTap: () => onCategorySelected('Café', Colors.orange),
                   ),
                   _categoryWidget(
                     icon: Icons.local_library,
                     label: 'Library',
                     iconColor: Colors.yellow[800]!,
-                    onTap:
-                        () =>
-                            onCategorySelected('Library', Colors.yellow[800]!),
+                    onTap: () => onCategorySelected('Library', Colors.yellow[800]!),
                   ),
                   _categoryWidget(
                     icon: Icons.restaurant,
                     label: 'Mensa',
                     iconColor: Colors.green,
-                    onTap: () => onCategorySelected('Mensa', Colors.green),
+                    onTap: () => onCategorySelected('Canteen', Colors.green), // <-- must be 'Canteen'
                   ),
                   // add more chips here if you like
                 ]
