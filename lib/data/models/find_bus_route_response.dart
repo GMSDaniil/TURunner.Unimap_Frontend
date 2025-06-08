@@ -1,0 +1,66 @@
+import 'package:latlong2/latlong.dart';
+
+class BusRouteSegment {
+  final String type; // "walk" or "transit"
+  final List<LatLng> polyline;
+  final int durationSeconds;
+  final double distanceMeters;
+  final String? transportType;
+  final String? transportLine;
+  final String? fromStop;
+  final String? toStop;
+
+  BusRouteSegment({
+    required this.type,
+    required this.polyline,
+    required this.durationSeconds,
+    required this.distanceMeters,
+    this.transportType,
+    this.transportLine,
+    this.fromStop,
+    this.toStop,
+  });
+
+  factory BusRouteSegment.fromJson(Map<String, dynamic> map) {
+    return BusRouteSegment(
+      type: map['Type'] ?? '',
+      polyline: (map['Polyline'] as List)
+          .map<LatLng>((e) => LatLng(e[0], e[1]))
+          .toList(),
+      durationSeconds: map['DurationSeconds'] ?? 0,
+      distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
+      transportType: map['TransportType'],
+      transportLine: map['TransportLine'],
+      fromStop: map['FromStop'],
+      toStop: map['ToStop'],
+    );
+  }
+}
+
+class FindBusRouteResponse {
+  final LatLng start;
+  final LatLng end;
+  final double distanceMeters;
+  final int durationSeconds;
+  final List<BusRouteSegment> segments;
+
+  FindBusRouteResponse({
+    required this.start,
+    required this.end,
+    required this.distanceMeters,
+    required this.durationSeconds,
+    required this.segments,
+  });
+
+  factory FindBusRouteResponse.fromJson(Map<String, dynamic> map) {
+    return FindBusRouteResponse(
+      start: LatLng(map['Start'][0], map['Start'][1]),
+      end: LatLng(map['End'][0], map['End'][1]),
+      distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
+      durationSeconds: map['DurationSeconds'] ?? 0,
+      segments: (map['Segments'] as List)
+          .map((e) => BusRouteSegment.fromJson(e))
+          .toList(),
+    );
+  }
+}

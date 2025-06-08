@@ -6,6 +6,7 @@ import 'package:auth_app/data/source/auth_local_service.dart';
 import 'package:auth_app/data/source/pointer_api_service.dart';
 import 'package:auth_app/domain/repository/auth.dart';
 import 'package:auth_app/domain/repository/pointers.dart';
+import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
 import 'package:auth_app/domain/usecases/get_user.dart';
 import 'package:auth_app/domain/usecases/is_logged_in.dart';
@@ -14,7 +15,7 @@ import 'package:auth_app/domain/usecases/signin.dart';
 import 'package:auth_app/domain/usecases/signup.dart';
 import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/data/repository/route_repository_impl.dart';
-import 'package:auth_app/domain/usecases/find_route.dart';
+import 'package:auth_app/domain/usecases/find_walking_route.dart';
 import 'package:auth_app/domain/repository/route_repository.dart';
 import 'package:get_it/get_it.dart';
 
@@ -68,10 +69,12 @@ void setupServiceLocator() {
 
   sl.registerSingleton<SigninUseCase>(SigninUseCase());
 
-  sl.registerSingleton<FindRouteUseCase>(FindRouteUseCase());
+  sl.registerSingleton<FindWalkingRouteUseCase>(FindWalkingRouteUseCase());
   sl.registerSingleton<GetMensaMenuUseCase>(
     GetMensaMenuUseCase(),
   );
 
   sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
+
+  sl.registerSingleton<FindBusRouteUseCase>(FindBusRouteUseCase());
 }

@@ -1,3 +1,5 @@
+import 'package:auth_app/data/models/route_data.dart';
+import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -15,17 +17,15 @@ enum TravelMode { walk, bus, scooter }
 /// The sheet is **stateless** for the parent – we only report mode changes via
 /// [onModeChanged].  Everything else is handled locally.
 class RouteOptionsSheet extends StatefulWidget {
-  final List<LatLng> route;
-  final double distance; // ⟂ meters
-  final int duration; // ⟂ milliseconds
+  final ValueNotifier<Map<TravelMode, RouteData>> routesNotifier;
+  final TravelMode currentMode;
   final VoidCallback onClose;
   final ValueChanged<TravelMode> onModeChanged;
 
   const RouteOptionsSheet({
     super.key,
-    required this.route,
-    required this.distance,
-    required this.duration,
+    required this.routesNotifier,
+    required this.currentMode,
     required this.onClose,
     required this.onModeChanged,
   });
@@ -35,35 +35,80 @@ class RouteOptionsSheet extends StatefulWidget {
 }
 
 class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
-  TravelMode _mode = TravelMode.walk;
+  late TravelMode _mode;
+  bool _loading = false;
+  
 
   /// Human-readable duration rounded to the nearest minute.
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.currentMode;
+    _loading = widget.routesNotifier.value[_mode] == null;
+    widget.routesNotifier.addListener(_onRoutesChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.routesNotifier.removeListener(_onRoutesChanged);
+    super.dispose();
+  }
+
+  void _onRoutesChanged() {
+    if (mounted) {
+      setState(() {
+        _loading = widget.routesNotifier.value[_mode] == null;
+      });
+    }
+  }
+
   String get _prettyDuration {
-    final mins = (widget.duration / 60000).round();
+    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60000).round();
     return '$mins min';
   }
 
-  /// Human-readable distance with 1-decimal km if ≥1 km, otherwise integer m.
   String get _prettyDistance {
-    return widget.distance >= 1000
-        ? '${(widget.distance / 1000).toStringAsFixed(1)} km'
-        : '${widget.distance.round()} m';
+    final distance = widget.routesNotifier.value[_mode]?.totalDistance ?? 0;
+    return distance >= 1000
+        ? '${(distance / 1000).toStringAsFixed(1)} km'
+        : '${distance.round()} m';
   }
 
   /// Colour helpers to keep chips/glows on brand.
   Color get _activeColor => Theme.of(context).colorScheme.primary;
   Color get _onActive   => Theme.of(context).colorScheme.onPrimary;
 
+ @override
+  void didUpdateWidget(covariant RouteOptionsSheet oldWidget) {
+    print('RouteOptionsSheet didUpdateWidget');
+    super.didUpdateWidget(oldWidget);
+    // If new data for the currently selected mode arrives, stop loading
+    if (widget.routesNotifier.value[_mode] != oldWidget.routesNotifier.value[_mode]) {
+      setState(() {
+        _loading = false;
+      });
+    }
+    // If parent changes the currentMode (e.g. after sheet reopens), sync local mode
+    if (widget.currentMode != oldWidget.currentMode) {
+      setState(() {
+        _mode = widget.currentMode;
+        _loading = widget.routesNotifier.value[widget.currentMode] == null;
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
     return Material(
-      color: Colors.white,                    // ← force white
+      color: Colors.white,
       elevation: 8,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          child: Column(                  // ← moved inside Material
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -96,20 +141,24 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                 ],
               ),
               const SizedBox(height: 8),
-              
               const SizedBox(height: 20),
               _ModeSelector(
                 selected: _mode,
                 onChanged: (m) {
-                  setState(() => _mode = m);
+                  setState(() {
+                    _mode = m;
+                    _loading = widget.routesNotifier.value[m] == null;
+                  });
                   widget.onModeChanged(m);
                 },
               ),
               const SizedBox(height: 24),
               // ── Info card ───────────────────────────────────────────
-              Container(
-                padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              _loading ? const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              ) : Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(20),
@@ -140,9 +189,14 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                     ),
                   ],
                 ),
-              ),
+                      ),
               const SizedBox(height: 28),
-              // … any additional children …
+              // ── Segments info ──────────────────────────────────────
+              // if (segments.isNotEmpty)
+              //   ...segments.map((seg) => Padding(
+              //     padding: const EdgeInsets.only(bottom: 12),
+              //     child: _SegmentInfoCard(segment: seg),
+              //   )),
             ],
           ),
         ),
@@ -207,6 +261,56 @@ class _ModeSelector extends StatelessWidget {
         const SizedBox(width: 6),
         pill(TravelMode.scooter, Icons.electric_scooter, 'Scooter'),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget to display info about each segment
+// ─────────────────────────────────────────────────────────────────────────────
+class _SegmentInfoCard extends StatelessWidget {
+  final RouteSegment segment;
+
+  const _SegmentInfoCard({required this.segment});
+
+  @override
+  Widget build(BuildContext context) {
+    final isBus = segment.mode == TravelMode.bus;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isBus
+            ? Colors.blue.shade50
+            : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isBus ? 'Bus segment' : 'Walk segment',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isBus ? Colors.blue : Colors.green,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Distance: ${segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m'}',
+          ),
+          Text(
+            'Duration: ${(segment.durationMilliseconds / 60000).round()} min',
+          ),
+          if (isBus && segment.transportType != null)
+            Text('Type: ${segment.transportType}'),
+          if (isBus && segment.transportLine != null)
+            Text('Line: ${segment.transportLine}'),
+          if (isBus && segment.fromStop != null)
+            Text('From: ${segment.fromStop}'),
+          if (isBus && segment.toStop != null)
+            Text('To: ${segment.toStop}'),
+        ],
+      ),
     );
   }
 }

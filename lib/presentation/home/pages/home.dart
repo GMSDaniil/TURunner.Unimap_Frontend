@@ -1,5 +1,6 @@
 import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
 import 'package:auth_app/common/bloc/button/button_state.dart';
+import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_cubit.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_state.dart';
 import 'package:auth_app/presentation/home/pages/favourites.dart';
@@ -67,17 +68,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   void showRouteOptionsSheet({
-  required List<LatLng> route,
-  required double distance,
-  required int duration,
+  required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
+  required TravelMode currentMode,
   required ValueChanged<TravelMode> onModeChanged,
   required VoidCallback onClose,
 }) {
   _scaffoldKey.currentState?.showBottomSheet(
     (ctx) => RouteOptionsSheet(
-      route: route,
-      distance: distance,
-      duration: duration,
+      routesNotifier: routesNotifier,
+      currentMode: currentMode,
       onClose: onClose,
       onModeChanged: onModeChanged,
     ),

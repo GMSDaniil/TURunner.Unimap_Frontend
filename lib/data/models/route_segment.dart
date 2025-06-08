@@ -6,11 +6,19 @@ class RouteSegment {
   final List<LatLng> path;
   final double distanceMeters;
   final int durationMilliseconds;
+  final String? transportType;
+  final String? transportLine;
+  final String? fromStop;
+  final String? toStop;
 
   RouteSegment({
     required this.mode,
     required this.path,
     required this.distanceMeters,
     required this.durationMilliseconds,
+    this.transportType,
+    this.transportLine,
+    this.fromStop,
+    this.toStop,
   });
 }

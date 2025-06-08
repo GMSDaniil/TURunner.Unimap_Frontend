@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
+import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:auth_app/domain/usecases/find_route.dart';
+import 'package:auth_app/domain/usecases/find_walking_route.dart';
 import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/data/models/pointer.dart';
@@ -28,6 +29,7 @@ import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
 
 //import 'package:flutter_map/plugin_api.dart';
+const double matheLat = 52.5135, matheLon = 13.3245;
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
@@ -43,7 +45,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
   AnimationController? _mapAnimController; // <-- new field
   final TextEditingController _searchController = TextEditingController();
-  final Map<TravelMode, RouteData> _routes = {};
+  final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier = ValueNotifier({});
   TravelMode _currentMode = TravelMode.walk;
    // <-- new field
 
@@ -158,14 +160,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> onCreateRoute(LatLng latlng) async {
-    const double matheLat = 52.5135, matheLon = 13.3245;
+    
     final params = FindRouteReqParams(
       fromLat: _currentLocation?.latitude ?? matheLat, // Default to Hauptgebäude
       fromLon: _currentLocation?.longitude ?? matheLon,
       toLat: latlng.latitude,
       toLon: latlng.longitude,
     );
-    final result = await sl<FindRouteUseCase>().call(param: params);
+    final result = await sl<FindWalkingRouteUseCase>().call(param: params);
     result.fold(
       (error) {
         ScaffoldMessenger.of(
@@ -174,7 +176,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       },
       (route) {
         setState(() {
-          _routes[TravelMode.walk] = RouteData(
+          _routesNotifier.value[TravelMode.walk] = RouteData(
             segments: [
               RouteSegment(
                 mode: TravelMode.walk,
@@ -191,7 +193,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           Navigator.of(context).pop();
         }
         // fit map to show entire route
-        final walkRoute = _routes[TravelMode.walk];
+        final walkRoute = _routesNotifier.value[TravelMode.walk];
         final walkPath = walkRoute?.segments.first.path ?? [];
         if (walkPath.isNotEmpty) {
           final bounds = LatLngBounds.fromPoints(walkPath);
@@ -199,17 +201,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         }
         // show persistent, interactive route‐options sheet
         showRouteOptionsSheet(
-          route: walkPath,
-          distance: walkRoute?.totalDistance ?? 0.0,
-          duration: walkRoute?.totalDuration ?? 0,
-          onModeChanged: (mode) {
-            // Handle travel mode change if needed
-            print('Travel mode changed to: $mode');
+          routesNotifier: _routesNotifier,
+          currentMode: _currentMode,
+          onModeChanged: (mode) async{
+            print('Mode changed to: $mode');
+            await _onModeChanged(mode, latlng);
+             
           },
           onClose: () {
             // Close the bottom sheet
             setState(() {
-              _routes.clear();
+              _routesNotifier.value.clear();
             });
             if (mounted && Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
@@ -219,6 +221,59 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       },
     );
   }
+
+Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
+  if (_routesNotifier.value.containsKey(mode)) {
+    setState(() {
+      _currentMode = mode;
+    });
+    return;
+  }
+
+  if (mode == TravelMode.bus) {
+    final params = FindRouteReqParams(
+      fromLat: _currentLocation?.latitude ?? matheLat,
+      fromLon: _currentLocation?.longitude ?? matheLon,
+      toLat: destination.latitude,
+      toLon: destination.longitude,
+    );
+    final result = await sl<FindBusRouteUseCase>().call(param: params);
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      },
+      (route) {
+        // Build segments from the bus response (using Segments array)
+        final segments = <RouteSegment>[];
+        for (final seg in route.segments) {
+          segments.add(
+            RouteSegment(
+              mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
+              path: seg.polyline,
+              distanceMeters: seg.distanceMeters,
+              durationMilliseconds: seg.durationSeconds * 1000,
+              transportType: seg.transportType,
+              transportLine: seg.transportLine,
+              fromStop: seg.fromStop,
+              toStop: seg.toStop,
+              
+            ),
+          );
+        }
+
+        setState(() {
+          final newMap = Map<TravelMode, RouteData>.from(_routesNotifier.value);
+          newMap[TravelMode.bus] = RouteData(segments: segments);
+          _routesNotifier.value = newMap;
+          _currentMode = TravelMode.bus;
+        });
+      },
+    );
+  }
+}
 
   // /// Filters markers by category and updates the map - using our new utility class
   void _filterMarkersByCategory(String? category, Color? markerColor) {
@@ -306,9 +361,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // main map widget with markers and polylines
   Widget _buildFlutterMap() {
-    final walkRoute = _routes[_currentMode];
-    final walkPath = walkRoute?.segments.first.path ?? [];
-    final smoothedPath = walkPath.length > 2 ? smoothPolyline(walkPath) : walkPath;
+    final route = _routesNotifier.value[_currentMode];
+    final segments = route?.segments ?? [];
+    final allPoints = <LatLng>[
+      for (final seg in segments) ...seg.path,
+    ];
+    final busStopMarkers = <Marker>[];
+    for (final seg in segments) {
+      if (seg.mode == TravelMode.bus) {
+        // Example: if you have fromStopLat/fromStopLng and toStopLat/toStopLng
+        for(LatLng point in seg.path) {
+          busStopMarkers.add(
+            Marker(
+              point: point,
+              width: 30,
+              height: 30,
+              child: Icon(
+                Icons.directions_bus,
+                color: Colors.blue.shade700,
+                size: 24,
+              ),
+            ),
+          );
+        }
+      }
+    }
 
     return FlutterMap(
       mapController: _mapController,
@@ -333,28 +410,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           userAgentPackageName: 'com.example.app',
           tileProvider: _cachedTileProvider,
         ),
-        if (smoothedPath.isNotEmpty)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: smoothedPath,
-                strokeWidth: 5,
-                color: Theme.of(context).primaryColor,
-                borderStrokeWidth: 2,
-                borderColor: Colors.white,
-                // 6-pixel dash, 4-pixel gap, and if the last dash doesn’t quite reach the
-                // end-point it will be extended so the line looks “finished”.
-                pattern: const StrokePattern.dotted(
-                  spacingFactor: 2.0, // 1 = default spacing; lower = tighter dots
-                  patternFit: PatternFit.appendDot,
-                ),
-              ),
-            ],
-          ),
+        PolylineLayer(
+        polylines: [
+          for (final seg in segments)
+            Polyline(
+              points: seg.path.length > 2 ? smoothPolyline(seg.path) : seg.path,
+              strokeWidth: 5,
+              color: seg.mode == TravelMode.bus
+                  ? Colors.blue // Bus segments in blue
+                  : Theme.of(context).primaryColor, // Walk segments in primary color
+              borderStrokeWidth: 2,
+              borderColor: Colors.white,
+              pattern: seg.mode == TravelMode.bus
+                  ? const StrokePattern.solid() // Solid for bus
+                  : const StrokePattern.dotted(
+                      spacingFactor: 2.0,
+                      patternFit: PatternFit.appendDot,
+                    ),
+            ),
+        ],
+      ),
 
         MarkerLayer(
           markers: [
             ..._markers,
+            // ...busStopMarkers,
             if (_currentLocation != null)
               Marker(
                 point: _currentLocation!,
@@ -385,17 +465,28 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-              if (smoothedPath.isNotEmpty)
-                Marker(
-                  point: smoothedPath.last,
-                  width: 44,
-                  height: 44,
-                  child: Icon(
-                    Icons.location_pin,
-                    color: Colors.red.shade700,
-                    size: 44,
-                  ),
-                ),
+              if (allPoints.isNotEmpty)
+      Marker(
+        point: allPoints.first,
+        width: 44,
+        height: 44,
+        child: Icon(
+          Icons.flag,
+          color: Colors.green.shade700,
+          size: 36,
+        ),
+      ),
+    if (allPoints.length > 1)
+      Marker(
+        point: allPoints.last,
+        width: 44,
+        height: 44,
+        child: Icon(
+          Icons.location_pin,
+          color: Colors.red.shade700,
+          size: 44,
+        ),
+      ),
           ],
         ),
       ],
@@ -418,6 +509,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _onMapTap(LatLng latlng) async {
+    if (_routeSheetController != null) {
+      
+      return;
+    }
     // Remove this to prevent closing your signed-in page:
     // if (Navigator.of(context).canPop()) {
     //   Navigator.of(context).pop();
@@ -573,9 +668,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   /// Shows a persistent (non-modal) bottom sheet so the map remains interactive.
 void showRouteOptionsSheet({
-  required List<LatLng> route,
-  required double distance,
-  required int duration,
+  required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
+  required TravelMode currentMode,
   required ValueChanged<TravelMode> onModeChanged,
   required VoidCallback onClose,
 }) {
@@ -584,9 +678,8 @@ void showRouteOptionsSheet({
 
   _routeSheetController = widget.scaffoldKeyForBottomSheet.currentState?.showBottomSheet(
     (ctx) => RouteOptionsSheet(
-      route: route,
-      distance: distance,
-      duration: duration,
+      routesNotifier: routesNotifier,
+      currentMode: currentMode,
       onClose: onClose,
       onModeChanged: onModeChanged,
     ),
