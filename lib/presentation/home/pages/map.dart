@@ -410,25 +410,89 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
     final allPoints = <LatLng>[
       for (final seg in segments) ...seg.path,
     ];
-    
+
+    // Helper to find the closest point on the polyline to a stop
+    LatLng _closestPointOnPolyline(LatLng stop, List<LatLng> polyline) {
+      double minDist = double.infinity;
+      LatLng closest = polyline.first;
+      for (final p in polyline) {
+        final d = Distance().as(LengthUnit.Meter, stop, p);
+        if (d < minDist) {
+          minDist = d;
+          closest = p;
+        }
+      }
+      return closest;
+    }
+
     final busStopMarkers = <Marker>[];
     for (final seg in segments) {
-      if (seg.mode == TravelMode.bus) {
-        // Example: if you have fromStopLat/fromStopLng and toStopLat/toStopLng
-        for(LatLng point in seg.path) {
+      if (seg.mode == TravelMode.bus && seg.precisePolyline != null) {
+        for (final stop in seg.path) {
+          // Find the closest point on the precise polyline to the stop
+          final markerPoint = _closestPointOnPolyline(stop, seg.precisePolyline!);
           busStopMarkers.add(
             Marker(
-              point: point,
-              width: 30,
-              height: 30,
-              child: Icon(
-                Icons.directions_bus,
-                color: Colors.blue.shade700,
-                size: 24,
+              point: markerPoint,
+              width: 18,
+              height: 18,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.blue.shade700,
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
         }
+      }
+    }
+
+    final scooterMarkers = <Marker>[];
+    for (final seg in segments) {
+      if (seg.mode == TravelMode.scooter && seg.path.isNotEmpty) {
+        scooterMarkers.add(
+          Marker(
+            point: seg.path.first,
+            width: 38,
+            height: 38,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.orange.shade700,
+                  width: 4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.directions_bike,
+                  color: Colors.orange.shade700,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        );
       }
     }
 
@@ -456,30 +520,37 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
           tileProvider: _cachedTileProvider,
         ),
         PolylineLayer(
-        polylines: [
-          for (final seg in segments)
-            Polyline(
-              points: seg.mode == TravelMode.bus && seg.precisePolyline != null ? smoothPolyline(seg.precisePolyline!) : seg.path.length > 2 ? smoothPolyline(seg.path) : seg.path,
-              strokeWidth: 5,
-              color: seg.mode == TravelMode.bus
-                  ? Colors.blue // Bus segments in blue
-                  : Theme.of(context).primaryColor, // Walk segments in primary color
-              borderStrokeWidth: 2,
-              borderColor: Colors.white,
-              pattern: seg.mode == TravelMode.bus
-                  ? const StrokePattern.solid() // Solid for bus
-                  : const StrokePattern.dotted(
-                      spacingFactor: 2.0,
-                      patternFit: PatternFit.appendDot,
-                    ),
-            ),
-        ],
-      ),
+          polylines: [
+            for (final seg in segments)
+              Polyline(
+                points: seg.mode == TravelMode.bus && seg.precisePolyline != null
+                    ? smoothPolyline(seg.precisePolyline!)
+                    : seg.path.length > 2
+                        ? smoothPolyline(seg.path)
+                        : seg.path,
+                strokeWidth: 5,
+                color: seg.mode == TravelMode.bus
+                    ? Colors.blue
+                    : seg.mode == TravelMode.scooter
+                        ? Colors.orange // Use orange for scooter
+                        : Theme.of(context).primaryColor,
+                borderStrokeWidth: 2,
+                borderColor: Colors.white,
+                pattern: seg.mode == TravelMode.bus || seg.mode == TravelMode.scooter
+                    ? const StrokePattern.solid()
+                    : const StrokePattern.dotted(
+                        spacingFactor: 2.0,
+                        patternFit: PatternFit.appendDot,
+                      ),
+              ),
+          ],
+        ),
 
         MarkerLayer(
           markers: [
             ..._markers,
-            // ...busStopMarkers,
+            ...busStopMarkers,
+            ...scooterMarkers,
             if (_currentLocation != null)
               Marker(
                 point: _currentLocation!,
@@ -510,17 +581,6 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
                   ],
                 ),
               ),
-              if (allPoints.isNotEmpty)
-      Marker(
-        point: allPoints.first,
-        width: 44,
-        height: 44,
-        child: Icon(
-          Icons.flag,
-          color: Colors.green.shade700,
-          size: 36,
-        ),
-      ),
     if (allPoints.length > 1)
       Marker(
         point: allPoints.last,
