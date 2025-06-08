@@ -29,7 +29,7 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
               children: [
                 _buildChip(
                   icon: Icons.local_cafe,
-                  label: 'Cafe',
+                  label: 'Café',
                   color: Colors.orange,
                 ),
                 _buildChip(
@@ -39,7 +39,7 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                 ),
                 _buildChip(
                   icon: Icons.restaurant,
-                  label: 'Mensa',
+                  label: 'Canteen',
                   color: Colors.green,
                 ),
               ],
