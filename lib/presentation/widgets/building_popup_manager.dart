@@ -3,16 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
 
-import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/data/favourites_manager.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
-import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
-import 'package:auth_app/data/models/get_menu_req_params.dart';
-import 'package:auth_app/service_locator.dart';
-import 'package:auth_app/data/models/meal_model.dart';
 
 /// Manages all info / coordinate bottom‐sheets that pop up from the map.
 /// Every sheet is opened with **`showBottomSheet` on the root scaffold**
@@ -66,9 +60,7 @@ class BuildingPopupManager {
       (ctx) => BuildingSlideWindow(
         title: title,
         category: category,
-        onShowMenu: category == 'Mensa'
-            ? () => _showMensaMenu(ctx, mensaName: title)
-            : null,
+        onShowMenu: category == 'Canteen' ? () => _showMensaMenu(ctx) : null,
         onCreateRoute: onCreateRoute ?? () {},
         onAddToFavourites: () {
           FavouritesManager().add(pointer);
@@ -131,274 +123,45 @@ class BuildingPopupManager {
   // ────────────────────────────────────────────────────────────────
   // Support methods used only inside this manager
   // ----------------------------------------------------------------
-  static String mensaNameToApi(String name) {
-    switch (name.toLowerCase()) {
-      case 'mensa hardenbergstraße':
-      case 'hardenbergstraße':
-        return 'hardenbergstrasse';
-      case 'mensa marchstraße':
-      case 'marchstraße':
-        return 'marchstrasse';
-      case 'mensa veggie 2.0':
-      case 'veggie':
-        return 'veggie';
-      default:
-        return 'hardenbergstrasse';
-    }
-  }
-
-  static Future<void> _showMensaMenu(
-    BuildContext context, {
-    String? mensaName,
-  }) async {
-    final apiMensaName = mensaNameToApi(mensaName ?? '');
-    //print('Mensa-API-Name: $apiMensaName'); // Debugging
-    final url = '${ApiUrls.baseURL}mensa/$apiMensaName/menu';
-    //print('Mensa-URL: $url'); // Debugging
-
-    try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        final List days = decoded['menu']?['days'] ?? decoded['days'] ?? [];
-
-        if (days.isEmpty) {
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: Text("$mensaName Menu"),
-              content: const Text("No menu available."),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
-            ),
-          );
-          return;
-        }
-
-        int selectedDayIndex = 0;
-
-        showDialog(
-          context: context,
-          builder: (_) => StatefulBuilder(
-            builder: (context, setState) {
-              final day = days[selectedDayIndex];
-              final dayName = day['day_name'] ?? '';
-              final groups = day['groups'] as Map<String, dynamic>? ?? {};
-              final isAvailable = day['is_available'] == true;
-
-              return AlertDialog(
-                title: Text("$mensaName - $dayName"),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  height: 500,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        DropdownButton<int>(
-                          value: selectedDayIndex,
-                          dropdownColor:
-                              Colors.white, // <-- this makes the dropdown white
-                          items: List.generate(
-                            days.length,
-                            (i) => DropdownMenuItem(
-                              value: i,
-                              child: Text(
-                                days[i]['day_name'] ?? 'Day ${i + 1}',
-                                style: const TextStyle(color: Colors.black),
-                              ),
-                            ),
-                          ),
-                          onChanged: (i) =>
-                              setState(() => selectedDayIndex = i!),
-                        ),
-                        if (!isAvailable) const Text("No menu for this day."),
-                        if (isAvailable)
-                          ...groups.entries.expand((entry) {
-                            final groupName = entry.key;
-                            final dishes = entry.value as List<dynamic>;
-                            return [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 8.0,
-                                  bottom: 4.0,
-                                ),
-                                child: Text(
-                                  groupName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              ...dishes.map<Widget>(
-                                (dish) => ListTile(
-                                  title: Text(dish['name']),
-                                  subtitle:
-                                      (dish['price'] != null &&
-                                          dish['price']
-                                              .toString()
-                                              .trim()
-                                              .isNotEmpty)
-                                      ? Text('Price : ${dish['price']}')
-                                      : null,
-                                  trailing: dish['vegan'] == true
-                                      ? const Icon(
-                                          Icons.eco,
-                                          color: Colors.green,
-                                        )
-                                      : dish['vegetarian'] == true
-                                      ? const Icon(
-                                          Icons.spa,
-                                          color: Colors.orange,
-                                        )
-                                      : null,
-                                ),
-                              ),
-                            ];
-                          }),
-                      ],
+  static Future<void> _showMensaMenu(BuildContext context) async {
+    final jsonStr = await rootBundle.loadString(
+      'assets/sample_mensa_menu.json',
+    );
+    final List data = jsonDecode(jsonStr);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Today's Meal Menu"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: data
+                .map<Widget>(
+                  (meal) => ListTile(
+                    title: Text(meal['name']),
+                    subtitle: Text(
+                      'Student: ${meal['priceStudent']} € | '
+                      'Employee: ${meal['priceEmployee']} € | '
+                      'Guest: ${meal['priceGast']} €',
                     ),
+                    trailing: meal['vegan'] == true
+                        ? const Icon(Icons.eco, color: Colors.green)
+                        : meal['vegetarian'] == true
+                        ? const Icon(Icons.spa, color: Colors.orange)
+                        : null,
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              );
-            },
+                )
+                .toList(),
           ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text("Error"),
-            content: Text("Failed to load menu: ${response.statusCode}"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("Error"),
-          content: Text("Failed to load menu: $e"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
         ),
-      );
-    }
-  }
-}
-
-/// A simple dialog to display the Mensa menu.
-class MensaMenuDialog extends StatefulWidget {
-  final String mensaName;
-  const MensaMenuDialog({Key? key, required this.mensaName}) : super(key: key);
-
-  @override
-  State<MensaMenuDialog> createState() => _MensaMenuDialogState();
-}
-
-class _MensaMenuDialogState extends State<MensaMenuDialog> {
-  late Future<List<MealModel>> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    final useCase = sl<GetMensaMenuUseCase>();
-    _future = useCase.call(GetMenuReqParams(mensaName: widget.mensaName));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<MealModel>>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const AlertDialog(
-            title: Text("Loading Mensa Menu..."),
-            content: SizedBox(
-              height: 100,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          );
-        }
-        if (snapshot.hasError) {
-          return AlertDialog(
-            title: const Text("Error! Loading mensa menu "),
-            content: Text('Fehler beim Laden des Menüs:\n${snapshot.error}'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        }
-        final meals = snapshot.data;
-        if (meals == null || meals.isEmpty) {
-          return AlertDialog(
-            title: const Text("Mensa Menu"),
-            content: const Text('no menu available.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        }
-        return AlertDialog(
-          title: Text(widget.mensaName),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: meals.length,
-              itemBuilder: (context, i) {
-                final meal = meals[i];
-                return ListTile(
-                  title: Text(meal.name),
-                  subtitle: Text(
-                    meal.prices.isNotEmpty
-                        ? 'Price : ${meal.prices.join(", ")}'
-                        : 'no price available',
-                  ),
-                  trailing: meal.vegan
-                      ? const Icon(Icons.eco, color: Colors.green)
-                      : meal.vegetarian
-                      ? const Icon(Icons.spa, color: Colors.orange)
-                      : null,
-                );
-              },
-            ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -442,12 +205,9 @@ class _SimpleBuildingSheet extends StatelessWidget {
               const SizedBox(height: 20),
 
               // Mensa menu button if applicable
-              if (pointer.category == 'Mensa')
+              if (pointer.category == 'Canteen')
                 ElevatedButton(
-                  onPressed: () => BuildingPopupManager._showMensaMenu(
-                    context,
-                    mensaName: pointer.name,
-                  ),
+                  onPressed: () => BuildingPopupManager._showMensaMenu(context),
                   child: const Text("Today's Meal Menu"),
                 ),
 
@@ -579,13 +339,4 @@ class _CoordinateSheet extends StatelessWidget {
       ),
     );
   }
-}
-
-String mapUiNameToApiName(String uiName) {
-  final name = uiName.toLowerCase();
-  if (name.contains('march')) return 'marchstrasse';
-  if (name.contains('hardenberg')) return 'hardenbergstrasse';
-  if (name.contains('veggie')) return 'veggie';
-  // ggf. weitere Zuordnungen
-  return 'hardenbergstrasse'; // fallback
 }

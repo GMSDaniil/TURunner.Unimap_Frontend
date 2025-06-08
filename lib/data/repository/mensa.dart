@@ -1,30 +1,37 @@
-import 'package:auth_app/data/models/get_menu_req_params.dart';
-import 'package:auth_app/data/models/meal_model.dart';
+import 'dart:convert';
 import 'package:dio/dio.dart';
-
+import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/data/models/mensa_menu_response.dart';
 import '../../domain/repository/mensa.dart';
 import '../source/mensa_api_service.dart';
 import '../../service_locator.dart';
+import 'package:dartz/dartz.dart';
 
 class MensaRepositoryImpl implements MensaRepository {
-
   @override
-  Future<List<MealModel>> getMensaMenu(
-    GetMenuReqParams  params,
+  Future<Either<String, MensaMenuResponse>> getMensaMenu(
+    GetMenuReqParams params,
   ) async {
-    final data = await sl<MensaApiService>().fetchMensaMeals(params);
+    final result = await sl<MensaApiService>().fetchMensaMeals(params);
 
-    try{
-    final response = data as Response;
-    final meals = (response.data['meals'] as List)
-        .map((json) => MealModel.fromJson(json))
-        .toList();
-  
-    return meals;
-    
-    } catch (e) {
-      return [];
-    }
+    return result.fold(
+      (errorMessage) {
+        print('MensaApiService error: $errorMessage');
+        return Left(errorMessage);
+      },
+      (response) {
+        print('MensaApiService response: ${response.data}');
+        try {
+          final data = response.data is String
+              ? jsonDecode(response.data)
+              : response.data;
+          final menu = MensaMenuResponse.fromJson(data);
+          return Right(menu);
+        } catch (e) {
+          print('Error parsing mensa menu data: $e');
+          return Left('Failed to parse mensa menu data');
+        }
+      },
+    );
   }
-  
 }

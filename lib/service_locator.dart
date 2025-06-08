@@ -27,7 +27,6 @@ import 'package:auth_app/data/source/building_data_source.dart';
 import 'package:auth_app/data/repository/building_repository_impl.dart';
 import 'package:auth_app/domain/usecases/find_building_at_point.dart';
 
-
 final sl = GetIt.instance;
 
 void setupServiceLocator() {
@@ -47,15 +46,17 @@ void setupServiceLocator() {
 
   sl.registerSingleton<RouteRepository>(RouteRepositoryImpl());
 
-  sl.registerSingleton<MensaRepository>(
-    MensaRepositoryImpl(),
-  );
+  sl.registerSingleton<MensaRepository>(MensaRepositoryImpl());
 
   sl.registerSingleton<PointersRepository>(PointersRepositoryImpl());
 
   sl.registerLazySingleton<BuildingDataSource>(() => BuildingDataSource());
-  sl.registerLazySingleton<BuildingRepositoryImpl>(() => BuildingRepositoryImpl(sl()));
-  sl.registerLazySingleton<FindBuildingAtPoint>(() => FindBuildingAtPoint(sl<BuildingRepositoryImpl>()));
+  sl.registerLazySingleton<BuildingRepositoryImpl>(
+    () => BuildingRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<FindBuildingAtPoint>(
+    () => FindBuildingAtPoint(sl<BuildingRepositoryImpl>()),
+  );
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -69,9 +70,7 @@ void setupServiceLocator() {
   sl.registerSingleton<SigninUseCase>(SigninUseCase());
 
   sl.registerSingleton<FindRouteUseCase>(FindRouteUseCase());
-  sl.registerSingleton<GetMensaMenuUseCase>(
-    GetMensaMenuUseCase(),
-  );
+  sl.registerSingleton<GetMensaMenuUseCase>(GetMensaMenuUseCase());
 
   sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
 }
