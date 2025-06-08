@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/data/models/route_data.dart';
+import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/data/models/findroute_req_params.dart';
@@ -42,10 +43,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
   AnimationController? _mapAnimController; // <-- new field
   final TextEditingController _searchController = TextEditingController();
+  final Map<TravelMode, RouteData> _routes = {};
+  TravelMode _currentMode = TravelMode.walk;
+   // <-- new field
+
   List<Marker> _markers = [];
-  List<LatLng> _path = [];
-  double? _routeDistance;
-  int? _routeDuration;
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation; // Add this line
@@ -155,32 +157,67 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  /// Pops up a bottom sheet showing the building info and allows adding to favourites.
-  // 1) Update your helper:
-  void _showPointPopup(BuildContext context, Pointer pointer) {
-    BuildingPopupManager.showBuildingPopup(
-      context: context,
-      scaffoldKey: widget.scaffoldKeyForBottomSheet, // ← NEW
-      pointer: pointer,
-    );
-  }
-
-  // FindRoute use case to fetch a route between Hauptgebäude and Mathegebäude.
-  Future<void> _findRoute() async {
-    // Coordinates for Hauptgebäude and Mathegebäude
-    const double hauptLat = 52.5125;
-    const double hauptLon = 13.3269;
-    const double matheLat = 52.5135;
-    const double matheLon = 13.3245;
-
+  Future<void> onCreateRoute(LatLng latlng) async {
+    const double matheLat = 52.5135, matheLon = 13.3245;
     final params = FindRouteReqParams(
-      fromLat: hauptLat,
-      fromLon: hauptLon,
-      toLat: matheLat,
-      toLon: matheLon,
+      fromLat: _currentLocation?.latitude ?? matheLat, // Default to Hauptgebäude
+      fromLon: _currentLocation?.longitude ?? matheLon,
+      toLat: latlng.latitude,
+      toLon: latlng.longitude,
     );
-    final findRouteUseCase = sl<FindRouteUseCase>();
-    final result = await findRouteUseCase.call(param: params);
+    final result = await sl<FindRouteUseCase>().call(param: params);
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $error')));
+      },
+      (route) {
+        setState(() {
+          _routes[TravelMode.walk] = RouteData(
+            segments: [
+              RouteSegment(
+                mode: TravelMode.walk,
+                path: route.foot,
+                distanceMeters: route.distanceMeters,
+                durationMilliseconds: route.durationMilliseconds,
+          ),
+          ],
+          );
+          _currentMode = TravelMode.walk;
+        });
+        // pop the building sheet
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        // fit map to show entire route
+        final walkRoute = _routes[TravelMode.walk];
+        final walkPath = walkRoute?.segments.first.path ?? [];
+        if (walkPath.isNotEmpty) {
+          final bounds = LatLngBounds.fromPoints(walkPath);
+          _animatedMapMove(bounds.center, 16.5);
+        }
+        // show persistent, interactive route‐options sheet
+        showRouteOptionsSheet(
+          route: walkPath,
+          distance: walkRoute?.totalDistance ?? 0.0,
+          duration: walkRoute?.totalDuration ?? 0,
+          onModeChanged: (mode) {
+            // Handle travel mode change if needed
+            print('Travel mode changed to: $mode');
+          },
+          onClose: () {
+            // Close the bottom sheet
+            setState(() {
+              _routes.clear();
+            });
+            if (mounted && Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        );
+      },
+    );
   }
 
   // /// Filters markers by category and updates the map - using our new utility class
@@ -244,8 +281,35 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 2}) {
+    List<LatLng> result = List.from(points);
+    for (int it = 0; it < iterations; it++) {
+      List<LatLng> newPoints = [];
+      for (int i = 0; i < result.length - 1; i++) {
+        final p0 = result[i];
+        final p1 = result[i + 1];
+        final q = LatLng(
+          0.75 * p0.latitude + 0.25 * p1.latitude,
+          0.75 * p0.longitude + 0.25 * p1.longitude,
+        );
+        final r = LatLng(
+          0.25 * p0.latitude + 0.75 * p1.latitude,
+          0.25 * p0.longitude + 0.75 * p1.longitude,
+        );
+        newPoints..add(p0)..add(q)..add(r);
+      }
+      newPoints.add(result.last);
+      result = newPoints;
+    }
+    return result;
+  }
+
   // main map widget with markers and polylines
   Widget _buildFlutterMap() {
+    final walkRoute = _routes[_currentMode];
+    final walkPath = walkRoute?.segments.first.path ?? [];
+    final smoothedPath = walkPath.length > 2 ? smoothPolyline(walkPath) : walkPath;
+
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
@@ -269,19 +333,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           userAgentPackageName: 'com.example.app',
           tileProvider: _cachedTileProvider,
         ),
-        if (_path.isNotEmpty)
+        if (smoothedPath.isNotEmpty)
           PolylineLayer(
             polylines: [
               Polyline(
-                points: _path,
-                strokeWidth: 4,
+                points: smoothedPath,
+                strokeWidth: 5,
                 color: Theme.of(context).primaryColor,
-
+                borderStrokeWidth: 2,
+                borderColor: Colors.white,
                 // 6-pixel dash, 4-pixel gap, and if the last dash doesn’t quite reach the
                 // end-point it will be extended so the line looks “finished”.
                 pattern: const StrokePattern.dotted(
-                  spacingFactor:
-                      1.0, // 1 = default spacing; lower = tighter dots
+                  spacingFactor: 2.0, // 1 = default spacing; lower = tighter dots
                   patternFit: PatternFit.appendDot,
                 ),
               ),
@@ -321,33 +385,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ],
                 ),
               ),
+              if (smoothedPath.isNotEmpty)
+                Marker(
+                  point: smoothedPath.last,
+                  width: 44,
+                  height: 44,
+                  child: Icon(
+                    Icons.location_pin,
+                    color: Colors.red.shade700,
+                    size: 44,
+                  ),
+                ),
           ],
         ),
       ],
     );
   }
 
-  // 'Find Route' button
-  Widget _buildFindRouteButton() {
-    return Positioned(
-      bottom: 20,
-      left: 20,
-      child: ElevatedButton(
-        onPressed: _findRoute,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: const Text(
-          'Find Route',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      ),
-    );
-  }
 
   Widget _buildCurrentLocationButton() {
     return Positioned(
@@ -391,62 +445,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         location: latlng,
         onClose: () {},                // ← was Navigator.of(context).pop()
         onCreateRoute: () async {
-          const double matheLat = 52.5135, matheLon = 13.3245;
-          final params = FindRouteReqParams(
-            fromLat: matheLat,
-            fromLon: matheLon,
-            toLat: latlng.latitude,
-            toLon: latlng.longitude,
-          );
-          final result = await sl<FindRouteUseCase>().call(param: params);
-          result.fold(
-            (error) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Error: $error')));
-            },
-            (route) {
-              setState(() {
-                _path = route.foot;
-                _routeDistance = route.distanceMeters;
-                _routeDuration = route.durationMilliseconds; // milliseconds
-              });
-              // pop the building sheet
-              if (mounted && Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-              // fit map to show entire route
-              final bounds = LatLngBounds.fromPoints(_path);
-              _mapController.fitCamera(
-                CameraFit.bounds(
-                  bounds: bounds,
-                  padding: const EdgeInsets.all(20),
-                ),
-              );
-              // show persistent, interactive route‐options sheet
-              showRouteOptionsSheet(
-                route: _path,
-                distance: _routeDistance!,
-                duration: _routeDuration!,
-                onModeChanged: (mode) {
-                  // Handle travel mode change if needed
-                  print('Travel mode changed to: $mode');
-                },
-                onClose: () {
-                  // Close the bottom sheet
-                  setState(() {
-                    _path = [];
-                    _routeDistance = null;
-                    _routeDuration = null;
-                  });
-                  if (mounted && Navigator.of(context).canPop()) {
-
-                    Navigator.of(context).pop();
-                  }
-                },
-              );
-            },
-          );
+          await onCreateRoute(latlng);
         },
       );
     } else {
@@ -457,27 +456,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         buildingName: null,
         category: null,
         onCreateRoute: () async {
-          const double matheLat = 52.5135, matheLon = 13.3245;
-          final params = FindRouteReqParams(
-            fromLat: matheLat,
-            fromLon: matheLon,
-            toLat: latlng.latitude,
-            toLon: latlng.longitude,
-          );
-          final result = await sl<FindRouteUseCase>().call(param: params);
-          result.fold(
-            (error) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Error: $error')));
-            },
-            (route) {
-              setState(() => _path = route.foot);
-              if (mounted && Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-            },
-          );
+          await onCreateRoute(latlng);
         },
         //onClose: () => Navigator.of(context).pop(),
       );
@@ -502,6 +481,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       title: pointer.name,
       category: pointer.category,
       location: LatLng(pointer.lat, pointer.lng),
+      onCreateRoute: () async {
+        await onCreateRoute(LatLng(pointer.lat, pointer.lng));
+      },
       onClose: () {},
     );
   }
@@ -618,10 +600,4 @@ void showRouteOptionsSheet({
   });
 }
 
-  // @override
-  // void dispose() {
-  //   _debounceTimer?.cancel();
-  //   _searchController.dispose(); // Dispose controller
-  //   super.dispose();
-  // }
 }
