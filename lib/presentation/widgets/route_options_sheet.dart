@@ -63,7 +63,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   }
 
   String get _prettyDuration {
-    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60000).round();
+    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60).round();
     return '$mins min';
   }
 
@@ -299,7 +299,7 @@ class _SegmentInfoCard extends StatelessWidget {
             'Distance: ${segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m'}',
           ),
           Text(
-            'Duration: ${(segment.durationMilliseconds / 60000).round()} min',
+            'Duration: ${(segment.durrationSeconds/ 60).round()} min',
           ),
           if (isBus && segment.transportType != null)
             Text('Type: ${segment.transportType}'),

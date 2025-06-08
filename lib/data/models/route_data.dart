@@ -6,5 +6,5 @@ class RouteData {
   RouteData({required this.segments});
 
   double get totalDistance => segments.fold(0, (sum, s) => sum + s.distanceMeters);
-  int get totalDuration => segments.fold(0, (sum, s) => sum + s.durationMilliseconds);
+  int get totalDuration => segments.fold(0, (sum, s) => sum + s.durrationSeconds);
 }

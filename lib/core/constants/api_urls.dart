@@ -1,5 +1,3 @@
-import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
-
 class ApiUrls {
   static const baseURL = 'https://dev.cherep.co/tubify/api/';
   static const register = '${baseURL}Users/register';
@@ -11,6 +9,7 @@ class ApiUrls {
   //TODO
   static const findRoute = '${baseURL}Route/walking';
   static const findBusRoute = '${baseURL}Route/hybrid';
+  static const findScooterRoute = '${baseURL}Route/scooter-route';
   static const getMensaMenu = '${baseURL}mensa/all-menus';
   static const getPointers = '${baseURL}Pointers/getPointers';
 }

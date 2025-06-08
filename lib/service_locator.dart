@@ -7,6 +7,7 @@ import 'package:auth_app/data/source/pointer_api_service.dart';
 import 'package:auth_app/domain/repository/auth.dart';
 import 'package:auth_app/domain/repository/pointers.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
+import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
 import 'package:auth_app/domain/usecases/get_user.dart';
 import 'package:auth_app/domain/usecases/is_logged_in.dart';
@@ -77,4 +78,6 @@ void setupServiceLocator() {
   sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
 
   sl.registerSingleton<FindBusRouteUseCase>(FindBusRouteUseCase());
+
+  sl.registerSingleton<FindScooterRouteUseCase>(FindScooterRouteUseCase());
 }

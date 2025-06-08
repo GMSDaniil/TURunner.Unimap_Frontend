@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
+import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,6 +49,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier = ValueNotifier({});
   TravelMode _currentMode = TravelMode.walk;
+
    // <-- new field
 
   List<Marker> _markers = [];
@@ -182,7 +185,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 mode: TravelMode.walk,
                 path: route.foot,
                 distanceMeters: route.distanceMeters,
-                durationMilliseconds: route.durationMilliseconds,
+                durrationSeconds: route.durationSeconds,
           ),
           ],
           );
@@ -254,7 +257,7 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
               mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
               path: seg.polyline,
               distanceMeters: seg.distanceMeters,
-              durationMilliseconds: seg.durationSeconds * 1000,
+              durrationSeconds: seg.durationSeconds,
               transportType: seg.transportType,
               transportLine: seg.transportLine,
               fromStop: seg.fromStop,
@@ -262,6 +265,7 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
               
             ),
           );
+          
         }
 
         setState(() {
@@ -269,6 +273,45 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
           newMap[TravelMode.bus] = RouteData(segments: segments);
           _routesNotifier.value = newMap;
           _currentMode = TravelMode.bus;
+        });
+      },
+    );
+  }
+
+  else if (mode == TravelMode.scooter) {
+    final params = FindRouteReqParams(
+      fromLat: _currentLocation?.latitude ?? matheLat,
+      fromLon: _currentLocation?.longitude ?? matheLon,
+      toLat: destination.latitude,
+      toLon: destination.longitude,
+    );
+    final result = await sl<FindScooterRouteUseCase>().call(param: params);
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      },
+      (response) {
+        // If your backend returns a list of segments:
+        // final segments = FindScooterRouteResponse.fromSegmentsList(response);
+        // If your backend returns a wrapped object:
+
+        final segments = response.segments.map((seg) => RouteSegment(
+          mode: seg.type.toLowerCase() == 'walking'
+              ? TravelMode.walk
+              : TravelMode.scooter,
+          path: seg.polyline,
+          distanceMeters: seg.distanceMeters,
+          durrationSeconds: seg.durationSeconds,
+        )).toList();
+
+        setState(() {
+          final newMap = Map<TravelMode, RouteData>.from(_routesNotifier.value);
+          newMap[TravelMode.scooter] = RouteData(segments: segments);
+          _routesNotifier.value = newMap;
+          _currentMode = TravelMode.scooter;
         });
       },
     );
