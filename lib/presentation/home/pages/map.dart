@@ -258,6 +258,7 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
               path: seg.polyline,
               distanceMeters: seg.distanceMeters,
               durrationSeconds: seg.durationSeconds,
+              precisePolyline: seg.precisePolyline,
               transportType: seg.transportType,
               transportLine: seg.transportLine,
               fromStop: seg.fromStop,
@@ -409,6 +410,7 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
     final allPoints = <LatLng>[
       for (final seg in segments) ...seg.path,
     ];
+    
     final busStopMarkers = <Marker>[];
     for (final seg in segments) {
       if (seg.mode == TravelMode.bus) {
@@ -457,7 +459,7 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
         polylines: [
           for (final seg in segments)
             Polyline(
-              points: seg.path.length > 2 ? smoothPolyline(seg.path) : seg.path,
+              points: seg.mode == TravelMode.bus && seg.precisePolyline != null ? smoothPolyline(seg.precisePolyline!) : seg.path.length > 2 ? smoothPolyline(seg.path) : seg.path,
               strokeWidth: 5,
               color: seg.mode == TravelMode.bus
                   ? Colors.blue // Bus segments in blue

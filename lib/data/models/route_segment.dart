@@ -6,6 +6,7 @@ class RouteSegment {
   final List<LatLng> path;
   final double distanceMeters;
   final int durrationSeconds;
+  final List<LatLng>? precisePolyline;
   final String? transportType;
   final String? transportLine;
   final String? fromStop;
@@ -16,6 +17,7 @@ class RouteSegment {
     required this.path,
     required this.distanceMeters,
     required this.durrationSeconds,
+    this.precisePolyline,
     this.transportType,
     this.transportLine,
     this.fromStop,
