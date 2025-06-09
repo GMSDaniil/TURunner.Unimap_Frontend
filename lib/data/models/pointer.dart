@@ -12,11 +12,16 @@ class Pointer {
   });
 
   factory Pointer.fromJson(Map<String, dynamic> json) {
+    final lat = json['lat'] ?? json['Latitude'];
+    final lng = json['lng'] ?? json['Longitude'];
+    if (lat == null || lng == null) {
+      throw Exception('Missing lat/lng in Pointer JSON: $json');
+    }
     return Pointer(
-      name: json['name'],
-      lat: json['lat'],
-      lng: json['lng'],
-      category: json['category'],
+      name: json['name'] ?? json['Name'] ?? '',
+      lat: (lat as num).toDouble(),
+      lng: (lng as num).toDouble(),
+      category: json['category'] ?? json['Category'] ?? '',
     );
   }
 }

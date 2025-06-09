@@ -6,6 +6,7 @@ import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
+import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -96,46 +97,34 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
 // Loads the markers using the new JSON file which already contains centroid data.
   Future<void> _loadBuildingMarkers() async {
-    try {
-      final jsonStr = await rootBundle.loadString(
-        'assets/campus_buildings.json',
+  try {
+    // Use your usecase to get all pointers/buildings
+    final pointers = await sl<GetPointersUseCase>().call();
+    print('Loaded ${pointers.length} buildings');
+
+    _allPointers = pointers;
+
+    final markers = _allPointers.map((pointer) {
+      return Marker(
+        point: LatLng(pointer.lat, pointer.lng),
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _onMarkerTap(pointer),
+          child: const Icon(Icons.location_on, color: Colors.deepPurple),
+        ),
       );
-      final List data = jsonDecode(jsonStr);
-      print('Loaded ${data.length} buildings');
+    }).toList();
 
-      // Store all pointers for search
-      _allPointers =
-          data.map((entry) {
-            final double lat = (entry['Latitude'] as num).toDouble();
-            final double lng = (entry['Longitude'] as num).toDouble();
-            final String name = entry['Name'] as String;
-            final String category = entry['Category'] as String? ?? 'Building';
-            return Pointer(name: name, lat: lat, lng: lng, category: category);
-          }).toList();
+    setState(() {
+      _markers = markers;
+    });
 
-      // Create markers from all pointers
-      final markers =
-          _allPointers.map((pointer) {
-            return Marker(
-              point: LatLng(pointer.lat, pointer.lng),
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                onTap: () => _onMarkerTap(pointer), // <-- Use pointer directly
-                child: const Icon(Icons.location_on, color: Colors.deepPurple),
-              ),
-            );
-          }).toList();
-
-      setState(() {
-        _markers = markers;
-      });
-
-      print('Markers updated: ${markers.length} markers added.');
-    } catch (e) {
-      print('Error loading building markers: $e');
-    }
+    print('Markers updated: ${markers.length} markers added.');
+  } catch (e) {
+    print('Error loading building markers: $e');
   }
+}
 
   // Search logic: filter markers by name - this can be simplified using our new utility
   void _searchMarkers(String query) {

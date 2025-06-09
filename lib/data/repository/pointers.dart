@@ -1,15 +1,13 @@
-
-import 'package:auth_app/data/source/pointer_api_service.dart';
-import 'package:auth_app/domain/repository/pointers.dart';
-import 'package:dio/dio.dart';
-
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:auth_app/data/models/pointer.dart';
-import '../../service_locator.dart';
+import '../../domain/repository/pointers.dart';
 
 class PointersRepositoryImpl implements PointersRepository {
-
   @override
   Future<List<Pointer>> getPointers() async {
+    
+    /*
     final data = await sl<PointerApiService>().getPointers();
 
     try{
@@ -23,6 +21,17 @@ class PointersRepositoryImpl implements PointersRepository {
     } catch (e) {
       return [];
     }
+    */
+
+    try {
+      // Load from local asset file
+      final jsonStr = await rootBundle.loadString('assets/campus_buildings.json');
+      final List data = jsonDecode(jsonStr);
+      final pointers = data.map((json) => Pointer.fromJson(json)).toList();
+      return List<Pointer>.from(pointers);
+    } catch (e) {
+      print('Error loading pointers from local asset: $e');
+      return [];
+    }
   }
-  
 }
