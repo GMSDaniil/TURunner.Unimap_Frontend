@@ -29,22 +29,22 @@ class CategoryNavigationBar extends StatelessWidget {
                   ),
                   _categoryWidget(
                     icon: Icons.local_cafe,
-                    label: 'Café', // <-- with accent!
-                    iconColor: Colors.orange,
-                    onTap: () => onCategorySelected('Café', Colors.orange),
+                    label: 'Café',
+                    iconColor: Color(0xFFB89B8A), // Café brown
+                    onTap: () => onCategorySelected('Café', Color(0xFFB89B8A)),
                   ),
                   _categoryWidget(
                     icon: Icons.local_library,
                     label: 'Library',
-                    iconColor: Colors.yellow[800]!,
-                    onTap: () => onCategorySelected('Library', Colors.yellow[800]!),
+                    iconColor: Color(0xFFF9A94A), // Library orange
+                    onTap: () => onCategorySelected('Library', Color(0xFFF9A94A)),
                   ),
                   _categoryWidget(
                     icon: Icons.restaurant,
                     label: 'Mensa',
-                    iconColor: Colors.green,
-                    onTap: () => onCategorySelected('Canteen', Colors.green), // <-- must be 'Canteen'
-                  ),
+                    iconColor: Color(0xFF5BA172), // Mensa green
+                    onTap: () => onCategorySelected('Mensa', Color(0xFF5BA172)),
+                  )
                   // add more chips here if you like
                 ]
                 .map(
@@ -119,7 +119,7 @@ class AnimatedBottomNavigationBar extends StatelessWidget {
         padding: const EdgeInsets.only(top: 0), // space above bar
         child: Material(
           color: Colors.transparent,
-          elevation: 0, // no shadow line
+          elevation: 10, // no shadow line
           child: Ink(
             decoration: BoxDecoration(
               gradient: Theme.of(context).primaryGradient,

@@ -111,7 +111,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         height: 40,
         child: GestureDetector(
           onTap: () => _onMarkerTap(pointer),
-          child: const Icon(Icons.location_on, color: Colors.deepPurple),
+          child: Image.asset(
+            getPinAssetForCategory(pointer.category),
+            width: 40,
+            height: 40,
+          ),
         ),
       );
     }).toList();
@@ -311,17 +315,49 @@ Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
   // /// Filters markers by category and updates the map - using our new utility class
   void _filterMarkersByCategory(String? category, Color? markerColor) {
     setState(() {
-      _markers = MapMarkerManager.allMarkersWithHighlight(
-        allPointers: _allPointers,
-        highlightedCategory: category,
-        highlightColor: markerColor,
-        onMarkerTap: (Pointer pointer) => _onMarkerTap(pointer),
-      );
+      if (category == null) {
+        // Show all markers if no category is selected
+        _markers = _allPointers.map((pointer) {
+          return Marker(
+            point: LatLng(pointer.lat, pointer.lng),
+            width: 35,
+            height: 35,
+            child: GestureDetector(
+              onTap: () => _onMarkerTap(pointer),
+              child: Image.asset(
+                getPinAssetForCategory(pointer.category),
+                width: 35,
+                height: 35,
+              ),
+            ),
+          );
+        }).toList();
+      } else {
+        // Show only markers for the selected category
+        _markers = _allPointers
+            .where((p) => p.category.trim().toLowerCase() == category.trim().toLowerCase())
+            .map((pointer) {
+              return Marker(
+                point: LatLng(pointer.lat, pointer.lng),
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  onTap: () => _onMarkerTap(pointer),
+                  child: Image.asset(
+                    getPinAssetForCategory(pointer.category),
+                    width: 40,
+                    height: 40,
+                  ),
+                ),
+              );
+            }).toList();
+      }
     });
 
+    // Optionally: Center map on filtered markers
     if (category != null) {
       final filtered = _allPointers
-          .where((p) => p.category.toLowerCase() == category.toLowerCase())
+          .where((p) => p.category.trim().toLowerCase() == category.trim().toLowerCase())
           .toList();
       if (filtered.isNotEmpty) {
         final bounds = LatLngBounds.fromPoints(
@@ -786,5 +822,18 @@ void showRouteOptionsSheet({
     onClose();
   });
 }
-
+  String getPinAssetForCategory(String category) {
+    switch (category.trim().toLowerCase()) {
+      case 'mensa':
+      case 'canteen':
+        return 'assets/icons/pin_mensa.png';
+      case 'café':
+      case 'cafe':
+        return 'assets/icons/pin_cafe.png';
+      case 'library':
+        return 'assets/icons/pin_library.png';
+      default:
+        return 'assets/icons/pin_default.png'; // fallback
+    }
+  }
 }
