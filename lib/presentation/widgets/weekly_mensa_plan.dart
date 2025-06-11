@@ -5,16 +5,16 @@ import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/mensa_menu_response.dart';
 import 'package:dartz/dartz.dart' hide State;
 
-class TodaysMensaPlan extends StatefulWidget {
+class WeeklyMensaPlan extends StatefulWidget {
   final String mensaName;
 
-  const TodaysMensaPlan({Key? key, required this.mensaName}) : super(key: key);
+  const WeeklyMensaPlan({Key? key, required this.mensaName}) : super(key: key);
 
   @override
-  State<TodaysMensaPlan> createState() => _TodaysMensaPlanState();
+  State<WeeklyMensaPlan> createState() => _TodaysMensaPlanState();
 }
 
-class _TodaysMensaPlanState extends State<TodaysMensaPlan> {
+class _TodaysMensaPlanState extends State<WeeklyMensaPlan> {
   int selectedDayIndex = 0;
 
   static const weekdayLabels = [
@@ -39,8 +39,8 @@ class _TodaysMensaPlanState extends State<TodaysMensaPlan> {
   @override
   void initState() {
     super.initState();
-    // Set initial selected day a
-    selectedDayIndex = DateTime.now().weekday - 5;
+    // Set initial selected day
+    selectedDayIndex = DateTime.now().weekday - 1;
   }
 
   @override
@@ -80,6 +80,7 @@ class _TodaysMensaPlanState extends State<TodaysMensaPlan> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
+
             // Weekday selector bar
             SizedBox(
               height: 48,
@@ -126,6 +127,7 @@ class _TodaysMensaPlanState extends State<TodaysMensaPlan> {
               ),
             ),
             const SizedBox(height: 12),
+
             // Show menu or closed message
             if (selectedDayIndex >= 5)
               const Center(
