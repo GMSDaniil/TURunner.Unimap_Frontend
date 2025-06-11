@@ -27,7 +27,7 @@ class GetMensaMenuUseCase
         mensaName: _mapUiNameToApiName(param.mensaName),
       );
       final result = await repo.getMensaMenu(mappedParam);
-      //print('GetMensaMenuUseCase result: $result');
+      print('GetMensaMenuUseCase result: $result');
       return result;
     } catch (e) {
       return Left('Unexpected error: ${e.toString()}');

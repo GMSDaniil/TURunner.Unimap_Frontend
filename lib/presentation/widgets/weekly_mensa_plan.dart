@@ -11,10 +11,10 @@ class WeeklyMensaPlan extends StatefulWidget {
   const WeeklyMensaPlan({Key? key, required this.mensaName}) : super(key: key);
 
   @override
-  State<WeeklyMensaPlan> createState() => _TodaysMensaPlanState();
+  State<WeeklyMensaPlan> createState() => _WeeklyMensaPlanState();
 }
 
-class _TodaysMensaPlanState extends State<WeeklyMensaPlan> {
+class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
   int selectedDayIndex = 0;
 
   static const weekdayLabels = [
@@ -39,7 +39,6 @@ class _TodaysMensaPlanState extends State<WeeklyMensaPlan> {
   @override
   void initState() {
     super.initState();
-    // Set initial selected day
     selectedDayIndex = DateTime.now().weekday - 1;
   }
 
