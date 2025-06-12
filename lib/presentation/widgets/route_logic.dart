@@ -321,3 +321,111 @@ List<Marker> buildBusStopMarkers({
   }
   return busStopMarkers;
 }
+
+class RoutePlanningPage extends StatefulWidget {
+  @override
+  _RoutePlanningPageState createState() => _RoutePlanningPageState();
+}
+
+class _RoutePlanningPageState extends State<RoutePlanningPage> {
+  final TextEditingController _startCtl = TextEditingController();
+  final TextEditingController _destCtl = TextEditingController();
+  final List<TextEditingController> _stopCtls = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Route Planning'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.swap_horiz),
+            onPressed: _swap,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Start and Destination Fields
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _startCtl,
+                    decoration: InputDecoration(
+                      labelText: 'Start',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _destCtl,
+                    decoration: InputDecoration(
+                      labelText: 'Destination',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Intermediate Stops
+          Expanded(
+            child: ListView.builder(
+              itemCount: _stopCtls.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: TextField(
+                    controller: _stopCtls[index],
+                    decoration: InputDecoration(
+                      labelText: 'Stop ${index + 1}',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Add Stop Button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _stopCtls.add(TextEditingController());
+                });
+              },
+              child: Text('Add Stop'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /* ═══════════════════════━  actions  ━═════════════════════════ */
+   void _swap() {
+  setState(() {
+    // ➊ gather every controller in order
+    final ctrls = <TextEditingController>[
+      _startCtl,
+      ..._stopCtls,
+      _destCtl,
+    ];
+
+    // ➋ take their texts, reverse the list,
+    //    then put the texts back into the same controllers
+    final reversedTexts =
+        ctrls.map((c) => c.text).toList().reversed.toList();
+
+    for (var i = 0; i < ctrls.length; i++) {
+      ctrls[i].text = reversedTexts[i];
+    }
+  });
+}
+}

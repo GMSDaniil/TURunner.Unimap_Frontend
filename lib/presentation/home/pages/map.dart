@@ -20,7 +20,6 @@ import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
 import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
-import 'package:auth_app/presentation/widgets/route_planner_sheet.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -122,11 +121,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           _buildCurrentLocationButton(),
         ],
       ),
-      floatingActionButton:
-          !_creatingRoute ? FloatingActionButton(
-            onPressed: _showPlannerBar,
-            child: const Icon(Icons.directions),
-          ) : null,
+      // floatingActionButton removed to hide route-creation button
     );
   }
 
@@ -157,6 +152,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           child: RoutePlanBar(
             currentLocation: _currentLocation,
             initialDestination: destination,
+            allPointers: _allPointers,          // <<< NEW
             onCancelled: () async {
               controller.reverse();
               await controller.forward();

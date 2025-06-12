@@ -53,7 +53,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
       children: [
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8), // ← bumped top from 8→16
             child: Column(
               children: [
                 // ── Search Field with Close Button ───────────────────────
