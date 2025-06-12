@@ -33,13 +33,34 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/presentation/widgets/search_bar.dart';
 import 'package:auth_app/presentation/widgets/route_plan_bar.dart';
-
+//import 'package:flutter_map/plugin_api.dart' show FitBoundsOptions;
 
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
 // ─────────────────────────────────────────────────────────────────────────
 
 const double matheLat = 52.5135, matheLon = 13.3245;
+
+// ── campus-wide “presets” for the three category buttons ────────────
+//
+//   • derived once from the full buildings.json
+//   • tuned on a medium-phone emulator (≈ 480 px × 1 070 px map window)
+//
+//   If you ever change marker inventories, just re-calculate the mean
+//   lat/lon per category and play with the zoom until it “looks right”.
+//   No more run-time maths needed :)
+//
+//   ─────────  category  ────────  center.lat   center.lon    zoom
+const _cafesCenter     = LatLng(52.51271, 13.32517);  // 10 cafés
+const _cafesZoom       = 16.0;
+
+const _librariesCenter = LatLng(52.51250, 13.32619);  //  4 libraries
+const _librariesZoom   = 16.5;
+
+const _canteensCenter  = LatLng(52.5135 1, 13.32496);  //  4 main mensas¹
+const _canteensZoom    = 16.0;
+// ¹ the Marchstraße (northern) mensa was left out on purpose; including it
+//   made the view less useful for day-to-day campus food spotting.
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
@@ -291,28 +312,59 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  void _filterMarkersByCategory(String? cat, Color? color) {
+  void _filterMarkersByCategory(String? category, Color? markerColor) {
     setState(() {
-      _markers = MapMarkerManager.allMarkersWithHighlight(
-        allPointers: _allPointers,
-        highlightedCategory: cat,
-        highlightColor: color,
-        onMarkerTap: _onMarkerTap,
-      );
+      if (category == null) {
+        // No category selected: show all markers
+        _markers = _allPointers.map((pointer) {
+          return Marker(
+            point: LatLng(pointer.lat, pointer.lng),
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () => _onMarkerTap(pointer),
+              child: Image.asset(
+                getPinAssetForCategory(pointer.category),
+                width: 40,
+                height: 40,
+              ),
+            ),
+          );
+        }).toList();
+      } else {
+        // Show only markers matching the selected category
+        _markers = _allPointers
+            .where((p) =>
+                p.category.trim().toLowerCase() ==
+                category.trim().toLowerCase())
+            .map((pointer) {
+              return Marker(
+                point: LatLng(pointer.lat, pointer.lng),
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  onTap: () => _onMarkerTap(pointer),
+                  child: Image.asset(
+                    getPinAssetForCategory(pointer.category),
+                    width: 40,
+                    height: 40,
+                  ),
+                ),
+              );
+            })
+            .toList();
+      }
     });
 
-    if (cat != null) {
-      final f = _allPointers
-          .where((p) =>
-              p.category.trim().toLowerCase() == cat.trim().toLowerCase())
-          .toList();
-      if (f.isNotEmpty) {
-        final b = LatLngBounds.fromPoints(
-          f.map((p) => LatLng(p.lat, p.lng)).toList()
-        );
-        _mapController.fitCamera(
-          CameraFit.bounds(bounds: b, padding: const EdgeInsets.all(40)),
-        );
+    // If a category is selected, zoom to the pre-defined campus view
+    if (category != null) {
+      final cat = category.toLowerCase();
+      if (cat.contains('café') || cat.contains('cafe')) {
+        _animatedMapMove(_cafesCenter, _cafesZoom);
+      } else if (cat.contains('library')) {
+        _animatedMapMove(_librariesCenter, _librariesZoom);
+      } else if (cat.contains('mensa') || cat.contains('canteen')) {
+        _animatedMapMove(_canteensCenter, _canteensZoom);
       }
     }
   }
