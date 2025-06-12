@@ -13,62 +13,16 @@ class ScooterRouteSegment {
     required this.distanceMeters,
   });
 
-  
-
   factory ScooterRouteSegment.fromJson(Map<String, dynamic> map) {
-  final raw = map['Polyline'];
-
-  // 1) If it’s already a List<[lat,lon]>, map it directly.
-  // 2) If it’s a String, run a polyline‐decoder on it.
-  final List<LatLng> decoded;
-  if (raw is List) {
-    decoded = raw
-      .cast<List<dynamic>>()
-      .map((pair) => LatLng(
-         (pair[0] as num).toDouble(),
-         (pair[1] as num).toDouble(),
-      ))
-      .toList();
-  } else if (raw is String) {
-    decoded = decodePolyline(raw);  // see helper below
-  } else {
-    decoded = [];
+    return ScooterRouteSegment(
+      type: map['Type'] ?? '',
+      polyline: (map['Polyline'] as List)
+          .map<LatLng>((e) => LatLng(e[0], e[1]))
+          .toList(),
+      durationSeconds: map['DurationSeconds'] ?? 0,
+      distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
+    );
   }
-
-  return ScooterRouteSegment(
-    type:            map['Type']   ?? '',
-    polyline:        decoded,
-    durationSeconds: map['DurationSeconds'] ?? 0,
-    distanceMeters:  (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
-  );
-}
-}
-List<LatLng> decodePolyline(String encoded) {
-  final List<LatLng> poly = [];
-  int index = 0, lat = 0, lng = 0;
-
-  while (index < encoded.length) {
-    int shift = 0, result = 0, b;
-    do {
-      b = encoded.codeUnitAt(index++) - 63;
-      result |= (b & 0x1F) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lat += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.codeUnitAt(index++) - 63;
-      result |= (b & 0x1F) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lng += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-
-    poly.add(LatLng(lat / 1E5, lng / 1E5));
-  }
-
-  return poly;
 }
 
 class FindScooterRouteResponse {

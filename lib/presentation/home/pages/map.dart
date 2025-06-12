@@ -150,19 +150,36 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         child: Align(
           alignment: Alignment.topCenter,
           child: RoutePlanBar(
-            currentLocation: _currentLocation,
-            initialDestination: destination,
-            allPointers: _allPointers,          // <<< NEW
-            onCancelled: () async {
-              controller.reverse();
-              await controller.forward();
-              _plannerOverlay?.remove();
-              _plannerOverlay = null;
-              setState(() => _creatingRoute = false);
-              // also close directions sheet if open
-              _routeSheetCtr?.close();
-            },
-          ),
+              currentLocation: _currentLocation,
+              initialDestination: destination,
+              allPointers:        _allPointers,
+              onCancelled:        () async {
+                controller.reverse();
+                await controller.forward();
+                _plannerOverlay?.remove();
+                _plannerOverlay = null;
+                setState(() => _creatingRoute = false);
+                // also close directions sheet if open
+                _routeSheetCtr?.close();
+              },
+              onChanged: (newStart, newDest) async {
+                // 1️⃣ recalc the route in place
+                await _handleCreateRoute(
+                  newDest,
+                  startOverride: newStart,
+                  rebuildOnly: true,
+                );
+
+                // 2️⃣ once that's done, grab all the points & fit the map
+                final data = _routesNotifier.value[_currentMode];
+                final pts = data?.segments.expand((s) => s.path).toList() ?? [];
+                if (pts.isNotEmpty) {
+                  final bounds = LatLngBounds.fromPoints(pts);
+                  // you can tweak the padding/zoomThreshold here
+                  _animatedMapMove(bounds.center, 16.0);
+                }
+              },
+            ),
         ),
       ),
     );
@@ -170,8 +187,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
     controller.forward();        // animate it in
 
-    // Immediately compute & show directions
-    _handleCreateRoute(destination);
+    // first time in → rebuildOnly=false (default)
+    _handleCreateRoute(destination, startOverride: _currentLocation);
   }
 
   // ── search listener ──────────────────────────────────────────────
@@ -374,11 +391,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // ── route creation & sheet ───────────────────────────────────────
-  Future<void> _handleCreateRoute(LatLng dest) async {
+  Future<void> _handleCreateRoute(
+    LatLng dest, {
+    LatLng? startOverride,
+    bool   rebuildOnly = false,
+  }) async {
     await RouteLogic.onCreateRoute(
       context: context,
       latlng: dest,
-      currentLocation: _currentLocation,
+      currentLocation: startOverride ?? _currentLocation,
       routesNotifier: _routesNotifier,
       setState: setState,
       animatedMapMove: _animatedMapMove,
@@ -396,6 +417,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           updateCurrentMode: (nm) => setState(() => _currentMode = nm),
         );
       },
+      rebuildOnly: rebuildOnly,      // ← NEW
     );
   }
 

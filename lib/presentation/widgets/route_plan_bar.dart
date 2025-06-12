@@ -15,6 +15,8 @@ class RoutePlanBar extends StatefulWidget {
   final LatLng? initialDestination;
   final List<Pointer> allPointers; // supply from MapPage
   final OnCancelled onCancelled;
+  /// Called whenever both Start and Destination have been (re-)selected.
+  final void Function(LatLng start, LatLng dest) onChanged;
 
   const RoutePlanBar({
     super.key,
@@ -22,6 +24,7 @@ class RoutePlanBar extends StatefulWidget {
     required this.initialDestination,
     required this.allPointers,
     required this.onCancelled,
+    required this.onChanged,
   });
 
   @override
@@ -64,6 +67,8 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         '${pos.longitude.toStringAsFixed(5)}';
   }
 
+  _Cand? _startCand, _destCand;
+
   @override
   void initState() {
     super.initState();
@@ -85,14 +90,18 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
     );
 
     // mark pre-selected items as “taken”
-    if (widget.currentLocation != null) _chosen.add(_pool.first);
+    if (widget.currentLocation != null) {
+      _startCand = _pool.first;
+      _chosen.add(_startCand!);
+    }
     if (widget.initialDestination != null) {
       final lab = _prettyLabel(widget.initialDestination!);
       final cand = _pool.firstWhere(
         (c) => c.label == lab,
         orElse: () => _Cand(lab, widget.initialDestination!),
       );
-      _chosen.add(cand);
+      _destCand = cand;
+      _chosen.add(_destCand!);
     }
   }
 
@@ -155,6 +164,12 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                 if (old != null) _chosen.remove(old);
                 _chosen.add(newCand);
               });
+               // if start or dest changed, update and fire
+               if (hint == 'Start')     _startCand = newCand;
+               else if (hint == 'Destination') _destCand = newCand;
+               if (_startCand != null && _destCand != null) {
+                 widget.onChanged(_startCand!.pos, _destCand!.pos);
+               }
             },
           ),
         ),
@@ -187,6 +202,11 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
     _startCtl.text = _destCtl.text;
     _destCtl.text  = tmp;
 
+    // swap underlying _Cand references
+    final tmpCand = _startCand;
+    _startCand = _destCand;
+    _destCand  = tmpCand;
+
     /* 2️⃣ rotate every intermediate stop:  S1 S2 S3  →  S3 S2 S1  */
     if (_stopCtls.length > 1) {
       final reversedTexts =
@@ -194,6 +214,11 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
       for (var i = 0; i < _stopCtls.length; i++) {
         _stopCtls[i].text = reversedTexts[i];
       }
+    }
+
+     // 3️⃣ notify map if we now have both endpoints
+    if (_startCand != null && _destCand != null) {
+      widget.onChanged(_startCand!.pos, _destCand!.pos);
     }
   }
 

@@ -67,10 +67,10 @@ class MapWidget extends StatelessWidget {
       options: MapOptions(
         initialCenter: LatLng(52.5125, 13.3269),
         initialZoom: 17.0,
-        minZoom: 15.0,
+        minZoom: 12.0,
         maxZoom: 18.0,
         cameraConstraint: CameraConstraint.contain(
-          bounds: LatLngBounds(LatLng(52.507, 13.317), LatLng(52.519, 13.335)),
+          bounds: LatLngBounds(LatLng(52.505, 13.316), LatLng(52.523, 13.337))
         ),
         interactionOptions: const InteractionOptions(
           flags: InteractiveFlag.all & ~InteractiveFlag.rotate,

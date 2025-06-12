@@ -15,6 +15,8 @@ import 'package:flutter_map/flutter_map.dart';
 //
 
 class RouteLogic {
+  /// [rebuildOnly] == true  → called from RoutePlanBar while the planner UI
+  /// is already on-screen.  We must **not** pop any routes or auto-fit map.
   static Future<void> onCreateRoute({
     required BuildContext context,
     required LatLng latlng,
@@ -31,6 +33,7 @@ class RouteLogic {
       required VoidCallback onClose,
     }) showRouteOptionsSheet,
     required ValueChanged<TravelMode> onModeChanged,
+    bool rebuildOnly = false,     // ← your new arg
   }) async {
     final params = FindRouteReqParams(
       fromLat: currentLocation?.latitude ?? 52.5135,
@@ -59,30 +62,30 @@ class RouteLogic {
             ],
           );
         });
-        // Pop the building sheet
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+
+        // only pop the “Create Route” sheet & open the bottom sheet on first call
+        if (!rebuildOnly) {
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();   // close the building sheet
+          }
+          final walkPath = route.foot;
+          if (walkPath.isNotEmpty) {
+            final bounds = LatLngBounds.fromPoints(walkPath);
+            animatedMapMove(bounds.center, 16.5);
+          }
+
+          showRouteOptionsSheet(
+            routesNotifier: routesNotifier,
+            currentMode: TravelMode.walk,
+            onModeChanged: onModeChanged,
+            onClose: () {
+              setState(() => routesNotifier.value.clear());
+              if (mounted && Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
+          );
         }
-        // Fit map to show entire walking route
-        final walkPath = route.foot;
-        if (walkPath.isNotEmpty) {
-          final bounds = LatLngBounds.fromPoints(walkPath);
-          animatedMapMove(bounds.center, 16.5);
-        }
-        // Show the route options sheet with walking as current default
-        showRouteOptionsSheet(
-          routesNotifier: routesNotifier,
-          currentMode: TravelMode.walk,
-          onModeChanged: onModeChanged,
-          onClose: () {
-            setState(() {
-              routesNotifier.value.clear();
-            });
-            if (mounted && Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            }
-          },
-        );
       },
     );
 
@@ -428,4 +431,5 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
     }
   });
 }
+
 }
