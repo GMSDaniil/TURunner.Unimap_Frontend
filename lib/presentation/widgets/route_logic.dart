@@ -33,17 +33,18 @@ class RouteLogic {
     required ValueChanged<TravelMode> onModeChanged,
   }) async {
     final params = FindRouteReqParams(
-      fromLat: currentLocation?.latitude ?? 52.5135, // Default to Hauptgebäude
+      fromLat: currentLocation?.latitude ?? 52.5135,
       fromLon: currentLocation?.longitude ?? 13.3245,
       toLat: latlng.latitude,
       toLon: latlng.longitude,
     );
-    final result = await sl<FindWalkingRouteUseCase>().call(param: params);
-    result.fold(
+
+    // Fetch and display the walking route immediately
+    final walkingResult = await sl<FindWalkingRouteUseCase>().call(param: params);
+    walkingResult.fold(
       (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $error')));
       },
       (route) {
         setState(() {
@@ -58,18 +59,17 @@ class RouteLogic {
             ],
           );
         });
-        // pop the building sheet
+        // Pop the building sheet
         if (mounted && Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
         }
-        // fit map to show entire route
-        final walkRoute = routesNotifier.value[TravelMode.walk];
-        final walkPath = walkRoute?.segments.first.path ?? [];
+        // Fit map to show entire walking route
+        final walkPath = route.foot;
         if (walkPath.isNotEmpty) {
           final bounds = LatLngBounds.fromPoints(walkPath);
           animatedMapMove(bounds.center, 16.5);
         }
-        // show persistent, interactive route‐options sheet
+        // Show the route options sheet with walking as current default
         showRouteOptionsSheet(
           routesNotifier: routesNotifier,
           currentMode: TravelMode.walk,
@@ -85,6 +85,65 @@ class RouteLogic {
         );
       },
     );
+
+    // Instead of immediately applying, simply call bus and scooter to fetch data in background.
+    // Their responses will populate the routesNotifier but not override the displayed walking route.
+    sl<FindBusRouteUseCase>().call(param: params).then((busResult) {
+      busResult.fold(
+        (error) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Bus route error: $error')));
+        },
+        (route) {
+          setState(() {
+            final segments = <RouteSegment>[];
+            for (final seg in route.segments) {
+              segments.add(
+                RouteSegment(
+                  mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
+                  path: seg.polyline,
+                  distanceMeters: seg.distanceMeters,
+                  durrationSeconds: seg.durationSeconds,
+                  precisePolyline: seg.precisePolyline,
+                  transportType: seg.transportType,
+                  transportLine: seg.transportLine,
+                  fromStop: seg.fromStop,
+                  toStop: seg.toStop,
+                ),
+              );
+            }
+            routesNotifier.value[TravelMode.bus] = RouteData(segments: segments);
+          });
+          // Note: Do not update currentMode here.
+        },
+      );
+    });
+    
+    sl<FindScooterRouteUseCase>().call(param: params).then((scooterResult) {
+      scooterResult.fold(
+        (error) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Scooter route error: $error')));
+        },
+        (response) {
+          final segments = response.segments.map((seg) {
+            return RouteSegment(
+              mode: seg.type.toLowerCase() == 'walking'
+                  ? TravelMode.walk
+                  : TravelMode.scooter,
+              path: seg.polyline,
+              distanceMeters: seg.distanceMeters,
+              durrationSeconds: seg.durationSeconds,
+            );
+          }).toList();
+          setState(() {
+            routesNotifier.value[TravelMode.scooter] =
+                RouteData(segments: segments);
+          });
+          // Note: Again, do not invoke updateCurrentMode here.
+        },
+      );
+    });
   }
 
   static Future<void> onModeChanged({

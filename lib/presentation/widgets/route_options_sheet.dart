@@ -155,7 +155,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
               const SizedBox(height: 24),
               // ── Info card ───────────────────────────────────────────
               _loading ? const SizedBox(
-                height: 200,
+                height: 60,
                 child: Center(child: CircularProgressIndicator()),
               ) : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
