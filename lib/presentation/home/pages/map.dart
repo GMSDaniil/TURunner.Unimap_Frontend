@@ -7,33 +7,39 @@ import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:auth_app/domain/usecases/find_walking_route.dart';
+//import 'package:auth_app/domain/usecases/find_route.dart';
+import 'package:auth_app/domain/usecases/find_building_at_point.dart';
 import 'package:auth_app/data/models/findroute_req_params.dart';
-import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/data/favourites_manager.dart';
-import 'package:auth_app/presentation/widgets/building_popup.dart'; // Make sure this is imported
 import 'package:auth_app/presentation/widgets/building_popup_manager.dart';
-import 'package:auth_app/presentation/widgets/building_slide_window.dart';
 import 'package:auth_app/presentation/widgets/category_navigation.dart'
     show CategoryNavigationBar;
-import 'package:auth_app/presentation/widgets/search_bar.dart';
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
-import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'package:auth_app/domain/usecases/find_building_at_point.dart'; // Ensure this is imported
-import 'package:geolocator/geolocator.dart'; // Add this import at the top
-import 'package:flutter/animation.dart'; // ensure this is available
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
-import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
-import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
-import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/map_widget.dart';
+import 'package:auth_app/presentation/widgets/route_logic.dart';
+import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
+import 'package:auth_app/presentation/widgets/route_planner_sheet.dart';
 
-//import 'package:flutter_map/plugin_api.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/animation.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
+    as FMTC;
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:auth_app/service_locator.dart';
+import 'package:auth_app/presentation/widgets/search_bar.dart';
+import 'package:auth_app/presentation/widgets/route_plan_bar.dart';
+
+
+// ─────────────────────────────────────────────────────────────────────────
+//  MapPage – now featuring Google-Maps-style route planner
+// ─────────────────────────────────────────────────────────────────────────
+
 const double matheLat = 52.5135, matheLon = 13.3245;
 
 class MapPage extends StatefulWidget {
@@ -46,340 +52,267 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
-  bool _isFlyToActive = false;
-  final MapController _mapController = MapController();
-  AnimationController? _mapAnimController; // <-- new field
-  final TextEditingController _searchController = TextEditingController();
-  final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
-      ValueNotifier({});
-  TravelMode _currentMode = TravelMode.walk;
+  // ── live flags & sheet controllers ───────────────────────────────
+  bool _creatingRoute = false;
+  PersistentBottomSheetController? _plannerSheetCtr;
+  PersistentBottomSheetController? _routeSheetCtr;
+  OverlayEntry? _plannerOverlay;   // ← NEW
 
-  // <-- new field
+  // ── controllers & data ───────────────────────────────────────────
+  final MapController _mapController = MapController();
+  AnimationController? _mapAnimController;
+  final TextEditingController _searchCtl = TextEditingController();
 
   List<Marker> _markers = [];
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
-  LatLng? _currentLocation; // Add this line
-  late final TileProvider _cachedTileProvider;
+  LatLng? _currentLocation;
 
-  PersistentBottomSheetController? _routeSheetController;
+  final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
+      ValueNotifier({});
+  TravelMode _currentMode = TravelMode.walk;
 
+  late final TileProvider _cachedTiles;
+
+  // ── lifecycle ────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _loadBuildingMarkers();
-    _searchController.addListener(_onSearchChanged);
-    _goToCurrentLocation(); // <-- Add this line
-
-    // Browse‐cache strategy: read from mapStore, fetch missing from network & create
-    _cachedTileProvider = FMTC.FMTCTileProvider(
+    _searchCtl.addListener(_onSearchChanged);
+    _goToCurrentLocation();
+    _cachedTiles = FMTC.FMTCTileProvider(
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
     );
   }
 
-  void _onSearchChanged() {
-    final query = _searchController.text.trim().toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _suggestions = [];
-      } else {
-        _suggestions = _allPointers
-            .where((pointer) => pointer.name.toLowerCase().contains(query))
-            .toList();
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _mapAnimController?.dispose(); // <-- dispose animation controller
-    _searchController.dispose();
+    _mapAnimController?.dispose();
+    _searchCtl.dispose();
     super.dispose();
   }
 
-  // Loads the markers using the new JSON file which already contains centroid data.
-  Future<void> _loadBuildingMarkers() async {
-    try {
-      // Use your usecase to get all pointers/buildings
-      final pointers = await sl<GetPointersUseCase>().call();
-      print('Loaded ${pointers.length} buildings');
-
-      _allPointers = pointers;
-
-      final markers = _allPointers.map((pointer) {
-        return Marker(
-          point: LatLng(pointer.lat, pointer.lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _onMarkerTap(pointer),
-            child: Image.asset(
-              getPinAssetForCategory(pointer.category),
-              width: 40,
-              height: 40,
-            ),
-          ),
-        );
-      }).toList();
-
-      setState(() {
-        _markers = markers;
-      });
-
-      print('Markers updated: ${markers.length} markers added.');
-    } catch (e) {
-      print('Error loading building markers: $e');
-    }
-  }
-
-  // Search logic: filter markers by name - this can be simplified using our new utility
-  void _searchMarkers(String query) {
-    final filtered = _allPointers
-        .where(
-          (pointer) => pointer.name.toLowerCase().contains(query.toLowerCase()),
-        )
-        .toList();
-
-    setState(() {
-      _markers = MapMarkerManager.searchMarkersByName(
-        allPointers: _allPointers,
-        query: query,
-        onMarkerTap: (Pointer pointer) => _onMarkerTap(pointer),
-      );
-    });
-
-    // Center map on first result
-    MapMarkerManager.centerMapOnFilteredResults(
-      mapController: _mapController,
-      filtered: filtered,
-    );
-  }
-
-  Future<void> _handleCreateRoute(LatLng latlng) async {
-    await RouteLogic.onCreateRoute(
-      context: context,
-      latlng: latlng,
-      currentLocation: _currentLocation,
-      routesNotifier: _routesNotifier,
-      setState: setState,
-      animatedMapMove: _animatedMapMove,
-      mounted: mounted,
-      currentMode: _currentMode,
-      showRouteOptionsSheet: showRouteOptionsSheet,
-      onModeChanged: (mode) async {
-        print('Mode changed to: $mode');
-        await _onModeChanged(mode, latlng);
-      },
-    );
-  }
-
-  Future<void> _onModeChanged(TravelMode mode, LatLng destination) async {
-  return RouteLogic.onModeChanged(
-    context: context,
-    mode: mode,
-    destination: destination,
-    currentLocation: _currentLocation,
-    routesNotifier: _routesNotifier,
-    setState: setState,
-    updateCurrentMode: (newMode) {
-      setState(() {
-        _currentMode = newMode;
-      });
-    },
-  );
-}
-
-  // /// Filters markers by category and updates the map - using our new utility class
-  void _filterMarkersByCategory(String? category, Color? markerColor) {
-    setState(() {
-      if (category == null) {
-        // Show all markers if no category is selected
-        _markers = _allPointers.map((pointer) {
-          return Marker(
-            point: LatLng(pointer.lat, pointer.lng),
-            width: 35,
-            height: 35,
-            child: GestureDetector(
-              onTap: () => _onMarkerTap(pointer),
-              child: Image.asset(
-                getPinAssetForCategory(pointer.category),
-                width: 35,
-                height: 35,
-              ),
-            ),
-          );
-        }).toList();
-      } else {
-        // Show only markers for the selected category
-        _markers = _allPointers
-            .where(
-              (p) =>
-                  p.category.trim().toLowerCase() ==
-                  category.trim().toLowerCase(),
-            )
-            .map((pointer) {
-              return Marker(
-                point: LatLng(pointer.lat, pointer.lng),
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () => _onMarkerTap(pointer),
-                  child: Image.asset(
-                    getPinAssetForCategory(pointer.category),
-                    width: 40,
-                    height: 40,
-                  ),
-                ),
-              );
-            })
-            .toList();
-      }
-    });
-
-    // Optionally: Center map on filtered markers
-    if (category != null) {
-      final filtered = _allPointers
-          .where(
-            (p) =>
-                p.category.trim().toLowerCase() ==
-                category.trim().toLowerCase(),
-          )
-          .toList();
-      if (filtered.isNotEmpty) {
-        final bounds = LatLngBounds.fromPoints(
-          filtered.map((p) => LatLng(p.lat, p.lng)).toList(),
-        );
-        _mapController.fitCamera(
-          CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(40)),
-        );
-      }
-    }
-  }
-
+  // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
           _buildFlutterMap(),
-          MapSearchBar(
-            searchController: _searchController,
-            suggestions: _suggestions,
-            onSearch: (value) {
-              _searchMarkers(value);
-              setState(() => _suggestions = []);
-            },
-            onClear: () {
-              _searchController.clear();
-              setState(() => _suggestions = []);
-            },
-            onCategorySelected: _filterMarkersByCategory,
-            onSuggestionSelected: (pointer) {
-              final target = LatLng(pointer.lat, pointer.lng);
-              // animate map move & zoom smoothly
-              _animatedMapMove(target, 18.0);
-              // then open detail sheet
-              _onMapTap(target);
-            },
-          ),
+          if (!_creatingRoute)
+            MapSearchBar(
+              searchController: _searchCtl,
+              suggestions: _suggestions,
+              onSearch: (q) {
+                _searchMarkers(q);
+                setState(() => _suggestions = []);
+              },
+              onClear: () {
+                _searchCtl.clear();
+                setState(() => _suggestions = []);
+              },
+              onCategorySelected: _filterMarkersByCategory,
+              onSuggestionSelected: (p) {
+                final dest = LatLng(p.lat, p.lng);
+                _animatedMapMove(dest, 18);
+                _onMapTap(dest);
+              },
+            ),
           _buildCurrentLocationButton(),
         ],
       ),
+      floatingActionButton:
+          !_creatingRoute ? FloatingActionButton(
+            onPressed: _showPlannerBar,
+            child: const Icon(Icons.directions),
+          ) : null,
     );
   }
 
-  List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 2}) {
-    List<LatLng> result = List.from(points);
-    for (int it = 0; it < iterations; it++) {
-      List<LatLng> newPoints = [];
-      for (int i = 0; i < result.length - 1; i++) {
-        final p0 = result[i];
-        final p1 = result[i + 1];
-        final q = LatLng(
-          0.75 * p0.latitude + 0.25 * p1.latitude,
-          0.75 * p0.longitude + 0.25 * p1.longitude,
-        );
-        final r = LatLng(
-          0.25 * p0.latitude + 0.75 * p1.latitude,
-          0.25 * p0.longitude + 0.75 * p1.longitude,
-        );
-        newPoints
-          ..add(p0)
-          ..add(q)
-          ..add(r);
-      }
-      newPoints.add(result.last);
-      result = newPoints;
-    }
-    return result;
-  }
+  // ───────────────────────────────────────────────────────────
+  // Start full routing flow: top bar + bottom-sheet directions
+  // ───────────────────────────────────────────────────────────
+  void _startRouteFlow(LatLng destination) {
+    if (_plannerOverlay != null) return;
+    setState(() {
+      _creatingRoute = true;
+      _currentMode   = TravelMode.walk;   // reset to walking
+      _routesNotifier.value = {};         // drop any old routes
+    });
 
-  // main map widget with markers and polylines
-  Widget _buildFlutterMap() {
-  final route = _routesNotifier.value[_currentMode];
-  final segments = route?.segments ?? [];
-   // Helper to find the closest point on the polyline to a stop
-    LatLng _closestPointOnPolyline(LatLng stop, List<LatLng> polyline) {
-      double minDist = double.infinity;
-      LatLng closest = polyline.first;
-      for (final p in polyline) {
-        final d = Distance().as(LengthUnit.Meter, stop, p);
-        if (d < minDist) {
-          minDist = d;
-          closest = p;
-        }
-      }
-      return closest;
-    }
-  // Get all your markers (e.g. _markers), busStopMarkers & scooterMarkers using your existing builder functions.
-  final busStopMarkers = buildBusStopMarkers(
-    segments: segments,
-    closestPointCalculator: _closestPointOnPolyline,
-  );
-  final scooterMarkers = buildScooterMarkers(segments);
+    /* slide-in from top */
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    final slide = Tween(begin: const Offset(0, -1), end: Offset.zero)
+        .animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
-  return MapWidget(
-    mapController: _mapController,
-    markers: _markers,
-    busStopMarkers: busStopMarkers,
-    scooterMarkers: scooterMarkers,
-    segments: segments,
-    currentLocation: _currentLocation,
-    cachedTileProvider: _cachedTileProvider,
-    onMapTap: _onMapTap,
-    parentContext: context,
-  );
-}
-
-  Widget _buildCurrentLocationButton() {
-    return Positioned(
-      bottom: 20,
-      right: 20,
-      child: FloatingActionButton(
-        // before: onPressed: _goToCurrentLocation,
-        onPressed: () =>
-            _goToCurrentLocation(moveMap: true), // <-- pass moveMap:true
-        backgroundColor: Colors.white,
-        child: const Icon(Icons.my_location, color: Colors.blue),
+    _plannerOverlay = OverlayEntry(
+      builder: (_) => SlideTransition(
+        position: slide,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: RoutePlanBar(
+            currentLocation: _currentLocation,
+            initialDestination: destination,
+            onCancelled: () async {
+              controller.reverse();
+              await controller.forward();
+              _plannerOverlay?.remove();
+              _plannerOverlay = null;
+              setState(() => _creatingRoute = false);
+              // also close directions sheet if open
+              _routeSheetCtr?.close();
+            },
+          ),
+        ),
       ),
     );
+
+    Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+    controller.forward();        // animate it in
+
+    // Immediately compute & show directions
+    _handleCreateRoute(destination);
   }
 
-  void _onMapTap(LatLng latlng) async {
-    if (_routeSheetController != null) {
-      return;
-    }
-    // Remove this to prevent closing your signed-in page:
-    // if (Navigator.of(context).canPop()) {
-    //   Navigator.of(context).pop();
-    // }
+  // ── search listener ──────────────────────────────────────────────
+  void _onSearchChanged() {
+    final q = _searchCtl.text.trim().toLowerCase();
+    setState(() {
+      _suggestions = q.isEmpty
+          ? []
+          : _allPointers.where((p) => p.name.toLowerCase().contains(q)).toList();
+    });
+  }
 
-    final findBuildingAtPoint = sl<FindBuildingAtPoint>();
-    final building = await findBuildingAtPoint.call(latlng);
+  // ── map widget + helpers ─────────────────────────────────────────
+  Widget _buildFlutterMap() {
+    final route = _routesNotifier.value[_currentMode];
+    final segments = route?.segments ?? [];
+
+    LatLng _closest(LatLng s, List<LatLng> line) {
+      double best = double.infinity;
+      LatLng bestP = line.first;
+      for (final p in line) {
+        final d = Distance().as(LengthUnit.Meter, s, p);
+        if (d < best) {
+          best = d;
+          bestP = p;
+        }
+      }
+      return bestP;
+    }
+
+    final busMarkers = buildBusStopMarkers(
+      segments: segments,
+      closestPointCalculator: _closest,
+    );
+    final scooterMarkers = buildScooterMarkers(segments);
+
+    return MapWidget(
+      mapController: _mapController,
+      markers: _markers,
+      busStopMarkers: busMarkers,
+      scooterMarkers: scooterMarkers,
+      segments: segments,
+      currentLocation: _currentLocation,
+      cachedTileProvider: _cachedTiles,
+      onMapTap: _onMapTap,
+      parentContext: context,
+    );
+  }
+
+  Widget _buildCurrentLocationButton() => Positioned(
+        bottom: 20,
+        right: 20,
+        child: FloatingActionButton(
+          backgroundColor: Colors.white,
+          onPressed: () => _goToCurrentLocation(moveMap: true),
+          child: const Icon(Icons.my_location, color: Colors.blue),
+        ),
+      );
+
+  // ── markers, filter & search ─────────────────────────────────────
+  Future<void> _loadBuildingMarkers() async {
+    try {
+      _allPointers = await sl<GetPointersUseCase>().call();
+      final m = _allPointers.map((p) {
+        return Marker(
+          point: LatLng(p.lat, p.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _onMarkerTap(p),
+            child: Image.asset(
+              getPinAssetForCategory(p.category),
+              width: 40,
+              height: 40,
+            ),
+          ),
+        );
+      }).toList();
+      setState(() => _markers = m);
+    } catch (e) {
+      debugPrint('Error loading markers: $e');
+    }
+  }
+
+  void _searchMarkers(String q) {
+    final filtered =
+        _allPointers.where((p) => p.name.toLowerCase().contains(q)).toList();
+
+    setState(() {
+      _markers = MapMarkerManager.searchMarkersByName(
+        allPointers: _allPointers,
+        query: q,
+        onMarkerTap: _onMarkerTap,
+      );
+    });
+
+    MapMarkerManager.centerMapOnFilteredResults(
+      mapController: _mapController,
+      filtered: filtered,
+    );
+  }
+
+  void _filterMarkersByCategory(String? cat, Color? color) {
+    setState(() {
+      _markers = MapMarkerManager.allMarkersWithHighlight(
+        allPointers: _allPointers,
+        highlightedCategory: cat,
+        highlightColor: color,
+        onMarkerTap: _onMarkerTap,
+      );
+    });
+
+    if (cat != null) {
+      final f = _allPointers
+          .where((p) =>
+              p.category.trim().toLowerCase() == cat.trim().toLowerCase())
+          .toList();
+      if (f.isNotEmpty) {
+        final b = LatLngBounds.fromPoints(
+          f.map((p) => LatLng(p.lat, p.lng)).toList()
+        );
+        _mapController.fitCamera(
+          CameraFit.bounds(bounds: b, padding: const EdgeInsets.all(40)),
+        );
+      }
+    }
+  }
+
+  // ── taps ─────────────────────────────────────────────────────────
+  void _onMapTap(LatLng latlng) async {
+    if (_routeSheetCtr != null || _plannerSheetCtr != null) return;
+
+    final building = await sl<FindBuildingAtPoint>().call(latlng);
 
     if (building != null) {
-      final pointer = _allPointers.firstWhere(
-        (p) => p.name == building.name,
+      final p = _allPointers.firstWhere(
+        (x) => x.name == building.name,
         orElse: () => Pointer(
           name: building.name,
           lat: latlng.latitude,
@@ -392,166 +325,150 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         context: context,
         scaffoldKey: widget.scaffoldKeyForBottomSheet,
         title: building.name,
-        category: pointer.category,
+        category: p.category,
         location: latlng,
-        onClose: () {}, // ← was Navigator.of(context).pop()
-        onCreateRoute: () async {
-          await _handleCreateRoute(latlng);
-        },
+        onCreateRoute: () => _startRouteFlow(latlng),
+        onClose: () {},
       );
     } else {
       BuildingPopupManager.showBuildingOrCoordinatesPopup(
         context: context,
-        scaffoldKey: widget.scaffoldKeyForBottomSheet, // ← NEW
+        scaffoldKey: widget.scaffoldKeyForBottomSheet,
         latlng: latlng,
         buildingName: null,
         category: null,
-        onCreateRoute: () async {
-          await _handleCreateRoute(latlng);
-        },
-        //onClose: () => Navigator.of(context).pop(),
+        onCreateRoute: () => _startRouteFlow(latlng),
       );
     }
   }
 
-  void _onMarkerTap(Pointer pointer) async {
-    // Close any open popup/bottom sheet first
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-      // Wait a frame to ensure the old popup is closed before opening a new one
-      await Future.delayed(const Duration(milliseconds: 50));
-    }
-
-    // Zoom in on this marker
-    _animatedMapMove(LatLng(pointer.lat, pointer.lng), 18.0);
-
-    // Show the popup for this pointer
+  void _onMarkerTap(Pointer p) {
+    _animatedMapMove(LatLng(p.lat, p.lng), 18);
     BuildingPopupManager.showBuildingSlideWindow(
       context: context,
       scaffoldKey: widget.scaffoldKeyForBottomSheet,
-      title: pointer.name,
-      category: pointer.category,
-      location: LatLng(pointer.lat, pointer.lng),
-      onCreateRoute: () async {
-        await _handleCreateRoute(LatLng(pointer.lat, pointer.lng));
-      },
+      title: p.name,
+      category: p.category,
+      location: LatLng(p.lat, p.lng),
+      onCreateRoute: () => _startRouteFlow(LatLng(p.lat, p.lng)),
       onClose: () {},
     );
   }
 
+  // ── current location ─────────────────────────────────────────────
   Future<void> _goToCurrentLocation({bool moveMap = false}) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-    if (permission == LocationPermission.deniedForever) return;
-
-    // Try to get last known position first (fast)
-    final lastKnown = await Geolocator.getLastKnownPosition();
-    if (lastKnown != null) {
-      if (!mounted) return;
-      setState(() {
-        _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
-      });
-      if (moveMap) {
-        final currentZoom = _mapController.camera.zoom;
-        final zoom = currentZoom < 17.0 ? 17.0 : currentZoom;
-        _animatedMapMove(_currentLocation!, zoom);
-      }
+    if (!await Geolocator.isLocationServiceEnabled()) return;
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) return;
     }
 
-    // Then get the current position (may take longer)
-    final position = await Geolocator.getCurrentPosition();
-    if (!mounted) return;
-    setState(() {
-      _currentLocation = LatLng(position.latitude, position.longitude);
-    });
-    if (moveMap) {
-      final currentZoom = _mapController.camera.zoom;
-      final zoom = currentZoom < 17.0 ? 17.0 : currentZoom;
-      _animatedMapMove(_currentLocation!, zoom);
+    final last = await Geolocator.getLastKnownPosition();
+    if (last != null) {
+      _currentLocation = LatLng(last.latitude, last.longitude);
+      if (moveMap) _animatedMapMove(_currentLocation!, 17);
     }
+
+    final pos = await Geolocator.getCurrentPosition();
+    _currentLocation = LatLng(pos.latitude, pos.longitude);
+    if (moveMap) _animatedMapMove(_currentLocation!, 17);
+    setState(() {});
   }
 
-  // <-- new helper to animate center & zoom
-  void _animatedMapMove(LatLng dest, double destZoom) {
-    // dispose any old one
-    _mapAnimController?.dispose();
-
-    // new controller
-    _mapAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
+  // ── route creation & sheet ───────────────────────────────────────
+  Future<void> _handleCreateRoute(LatLng dest) async {
+    await RouteLogic.onCreateRoute(
+      context: context,
+      latlng: dest,
+      currentLocation: _currentLocation,
+      routesNotifier: _routesNotifier,
+      setState: setState,
+      animatedMapMove: _animatedMapMove,
+      mounted: mounted,
+      currentMode: _currentMode,
+      showRouteOptionsSheet: _showRouteOptionsSheet,
+      onModeChanged: (m) async {
+        await RouteLogic.onModeChanged(
+          context: context,
+          mode: m,
+          destination: dest,
+          currentLocation: _currentLocation,
+          routesNotifier: _routesNotifier,
+          setState: setState,
+          updateCurrentMode: (nm) => setState(() => _currentMode = nm),
+        );
+      },
     );
-    _isFlyToActive = true; // start flying
-
-    final latTween = Tween(
-      begin: _mapController.camera.center.latitude,
-      end: dest.latitude,
-    );
-    final lngTween = Tween(
-      begin: _mapController.camera.center.longitude,
-      end: dest.longitude,
-    );
-    final zoomTween = Tween(begin: _mapController.camera.zoom, end: destZoom);
-
-    final anim = CurvedAnimation(
-      parent: _mapAnimController!,
-      curve: Curves.easeInOut,
-    );
-
-    anim.addListener(() {
-      _mapController.move(
-        LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
-        zoomTween.evaluate(anim),
-      );
-    });
-
-    // when the fly-to finishes naturally, clear the flag
-    _mapAnimController!.addStatusListener((status) {
-      if (status == AnimationStatus.completed ||
-          status == AnimationStatus.dismissed) {
-        _isFlyToActive = false;
-      }
-    });
-
-    _mapAnimController!.forward();
   }
 
-  /// Shows a persistent (non-modal) bottom sheet so the map remains interactive.
-  void showRouteOptionsSheet({
+  void _showRouteOptionsSheet({
     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
     required TravelMode currentMode,
     required ValueChanged<TravelMode> onModeChanged,
     required VoidCallback onClose,
   }) {
-    // If already open, do nothing or close the previous one first
-    if (_routeSheetController != null) return;
+    if (_routeSheetCtr != null) return;
 
-    _routeSheetController = widget.scaffoldKeyForBottomSheet.currentState
-        ?.showBottomSheet(
-          (ctx) => RouteOptionsSheet(
-            routesNotifier: routesNotifier,
-            currentMode: currentMode,
-            onClose: onClose,
-            onModeChanged: onModeChanged,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        );
+    _routeSheetCtr =
+        widget.scaffoldKeyForBottomSheet.currentState?.showBottomSheet(
+      (_) => RouteOptionsSheet(
+        routesNotifier: routesNotifier,
+        currentMode: currentMode,
+        onClose: onClose,
+        onModeChanged: onModeChanged,
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
 
-    _routeSheetController?.closed.then((_) {
-      _routeSheetController = null; // Reset when closed
+    _routeSheetCtr?.closed.then((_) {
+      // clear bottom‐sheet state
+      _routeSheetCtr = null;
       onClose();
+      // also remove the top RoutePlanBar overlay
+      _plannerOverlay?.remove();
+      _plannerOverlay = null;
+      setState(() => _creatingRoute = false);
     });
   }
 
-  String getPinAssetForCategory(String category) {
-    switch (category.trim().toLowerCase()) {
+  // ── animation helper ─────────────────────────────────────────────
+void _animatedMapMove(LatLng dest, double zoom) {
+  _mapAnimController?.dispose();
+  _mapAnimController =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+
+  final latTween  = Tween(begin: _mapController.camera.center.latitude,  end: dest.latitude);
+  final lngTween  = Tween(begin: _mapController.camera.center.longitude, end: dest.longitude);
+  final zoomTween = Tween(begin: _mapController.camera.zoom,             end: zoom);
+
+  // ❶ Create the curved animation first …
+  final anim = CurvedAnimation(
+    parent: _mapAnimController!,
+    curve: Curves.easeInOut,
+  );
+
+  // ❷ … then attach the listener.
+  anim.addListener(() {
+    _mapController.move(
+      LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
+      zoomTween.evaluate(anim),
+    );
+  });
+
+  _mapAnimController!.forward();
+}
+
+void _showPlannerBar() {
+  final dest = _currentLocation ?? LatLng(matheLat, matheLon);
+  _startRouteFlow(dest);
+}
+
+  // ── utils ───────────────────────────────────────────────────────
+  String getPinAssetForCategory(String cat) {
+    switch (cat.trim().toLowerCase()) {
       case 'mensa':
       case 'canteen':
         return 'assets/icons/pin_mensa.png';
@@ -561,7 +478,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'library':
         return 'assets/icons/pin_library.png';
       default:
-        return 'assets/icons/pin_default.png'; // fallback
+        return 'assets/icons/pin_default.png';
     }
   }
 }
