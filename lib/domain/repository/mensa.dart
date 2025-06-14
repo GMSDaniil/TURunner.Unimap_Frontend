@@ -7,9 +7,3 @@ abstract class MensaRepository {
     GetMenuReqParams params,
   );
 }
-
-
-/*
-abstract class MensaRepository {
-  Future<List<MealModel>> getMensaMenu(GetMenuReqParams mensaName);
-}*/

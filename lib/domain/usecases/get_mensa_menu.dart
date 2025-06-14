@@ -9,7 +9,7 @@ class GetMensaMenuUseCase
     implements UseCase<Either<String, MensaMenuResponse>, GetMenuReqParams> {
   String _mapUiNameToApiName(String name) {
     final n = name.toLowerCase();
-    if (n.contains('veggie')) return 'veggie';
+    if (n.contains('veggiee2.0')) return 'veggie';
     if (n.contains('march')) return 'marchstrasse';
     if (n.contains('hardenberg')) return 'hardenbergstrasse';
     return 'hardenbergstrasse';
@@ -27,7 +27,7 @@ class GetMensaMenuUseCase
         mensaName: _mapUiNameToApiName(param.mensaName),
       );
       final result = await repo.getMensaMenu(mappedParam);
-      print('GetMensaMenuUseCase result: $result');
+      //print('GetMensaMenuUseCase result: $result');
       return result;
     } catch (e) {
       return Left('Unexpected error: ${e.toString()}');

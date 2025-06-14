@@ -9,13 +9,10 @@ class MensaApiService {
   Future<Either> fetchMensaMeals(GetMenuReqParams params) async {
     try {
       final url = '${ApiUrls.baseURL}mensa/${params.mensaName}/menu';
-      // print('MensaApiService: URL = $url');
+      print('MensaApiService: URL = $url'); // Zum Debuggen
       final response = await sl<DioClient>().get(url);
       return Right(response);
     } on DioException catch (e) {
-      // print('DioException: $e');
-      // print('DioException response: ${e.response}');
-      // print('DioException response data: ${e.response?.data}');
       return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
     }
   }

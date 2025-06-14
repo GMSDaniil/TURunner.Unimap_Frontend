@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/mensa_menu_response.dart';
 import '../../domain/repository/mensa.dart';
@@ -15,11 +16,11 @@ class MensaRepositoryImpl implements MensaRepository {
 
     return result.fold(
       (errorMessage) {
-        // print('MensaApiService error: $errorMessage');
+        //print('MensaApiService error: $errorMessage'); 
         return Left(errorMessage);
       },
       (response) {
-        // print('MensaApiService response: ${response.data}');
+        //print('MensaApiService response: ${response.data}');
         try {
           final data = response.data is String
               ? jsonDecode(response.data)
@@ -27,7 +28,7 @@ class MensaRepositoryImpl implements MensaRepository {
           final menu = MensaMenuResponse.fromJson(data);
           return Right(menu);
         } catch (e) {
-          print('Error parsing mensa menu data: $e');
+          //print('Error parsing mensa menu data: $e');
           return Left('Failed to parse mensa menu data');
         }
       },
