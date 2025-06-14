@@ -12,4 +12,5 @@ class ApiUrls {
   static const findScooterRoute = '${baseURL}Route/scooter-route';
   static const getMensaMenu = '${baseURL}mensa/all-menus';
   static const getPointers = '${baseURL}Pointers/getPointers';
+  static const getWeatherInfo = '${baseURL}weather';
 }

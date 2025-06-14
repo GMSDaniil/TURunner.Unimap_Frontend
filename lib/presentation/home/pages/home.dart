@@ -25,18 +25,13 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int myIndex = 0;
 
-  // When creating MapPage in your widgetList:
-  
-
   @override
   Widget build(BuildContext context) {
     final widgetList = [
-    MapPage(
-      scaffoldKeyForBottomSheet: _scaffoldKey,
-    ),
-    FavouritesPage(),
-    ProfilePage(),
-  ];
+      MapPage(scaffoldKeyForBottomSheet: _scaffoldKey),
+      FavouritesPage(),
+      ProfilePage(),
+    ];
 
     return Scaffold(
       key: _scaffoldKey,
@@ -63,25 +58,24 @@ class _HomePageState extends State<HomePage> {
           onTap: (index) => setState(() => myIndex = index),
         ),
       ),
-      
     );
   }
 
   void showRouteOptionsSheet({
-  required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
-  required TravelMode currentMode,
-  required ValueChanged<TravelMode> onModeChanged,
-  required VoidCallback onClose,
-}) {
-  _scaffoldKey.currentState?.showBottomSheet(
-    (ctx) => RouteOptionsSheet(
-      routesNotifier: routesNotifier,
-      currentMode: currentMode,
-      onClose: onClose,
-      onModeChanged: onModeChanged,
-    ),
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-  );
-}
+    required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
+    required TravelMode currentMode,
+    required ValueChanged<TravelMode> onModeChanged,
+    required VoidCallback onClose,
+  }) {
+    _scaffoldKey.currentState?.showBottomSheet(
+      (ctx) => RouteOptionsSheet(
+        routesNotifier: routesNotifier,
+        currentMode: currentMode,
+        onClose: onClose,
+        onModeChanged: onModeChanged,
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
+  }
 }

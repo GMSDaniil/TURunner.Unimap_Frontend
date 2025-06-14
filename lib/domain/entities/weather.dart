@@ -1,14 +1,13 @@
-class WeatherEntity {
+class WeatherInfoEntity {
   final double temperature;
   final String description;
-  final String  iconUrl;
+  final String iconUrl;
   final int airQualityIndex;
   final String location;
-  final double  lat;
+  final double lat;
   final double lon;
 
-
-  WeatherEntity({
+  WeatherInfoEntity({
     required this.temperature,
     required this.description,
     required this.iconUrl,
@@ -33,4 +32,5 @@ class WeatherEntity {
         "lat": 52.51254994596774,
         "lon": 13.326949151892109
     }
-}*/
+}  */
+

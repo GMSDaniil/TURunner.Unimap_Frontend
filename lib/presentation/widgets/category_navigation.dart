@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'weather_widget.dart';
+
+const double matheLat = 52.5125; // example value, have to replace with real one
+const double matheLon = 13.3266; // same here, mathe gebäude
 
 class CategoryNavigationBar extends StatefulWidget {
   // allow nullable params
   final void Function(String? category, Color? color) onCategorySelected;
+  final LatLng? currentLocation;
 
   const CategoryNavigationBar({
     Key? key,
     required this.onCategorySelected,
+    this.currentLocation,
   }) : super(key: key);
 
   @override
@@ -29,18 +38,29 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
               children: [
                 _buildChip(
                   icon: Icons.local_cafe,
-                  label: 'Café',
+                  label: 'Cafés',
                   color: Colors.orange,
                 ),
                 _buildChip(
                   icon: Icons.local_library,
-                  label: 'Library',
+                  label: 'Libraries',
                   color: Colors.yellow[800]!,
                 ),
                 _buildChip(
                   icon: Icons.restaurant,
-                  label: 'Canteen',
+                  label: 'Canteens',
                   color: Colors.green,
+                ),
+                _buildChip(
+                  icon: Icons.meeting_room,
+                  label: 'Study Rooms',
+                  color: Colors.blue,
+                ),
+
+                const SizedBox(width: 5),
+                WeatherWidget(
+                  location:
+                      widget.currentLocation ?? LatLng(matheLat, matheLon),
                 ),
               ],
             ),

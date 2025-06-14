@@ -20,14 +20,14 @@ import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
 import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
+import 'package:auth_app/presentation/widgets/weather_widget.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
-    as FMTC;
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
@@ -51,14 +51,14 @@ const double matheLat = 52.5135, matheLon = 13.3245;
 //   No more run-time maths needed :)
 //
 //   ─────────  category  ────────  center.lat   center.lon    zoom
-const _cafesCenter     = LatLng(52.51271, 13.32517);  // 10 cafés
-const _cafesZoom       = 16.0;
+const _cafesCenter = LatLng(52.51271, 13.32517); // 10 cafés
+const _cafesZoom = 16.0;
 
-const _librariesCenter = LatLng(52.51250, 13.32619);  //  4 libraries
-const _librariesZoom   = 16.5;
+const _librariesCenter = LatLng(52.51250, 13.32619); //  4 libraries
+const _librariesZoom = 16.5;
 
-const _canteensCenter  = LatLng(52.5135 1, 13.32496);  //  4 main mensas¹
-const _canteensZoom    = 16.0;
+const _canteensCenter = LatLng(52.51351, 13.32496); //  4 main mensas¹
+const _canteensZoom = 16.0;
 // ¹ the Marchstraße (northern) mensa was left out on purpose; including it
 //   made the view less useful for day-to-day campus food spotting.
 
@@ -76,7 +76,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
   PersistentBottomSheetController? _routeSheetCtr;
-  OverlayEntry? _plannerOverlay;   // ← NEW
+  OverlayEntry? _plannerOverlay; // ← NEW
 
   // ── controllers & data ───────────────────────────────────────────
   final MapController _mapController = MapController();
@@ -140,6 +140,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
             ),
           _buildCurrentLocationButton(),
+
+          //weather widget
+          Positioned(
+            left: 16,
+            bottom: 20,
+            child: WeatherWidget(
+              location: LatLng(
+                matheLat,
+                matheLon,
+              ), // default mathe gebäude location
+            ),
+          ),
         ],
       ),
       // floatingActionButton removed to hide route-creation button
@@ -153,8 +165,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (_plannerOverlay != null) return;
     setState(() {
       _creatingRoute = true;
-      _currentMode   = TravelMode.walk;   // reset to walking
-      _routesNotifier.value = {};         // drop any old routes
+      _currentMode = TravelMode.walk; // reset to walking
+      _routesNotifier.value = {}; // drop any old routes
     });
 
     /* slide-in from top */
@@ -162,8 +174,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    final slide = Tween(begin: const Offset(0, -1), end: Offset.zero)
-        .animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
+    final slide = Tween(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
     _plannerOverlay = OverlayEntry(
       builder: (_) => SlideTransition(
@@ -171,42 +185,42 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         child: Align(
           alignment: Alignment.topCenter,
           child: RoutePlanBar(
-              currentLocation: _currentLocation,
-              initialDestination: destination,
-              allPointers:        _allPointers,
-              onCancelled:        () async {
-                controller.reverse();
-                await controller.forward();
-                _plannerOverlay?.remove();
-                _plannerOverlay = null;
-                setState(() => _creatingRoute = false);
-                // also close directions sheet if open
-                _routeSheetCtr?.close();
-              },
-              onChanged: (newStart, newDest) async {
-                // 1️⃣ recalc the route in place
-                await _handleCreateRoute(
-                  newDest,
-                  startOverride: newStart,
-                  rebuildOnly: true,
-                );
+            currentLocation: _currentLocation,
+            initialDestination: destination,
+            allPointers: _allPointers,
+            onCancelled: () async {
+              controller.reverse();
+              await controller.forward();
+              _plannerOverlay?.remove();
+              _plannerOverlay = null;
+              setState(() => _creatingRoute = false);
+              // also close directions sheet if open
+              _routeSheetCtr?.close();
+            },
+            onChanged: (newStart, newDest) async {
+              // 1️⃣ recalc the route in place
+              await _handleCreateRoute(
+                newDest,
+                startOverride: newStart,
+                rebuildOnly: true,
+              );
 
-                // 2️⃣ once that's done, grab all the points & fit the map
-                final data = _routesNotifier.value[_currentMode];
-                final pts = data?.segments.expand((s) => s.path).toList() ?? [];
-                if (pts.isNotEmpty) {
-                  final bounds = LatLngBounds.fromPoints(pts);
-                  // you can tweak the padding/zoomThreshold here
-                  _animatedMapMove(bounds.center, 16.0);
-                }
-              },
-            ),
+              // 2️⃣ once that's done, grab all the points & fit the map
+              final data = _routesNotifier.value[_currentMode];
+              final pts = data?.segments.expand((s) => s.path).toList() ?? [];
+              if (pts.isNotEmpty) {
+                final bounds = LatLngBounds.fromPoints(pts);
+                // you can tweak the padding/zoomThreshold here
+                _animatedMapMove(bounds.center, 16.0);
+              }
+            },
+          ),
         ),
       ),
     );
 
     Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
-    controller.forward();        // animate it in
+    controller.forward(); // animate it in
 
     // first time in → rebuildOnly=false (default)
     _handleCreateRoute(destination, startOverride: _currentLocation);
@@ -218,7 +232,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     setState(() {
       _suggestions = q.isEmpty
           ? []
-          : _allPointers.where((p) => p.name.toLowerCase().contains(q)).toList();
+          : _allPointers
+                .where((p) => p.name.toLowerCase().contains(q))
+                .toList();
     });
   }
 
@@ -260,14 +276,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildCurrentLocationButton() => Positioned(
-        bottom: 20,
-        right: 20,
-        child: FloatingActionButton(
-          backgroundColor: Colors.white,
-          onPressed: () => _goToCurrentLocation(moveMap: true),
-          child: const Icon(Icons.my_location, color: Colors.blue),
-        ),
-      );
+    bottom: 20,
+    right: 20,
+    child: FloatingActionButton(
+      backgroundColor: Colors.white,
+      onPressed: () => _goToCurrentLocation(moveMap: true),
+      child: const Icon(Icons.my_location, color: Colors.blue),
+    ),
+  );
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
@@ -295,8 +311,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _searchMarkers(String q) {
-    final filtered =
-        _allPointers.where((p) => p.name.toLowerCase().contains(q)).toList();
+    final filtered = _allPointers
+        .where((p) => p.name.toLowerCase().contains(q))
+        .toList();
 
     setState(() {
       _markers = MapMarkerManager.searchMarkersByName(
@@ -334,9 +351,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       } else {
         // Show only markers matching the selected category
         _markers = _allPointers
-            .where((p) =>
-                p.category.trim().toLowerCase() ==
-                category.trim().toLowerCase())
+            .where(
+              (p) =>
+                  p.category.trim().toLowerCase() ==
+                  category.trim().toLowerCase(),
+            )
             .map((pointer) {
               return Marker(
                 point: LatLng(pointer.lat, pointer.lng),
@@ -427,7 +446,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
       if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) return;
+          perm == LocationPermission.deniedForever)
+        return;
     }
 
     final last = await Geolocator.getLastKnownPosition();
@@ -446,7 +466,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Future<void> _handleCreateRoute(
     LatLng dest, {
     LatLng? startOverride,
-    bool   rebuildOnly = false,
+    bool rebuildOnly = false,
   }) async {
     await RouteLogic.onCreateRoute(
       context: context,
@@ -469,7 +489,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           updateCurrentMode: (nm) => setState(() => _currentMode = nm),
         );
       },
-      rebuildOnly: rebuildOnly,      // ← NEW
+      rebuildOnly: rebuildOnly, // ← NEW
     );
   }
 
@@ -481,17 +501,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }) {
     if (_routeSheetCtr != null) return;
 
-    _routeSheetCtr =
-        widget.scaffoldKeyForBottomSheet.currentState?.showBottomSheet(
-      (_) => RouteOptionsSheet(
-        routesNotifier: routesNotifier,
-        currentMode: currentMode,
-        onClose: onClose,
-        onModeChanged: onModeChanged,
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
+    _routeSheetCtr = widget.scaffoldKeyForBottomSheet.currentState
+        ?.showBottomSheet(
+          (_) => RouteOptionsSheet(
+            routesNotifier: routesNotifier,
+            currentMode: currentMode,
+            onClose: onClose,
+            onModeChanged: onModeChanged,
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        );
 
     _routeSheetCtr?.closed.then((_) {
       // clear bottom‐sheet state
@@ -505,36 +525,44 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // ── animation helper ─────────────────────────────────────────────
-void _animatedMapMove(LatLng dest, double zoom) {
-  _mapAnimController?.dispose();
-  _mapAnimController =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-
-  final latTween  = Tween(begin: _mapController.camera.center.latitude,  end: dest.latitude);
-  final lngTween  = Tween(begin: _mapController.camera.center.longitude, end: dest.longitude);
-  final zoomTween = Tween(begin: _mapController.camera.zoom,             end: zoom);
-
-  // ❶ Create the curved animation first …
-  final anim = CurvedAnimation(
-    parent: _mapAnimController!,
-    curve: Curves.easeInOut,
-  );
-
-  // ❷ … then attach the listener.
-  anim.addListener(() {
-    _mapController.move(
-      LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
-      zoomTween.evaluate(anim),
+  void _animatedMapMove(LatLng dest, double zoom) {
+    _mapAnimController?.dispose();
+    _mapAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
     );
-  });
 
-  _mapAnimController!.forward();
-}
+    final latTween = Tween(
+      begin: _mapController.camera.center.latitude,
+      end: dest.latitude,
+    );
+    final lngTween = Tween(
+      begin: _mapController.camera.center.longitude,
+      end: dest.longitude,
+    );
+    final zoomTween = Tween(begin: _mapController.camera.zoom, end: zoom);
 
-void _showPlannerBar() {
-  final dest = _currentLocation ?? LatLng(matheLat, matheLon);
-  _startRouteFlow(dest);
-}
+    // ❶ Create the curved animation first …
+    final anim = CurvedAnimation(
+      parent: _mapAnimController!,
+      curve: Curves.easeInOut,
+    );
+
+    // ❷ … then attach the listener.
+    anim.addListener(() {
+      _mapController.move(
+        LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
+        zoomTween.evaluate(anim),
+      );
+    });
+
+    _mapAnimController!.forward();
+  }
+
+  void _showPlannerBar() {
+    final dest = _currentLocation ?? LatLng(matheLat, matheLon);
+    _startRouteFlow(dest);
+  }
 
   // ── utils ───────────────────────────────────────────────────────
   String getPinAssetForCategory(String cat) {
