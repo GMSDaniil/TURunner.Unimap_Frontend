@@ -132,7 +132,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 _searchCtl.clear();
                 setState(() => _suggestions = []);
               },
-              onCategorySelected: _filterMarkersByCategory,
+              onCategorySelected: (category, color) {
+                _filterMarkersByCategory(category, color);
+                if (category != null) {
+                  _showCategoryListPopup(category, color ?? Colors.blue);
+                }
+              },
               onSuggestionSelected: (p) {
                 final dest = LatLng(p.lat, p.lng);
                 _animatedMapMove(dest, 18);
@@ -332,7 +337,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _filterMarkersByCategory(String? category, Color? markerColor) {
     setState(() {
       if (category == null) {
-        // No category selected: show all markers
         _markers = _allPointers.map((pointer) {
           return Marker(
             point: LatLng(pointer.lat, pointer.lng),
@@ -349,16 +353,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           );
         }).toList();
       } else {
-        // Show only markers matching the selected category
         _markers = _allPointers
             .where((p) {
               final cat = category.trim().toLowerCase();
               final pCat = p.category.trim().toLowerCase();
               if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-              if (cat.contains('librar'))
-                return pCat == 'library' || pCat == 'libraries';
-              if (cat.contains('canteen'))
-                return pCat == 'canteen' || pCat == 'mensa';
+              if (cat.contains('librar')) return pCat.contains('librar');
+              if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
               if (cat.contains('study room')) return pCat == 'study room';
               return false;
             })
@@ -585,5 +586,69 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       default:
         return 'assets/icons/pin_default.png';
     }
+  }
+
+  void _showCategoryListPopup(String category, Color color) {
+    final cat = category.trim().toLowerCase();
+    final filtered = _allPointers.where((p) {
+      final pCat = p.category.trim().toLowerCase();
+      if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+      if (cat.contains('librar')) return pCat.contains('librar');
+      if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
+      if (cat.contains('study room')) return pCat == 'study room';
+      return false;
+    }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'All ${category[0].toUpperCase()}${category.substring(1)}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) {
+                    final p = filtered[i];
+                    return ListTile(
+                      leading: Image.asset(
+                        getPinAssetForCategory(p.category),
+                        width: 32,
+                        height: 32,
+                      ),
+                      title: Text(p.name),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.directions),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _startRouteFlow(LatLng(p.lat, p.lng));
+                        },
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _animatedMapMove(LatLng(p.lat, p.lng), 18);
+                        _onMarkerTap(p);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
