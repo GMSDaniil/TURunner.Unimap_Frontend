@@ -51,12 +51,12 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                   label: 'Canteens',
                   color: Colors.green,
                 ),
+
                 _buildChip(
                   icon: Icons.meeting_room,
                   label: 'Study Rooms',
                   color: Colors.blue,
                 ),
-
                 const SizedBox(width: 5),
                 WeatherWidget(
                   location:

@@ -351,11 +351,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       } else {
         // Show only markers matching the selected category
         _markers = _allPointers
-            .where(
-              (p) =>
-                  p.category.trim().toLowerCase() ==
-                  category.trim().toLowerCase(),
-            )
+            .where((p) {
+              final cat = category.trim().toLowerCase();
+              final pCat = p.category.trim().toLowerCase();
+              if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+              if (cat.contains('librar'))
+                return pCat == 'library' || pCat == 'libraries';
+              if (cat.contains('canteen'))
+                return pCat == 'canteen' || pCat == 'mensa';
+              if (cat.contains('study room')) return pCat == 'study room';
+              return false;
+            })
             .map((pointer) {
               return Marker(
                 point: LatLng(pointer.lat, pointer.lng),
@@ -380,7 +386,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final cat = category.toLowerCase();
       if (cat.contains('café') || cat.contains('cafe')) {
         _animatedMapMove(_cafesCenter, _cafesZoom);
-      } else if (cat.contains('library')) {
+      } else if (cat.contains('librar')) {
         _animatedMapMove(_librariesCenter, _librariesZoom);
       } else if (cat.contains('mensa') || cat.contains('canteen')) {
         _animatedMapMove(_canteensCenter, _canteensZoom);
@@ -573,6 +579,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'café':
       case 'cafe':
         return 'assets/icons/pin_cafe.png';
+      case 'libraries':
       case 'library':
         return 'assets/icons/pin_library.png';
       default:
