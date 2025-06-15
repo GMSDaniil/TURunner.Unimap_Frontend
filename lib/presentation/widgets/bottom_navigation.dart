@@ -3,6 +3,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;      // ← for min()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CATEGORY CHIPS (top of the map)
@@ -205,57 +206,104 @@ class _AnimatedNavIconState extends State<_AnimatedNavIcon>
 
   @override
   Widget build(BuildContext context) {
+    // Let the Expanded-cell tell us how wide it can be
     return Center(
-      child: AnimatedBuilder(
-        animation: _t,
-        builder: (context, _) {
-          final t = _t.value; // 0-1 tween value
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8), // <-- Add this line (adjust value as needed)
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ─ Icon ─
-                Transform.translate(
-                  offset: Offset(_iconShift * t, 0),
-                  child: Icon(
-                    widget.icon,
-                    size: _iconSize,
-                    color: Color.lerp(Colors.white, Colors.amber, t),
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxCellW = constraints.maxWidth;            // full cell width
+
+          return AnimatedBuilder(
+            animation: _t,
+            builder: (context, _) {
+              final t = _t.value;                           // 0 → 1
+
+              // Measure label once so we know how much text we *could* show
+              final tp = TextPainter(
+                text: TextSpan(
+                  text: widget.label,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w600),
                 ),
+                textDirection: TextDirection.ltr,
+              )..layout();
+              final textW = tp.width;
 
-                // ─ Gap (0 → 1 px) ─ Further reduced to make icon and text closer
-                SizedBox(width: lerpDouble(0, 1, t)!),
+              // ── desired geometry ────────────────────────────────────────────
+              const double iconOnlyW = _iconSize + 28;      // icon + fat padding
+              final double wantFullW =                       // icon + gap + text + padding
+                  _iconSize + 8 + textW + 40;
 
-                // ─ Label ─   <----------------------------------------
-                /* old block was here */
+              // Let the pill grow to the width we actually want. It can now
+              // exceed the parent cell — we’ll allow that with an OverflowBox.
+              final double bubbleW = lerpDouble(iconOnlyW, wantFullW, t)!;
 
-                // NEW: label width collapses with Align.widthFactor,
-                //      while still fading + sliding in.
-                ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: t, // 0 = no width
-                    child: Opacity(
-                      opacity: t,
-                      child: Transform.translate(
-                        offset: Offset(_labelSlide * (1 - t), 0),
-                        child: Text(
-                          widget.label,
-                          style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+              const double bubbleH = 60;                    // BIGGER pill
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: OverflowBox(                    // ← NEW
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  alignment: Alignment.center,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // ───────── pill bubble ─────────
+                      Opacity(
+                        opacity: t,
+                        child: Transform.scale(
+                          scale: lerpDouble(0.4, 1.0, t)!,     // “pop”
+                          child: Container(
+                            width: bubbleW,
+                            height: bubbleH,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(bubbleH / 2),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+
+                      // ─────── icon + label ────────
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.translate(
+                            offset: Offset(_iconShift * t, 0),
+                            child: Icon(
+                              widget.icon,
+                              size: _iconSize,
+                              color: Color.lerp(Colors.white, Colors.amber, t),
+                            ),
+                          ),
+                          SizedBox(width: lerpDouble(0, 6, t)!),   // gap
+                          ClipRect(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: t,
+                              child: Opacity(
+                                opacity: t,
+                                child: Transform.translate(
+                                  offset: Offset(_labelSlide * (1 - t), 0),
+                                  child: Text(
+                                    widget.label,
+                                    style: const TextStyle(
+                                      color: Colors.amber,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                // ───────────────────────────────────────────────────
-              ],
-            ),
+              );
+            },
           );
         },
       ),
