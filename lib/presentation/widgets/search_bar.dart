@@ -12,6 +12,7 @@ class MapSearchBar extends StatefulWidget {
   final VoidCallback onClear;
   final Function(String? category, Color? color) onCategorySelected;
   final Function(Pointer) onSuggestionSelected;
+  final FocusNode? focusNode;
 
   const MapSearchBar({
     Key? key,
@@ -21,6 +22,7 @@ class MapSearchBar extends StatefulWidget {
     required this.onClear,
     required this.onCategorySelected,
     required this.onSuggestionSelected,
+    this.focusNode,
   }) : super(key: key);
 
   @override
@@ -33,12 +35,17 @@ class _MapSearchBarState extends State<MapSearchBar> {
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode()..addListener(() => setState(() {}));
+    _focusNode = widget.focusNode ?? FocusNode();
+    if (widget.focusNode == null) {
+      _focusNode.addListener(() => setState(() {}));
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 

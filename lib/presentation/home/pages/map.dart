@@ -21,6 +21,7 @@ import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
+// Removed invalid import as the file does not exist
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,6 +78,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   PersistentBottomSheetController? _plannerSheetCtr;
   PersistentBottomSheetController? _routeSheetCtr;
   OverlayEntry? _plannerOverlay; // ← NEW
+  bool _searchActive = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   // ── controllers & data ───────────────────────────────────────────
   final MapController _mapController = MapController();
@@ -104,12 +107,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _cachedTiles = FMTC.FMTCTileProvider(
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
     );
+    _searchFocusNode.addListener(() {
+      setState(() {
+        _searchActive = _searchFocusNode.hasFocus;
+      });
+    });
   }
 
   @override
   void dispose() {
     _mapAnimController?.dispose();
     _searchCtl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -120,6 +129,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       body: Stack(
         children: [
           _buildFlutterMap(),
+          if (_searchActive)
+            AnimatedOpacity(
+              opacity: _searchActive ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 180),
+              child: GestureDetector(
+                onTap: () {
+                  _searchFocusNode.unfocus();
+                },
+                child: Container(
+                  color: Colors.white.withOpacity(0.92),
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+            ),
           if (!_creatingRoute)
             MapSearchBar(
               searchController: _searchCtl,
@@ -143,9 +167,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 _animatedMapMove(dest, 18);
                 _onMapTap(dest);
               },
+              focusNode: _searchFocusNode,
             ),
           _buildCurrentLocationButton(),
-
           //weather widget
           Positioned(
             left: 16,
