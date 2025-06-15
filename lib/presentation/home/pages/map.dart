@@ -292,27 +292,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
-    try {
-      _allPointers = await sl<GetPointersUseCase>().call();
-      final m = _allPointers.map((p) {
-        return Marker(
-          point: LatLng(p.lat, p.lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _onMarkerTap(p),
-            child: Image.asset(
-              getPinAssetForCategory(p.category),
-              width: 40,
-              height: 40,
+      var response = await sl<GetPointersUseCase>().call();
+      response.fold(
+        (error) {
+          debugPrint('Error loading pointers: $error');
+          return;
+        },
+        (pointers) {
+        _allPointers = pointers;
+          final m = _allPointers.map((p) {
+          return Marker(
+            point: LatLng(p.lat, p.lng),
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () => _onMarkerTap(p),
+              child: Image.asset(
+                getPinAssetForCategory(p.category),
+                width: 40,
+                height: 40,
+              ),
             ),
-          ),
-        );
-      }).toList();
-      setState(() => _markers = m);
-    } catch (e) {
-      debugPrint('Error loading markers: $e');
-    }
+          );
+        }).toList();
+        setState(() => _markers = m);
+          },
+      );
+      
   }
 
   void _searchMarkers(String q) {
@@ -399,8 +405,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _onMapTap(LatLng latlng) async {
     if (_routeSheetCtr != null || _plannerSheetCtr != null) return;
 
-    final building = await sl<FindBuildingAtPoint>().call(latlng);
-
+    final building = await sl<FindBuildingAtPoint>().call(point: latlng);
+    
     if (building != null) {
       final p = _allPointers.firstWhere(
         (x) => x.name == building.name,
@@ -411,7 +417,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           category: 'Building',
         ),
       );
-
+      _animatedMapMove(LatLng(p.lat, p.lng), 18);
       BuildingPopupManager.showBuildingSlideWindow(
         context: context,
         scaffoldKey: widget.scaffoldKeyForBottomSheet,
@@ -434,6 +440,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _onMarkerTap(Pointer p) {
+    if (_plannerOverlay != null) return;
     _animatedMapMove(LatLng(p.lat, p.lng), 18);
     BuildingPopupManager.showBuildingSlideWindow(
       context: context,

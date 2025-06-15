@@ -65,7 +65,7 @@ void setupServiceLocator() {
     () => BuildingRepositoryImpl(sl()),
   );
   sl.registerLazySingleton<FindBuildingAtPoint>(
-    () => FindBuildingAtPoint(sl<BuildingRepositoryImpl>()),
+    () => FindBuildingAtPoint(),
   );
 
   sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());

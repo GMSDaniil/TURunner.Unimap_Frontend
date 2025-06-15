@@ -1,3 +1,5 @@
+import 'package:auth_app/data/models/coordinates.dart';
+import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
@@ -5,45 +7,70 @@ import 'package:auth_app/domain/usecases/get_weather_info.dart';
 import 'package:auth_app/data/models/get_weather_info_req_params.dart';
 import 'package:auth_app/data/models/weather_response.dart';
 import 'package:auth_app/data/models/weather_info.dart';
-import 'package:auth_app/data/models/coordinates.dart';
-import 'package:dartz/dartz.dart';
 
-/* Widget to display current weather information for a given location
-   Uses FutureBuilder to fetch weather data asynchronously*/
-class WeatherWidget extends StatelessWidget {
-  // The location for which weather should be displayed
+
+
+class WeatherWidget extends StatefulWidget {
   final LatLng location;
 
-  // If true, displays weather info vertically (column), otherwise horizontally (row)
-  final bool vertical;
+  const WeatherWidget({super.key, required this.location});
 
-  const WeatherWidget({Key? key, required this.location, this.vertical = false})
-    : super(key: key);
+  @override
+  State<WeatherWidget> createState() => _WeatherWidgetState();
+}
+
+class _WeatherWidgetState extends State<WeatherWidget> {
+  Future<Either<String, WeatherResponse>>? _weatherFuture;
+  DateTime? _lastFetchTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchWeatherIfNeeded(force: true);
+  }
+
+  void _fetchWeatherIfNeeded({bool force = false}) {
+    final now = DateTime.now();
+    if (force ||
+        _lastFetchTime == null ||
+        now.difference(_lastFetchTime!).inMinutes >= 15) {
+      _weatherFuture = sl<GetWeatherInfoUseCase>().call(
+        param: GetWeatherInfoReqParams(
+          lat: widget.location.latitude,
+          lon: widget.location.longitude,
+        ),
+      );
+      _lastFetchTime = now;
+    }
+  }
+
+  
+
+  @override
+  void didUpdateWidget(covariant WeatherWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location != widget.location) {
+      _fetchWeatherIfNeeded(force: true);
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Fetch weather data for the given location using the injected UseCase
+    _fetchWeatherIfNeeded();
     return FutureBuilder<Either<String, WeatherResponse>>(
-      future: sl<GetWeatherInfoUseCase>().call(
-        param: GetWeatherInfoReqParams(
-          lat: location.latitude,
-          lon: location.longitude,
-        ),
-      ),
+      future: _weatherFuture,
       builder: (context, snapshot) {
-        // Show loading indicator while waiting for data
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _weatherBox(
             child: const CircularProgressIndicator(strokeWidth: 2),
           );
         }
-        // Show error icon if no data or an error occurred
         if (!snapshot.hasData || snapshot.data!.isLeft()) {
           return _weatherBox(
             child: const Icon(Icons.cloud_off, color: Colors.grey),
           );
         }
-        // Extract weather data from the response
         final weather = snapshot.data!
             .fold(
               (l) => WeatherResponse(
@@ -62,83 +89,76 @@ class WeatherWidget extends StatelessWidget {
               (r) => r,
             )
             .weather;
+        final aqi = weather.airQualityIndex;
+        final aqiColor = _getAqiColor(aqi);
 
-        // Display weather info in either a column or row layout
         return _weatherBox(
-          child: vertical
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Weather icon if available
-                        if (weather.iconUrl.isNotEmpty)
-                          Image.network(weather.iconUrl, width: 22, height: 22),
-                        const SizedBox(width: 6),
-                        // Temperature
-                        Text(
-                          '${weather.temperature.toStringAsFixed(1)}°C',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    // Weather description (z.B. "clear sky")
-                    Text(
-                      weather.description,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Weather icon if available
-                    if (weather.iconUrl.isNotEmpty)
-                      Image.network(weather.iconUrl, width: 22, height: 22),
-                    const SizedBox(width: 6),
-
-                    // Temperature
-                    Text(
-                      '${weather.temperature.toStringAsFixed(1)}°C',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-
-                    // Weather description (z.B. "clear sky")
-                    Text(
-                      weather.description,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (weather.iconUrl.isNotEmpty)
+                Image.network(weather.iconUrl, width: 35, height: 35),
+              const SizedBox(width: 6),
+              Text(
+                '${weather.temperature.toStringAsFixed(0)}°',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: aqiColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
+
+    
   }
 
-  // widget to style the weather info box
+   Color _getAqiColor(int aqi) {
+    if (aqi <= 50) {
+      return Colors.green;
+    } else if (aqi <= 100) {
+      return Colors.yellow[700]!;
+    } else if (aqi <= 150) {
+      return Colors.orange;
+    } else if (aqi <= 200) {
+      return Colors.red;
+    } else if (aqi <= 300) {
+      return Colors.purple;
+    } else {
+      return Colors.brown;
+    }
+  }
+
   Widget _weatherBox({required Widget child}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.95),
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      ],
-    ),
-    child: child,
-  );
+        child: child,
+      );
+}
+class _AqiInfo {
+  final String label;
+  final Color color;
+  _AqiInfo(this.label, this.color);
 }

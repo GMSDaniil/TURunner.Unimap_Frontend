@@ -12,7 +12,7 @@ class PointerApiService {
       );
       return Right(response);
     } on DioException catch (e) {
-      return Left(e.response!.data['message']);
+      return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
     }
   }
 }

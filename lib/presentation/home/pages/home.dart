@@ -25,13 +25,21 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int myIndex = 0;
 
+  late final List<Widget> widgetList;
+
   @override
-  Widget build(BuildContext context) {
-    final widgetList = [
+  void initState() {
+    super.initState();
+    widgetList = [
       MapPage(scaffoldKeyForBottomSheet: _scaffoldKey),
       FavouritesPage(),
       ProfilePage(),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    
 
     return Scaffold(
       key: _scaffoldKey,
@@ -50,7 +58,10 @@ class _HomePageState extends State<HomePage> {
                 );
               }
             },
-            child: widgetList[myIndex],
+            child: IndexedStack(
+              index: myIndex,
+              children: widgetList,
+            ),
           ),
         ),
         bottomNavigationBar: AnimatedBottomNavigationBar(
