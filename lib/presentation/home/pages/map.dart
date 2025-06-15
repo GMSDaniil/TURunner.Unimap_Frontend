@@ -52,10 +52,10 @@ const double matheLat = 52.5135, matheLon = 13.3245;
 //
 //   ─────────  category  ────────  center.lat   center.lon    zoom
 const _cafesCenter = LatLng(52.51271, 13.32517); // 10 cafés
-const _cafesZoom = 16.0;
+const _cafesZoom = 15.5;
 
 const _librariesCenter = LatLng(52.51250, 13.32619); //  4 libraries
-const _librariesZoom = 16.5;
+const _librariesZoom = 15.5;
 
 const _canteensCenter = LatLng(52.51351, 13.32496); //  4 main mensas¹
 const _canteensZoom = 16.0;
