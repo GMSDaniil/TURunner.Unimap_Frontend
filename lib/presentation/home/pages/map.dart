@@ -34,7 +34,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/presentation/widgets/search_bar.dart';
 import 'package:auth_app/presentation/widgets/route_plan_bar.dart';
-//import 'package:flutter_map/plugin_api.dart' show FitBoundsOptions;
+import 'package:auth_app/main.dart' show appNavKey; // ← new
+import 'dart:async' show Timer;                     // <── add this
 
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
@@ -80,6 +81,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   OverlayEntry? _plannerOverlay; // ← NEW
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
+  OverlayEntry? _searchBackdropEntry; // dim-background
+  OverlayEntry? _searchUIEntry; // bar + suggestions
+
+  final FocusNode _overlayFocus = FocusNode();
+
+  OverlayEntry? _dimEntry; // white translucent sheet
+  OverlayEntry? _uiEntry; // search bar + suggestions
 
   // ── controllers & data ───────────────────────────────────────────
   final MapController _mapController = MapController();
@@ -90,6 +98,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation;
+
+  /// periodic retry until the search bar has focus
+  Timer? _focusRetryTimer;                           // <── and add this
 
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
       ValueNotifier({});
@@ -107,19 +118,97 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _cachedTiles = FMTC.FMTCTileProvider(
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
     );
+
+    // ── when the text-field gains / loses focus ────────────────
     _searchFocusNode.addListener(() {
-      setState(() {
-        _searchActive = _searchFocusNode.hasFocus;
-      });
+      final hasFocus = _searchFocusNode.hasFocus;
+
+      if (hasFocus && _dimEntry == null) {
+        // build both entries
+        _dimEntry = _buildBackdropOverlay();
+        _uiEntry = _buildSearchUIOverlay();
+
+        // insert them into the root overlay
+        final overlay = appNavKey.currentState!.overlay!;
+        overlay.insert(_dimEntry!);
+        overlay.insert(_uiEntry!);
+
+        // redraw suggestions instantly
+        setState(() => _searchActive = true);
+      } else if (!hasFocus && _dimEntry != null) {
+        _dimEntry!.remove();
+        _uiEntry!.remove();
+        _dimEntry = null;
+        _uiEntry = null;
+        setState(() => _searchActive = false);
+      }
     });
   }
 
   @override
   void dispose() {
-    _mapAnimController?.dispose();
-    _searchCtl.dispose();
-    _searchFocusNode.dispose();
+    _searchBackdropEntry?.remove();
+    _searchUIEntry?.remove();
+    _plannerOverlay?.remove();
+    _focusRetryTimer?.cancel(); // clean up retry timer
     super.dispose();
+  }
+
+  // ── helper: tap-anywhere to dismiss search ────────────────────────
+  void _closeSearch() => _searchFocusNode.unfocus();
+
+  /// Dim background overlay
+  OverlayEntry _buildBackdropOverlay() {
+    return OverlayEntry(
+      builder: (_) => Positioned.fill(               // <-- makes it cover
+        child: GestureDetector(
+          onTap: _closeSearch,
+          behavior: HitTestBehavior.opaque,
+          child: ColoredBox(                          // cheaper than Material
+            color: Colors.white.withOpacity(0.92),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Search bar + live suggestions (sits above the backdrop)
+  OverlayEntry _buildSearchUIOverlay() {
+    return OverlayEntry(
+      builder: (context) {
+        // ⬇️ Re-attempt focus right after this frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_searchFocusNode.hasFocus) _searchFocusNode.requestFocus();
+        });
+        return SafeArea(
+          child: Material(
+            type: MaterialType.transparency,
+            child: MapSearchBar(
+              focusNode: _searchFocusNode,
+              searchController: _searchCtl,
+              suggestions: _suggestions,
+              onSearch: (q) {
+                _searchMarkers(q);
+                setState(() => _suggestions = []);
+                _uiEntry?.markNeedsBuild();
+              },
+              onClear: () {
+                _searchCtl.clear();
+                setState(() => _suggestions = []);
+                _uiEntry?.markNeedsBuild();
+              },
+              onCategorySelected: (_, __) {},
+              onSuggestionSelected: (p) {
+                final dest = LatLng(p.lat, p.lng);
+                _animatedMapMove(dest, 18);
+                _onMapTap(dest);
+                _searchFocusNode.unfocus();
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // ── build ────────────────────────────────────────────────────────
@@ -144,30 +233,44 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-          if (!_creatingRoute)
-            MapSearchBar(
-              searchController: _searchCtl,
-              suggestions: _suggestions,
-              onSearch: (q) {
-                _searchMarkers(q);
-                setState(() => _suggestions = []);
-              },
-              onClear: () {
-                _searchCtl.clear();
-                setState(() => _suggestions = []);
-              },
-              onCategorySelected: (category, color) {
-                _filterMarkersByCategory(category, color);
-                if (category != null) {
-                  _showCategoryListPopup(category, color ?? Colors.blue);
+          // Show in the widget tree only when NOT in fullscreen-search
+          if (!_creatingRoute && !_searchActive)
+            GestureDetector(
+              // ① Invisible, but catches the very first tap
+              behavior: HitTestBehavior.translucent,
+              onTapDown: (_) {
+                // ② Force keyboard focus immediately
+                if (!_searchFocusNode.hasFocus) {
+                  _searchFocusNode.requestFocus();
                 }
               },
-              onSuggestionSelected: (p) {
-                final dest = LatLng(p.lat, p.lng);
-                _animatedMapMove(dest, 18);
-                _onMapTap(dest);
-              },
-              focusNode: _searchFocusNode,
+              child: MapSearchBar(
+                searchController: _searchCtl,
+                suggestions: _suggestions,
+                onSearch: (q) {
+                  setState(() {
+                    _suggestions = q.isEmpty
+                        ? []
+                        : _allPointers
+                            .where((p) => p.name.toLowerCase().contains(q))
+                            .toList();
+                    _searchUIEntry?.markNeedsBuild(); // live-refresh overlay
+                  });
+                },
+                onClear: () {
+                  _searchCtl.clear();
+                  setState(() => _suggestions = []);
+                  _searchUIEntry?.markNeedsBuild();
+                },
+                onCategorySelected: (_, __) {},
+                onSuggestionSelected: (p) {
+                  final dest = LatLng(p.lat, p.lng);
+                  _animatedMapMove(dest, 18);
+                  _onMapTap(dest);
+                  _searchFocusNode.unfocus();
+                },
+                focusNode: _searchFocusNode,
+              ),
             ),
           _buildCurrentLocationButton(),
           //weather widget
@@ -248,7 +351,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ),
     );
 
-    Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+    Overlay.of(
+      context,
+      rootOverlay: true,
+    )!.insert(_plannerOverlay!); // Ensure non-null overlay
     controller.forward(); // animate it in
 
     // first time in → rebuildOnly=false (default)
@@ -264,6 +370,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           : _allPointers
                 .where((p) => p.name.toLowerCase().contains(q))
                 .toList();
+      // 🔄 redraw the overlay immediately
+      _searchUIEntry?.markNeedsBuild();
     });
   }
 
@@ -316,15 +424,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
-      var response = await sl<GetPointersUseCase>().call();
-      response.fold(
-        (error) {
-          debugPrint('Error loading pointers: $error');
-          return;
-        },
-        (pointers) {
+    var response = await sl<GetPointersUseCase>().call();
+    response.fold(
+      (error) {
+        debugPrint('Error loading pointers: $error');
+        return;
+      },
+      (pointers) {
         _allPointers = pointers;
-          final m = _allPointers.map((p) {
+        final m = _allPointers.map((p) {
           return Marker(
             point: LatLng(p.lat, p.lng),
             width: 40,
@@ -340,9 +448,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           );
         }).toList();
         setState(() => _markers = m);
-          },
-      );
-      
+      },
+    );
   }
 
   void _searchMarkers(String q) {
@@ -389,7 +496,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               final pCat = p.category.trim().toLowerCase();
               if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
               if (cat.contains('librar')) return pCat.contains('librar');
-              if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
+              if (cat.contains('canteen') || cat.contains('mensa'))
+                return pCat == 'canteen' || pCat == 'mensa';
               if (cat.contains('study room')) return pCat == 'study room';
               return false;
             })
@@ -430,7 +538,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (_routeSheetCtr != null || _plannerSheetCtr != null) return;
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
-    
+
     if (building != null) {
       final p = _allPointers.firstWhere(
         (x) => x.name == building.name,
@@ -625,7 +733,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final pCat = p.category.trim().toLowerCase();
       if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
       if (cat.contains('librar')) return pCat.contains('librar');
-      if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
+      if (cat.contains('canteen') || cat.contains('mensa'))
+        return pCat == 'canteen' || pCat == 'mensa';
       if (cat.contains('study room')) return pCat == 'study room';
       return false;
     }).toList();

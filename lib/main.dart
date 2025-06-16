@@ -19,6 +19,10 @@ import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'
 
 import 'dart:async'; // for unawaited
 
+/// Global navigator so we can insert overlays that sit
+/// above *everything* (bottom-nav, sheets …)
+final GlobalKey<NavigatorState> appNavKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -74,6 +78,7 @@ class MyApp extends StatelessWidget {
       // BlocProvider provides AuthStateCubit to the whole widget tree
       create: (context) => AuthStateCubit()..appStarted(),
       child: MaterialApp(
+        navigatorKey: appNavKey, // ← hook it up
         theme: AppTheme.appTheme,
         debugShowCheckedModeBanner: false,
         home: BlocBuilder<AuthStateCubit, AuthState>(
