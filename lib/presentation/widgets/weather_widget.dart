@@ -8,10 +8,14 @@ import 'package:auth_app/data/models/get_weather_info_req_params.dart';
 import 'package:auth_app/data/models/weather_response.dart';
 import 'package:auth_app/data/models/weather_info.dart';
 
-
-
+/* Widget to display current weather information for a given location
+   Uses FutureBuilder to fetch weather data asynchronously*/
 class WeatherWidget extends StatefulWidget {
+    // The location for which weather should be displayed
   final LatLng location;
+
+  // If true, displays weather info vertically (column), otherwise horizontally (row)
+  //final bool vertical;
 
   const WeatherWidget({super.key, required this.location});
 
@@ -69,6 +73,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   @override
   Widget build(BuildContext context) {
     _fetchWeatherIfNeeded();
+        // Fetch weather data for the given location using the injected UseCase
     return FutureBuilder<Either<String, WeatherResponse>>(
       future: _weatherFuture,
       builder: (context, snapshot) {
@@ -79,7 +84,8 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           return _weatherBox(
               child: const CircularProgressIndicator(strokeWidth: 2));
         }
-
+        
+        // Show error icon if no data or an error occurred
         // ── 2) Error → fall back to last good (or cloud-off if none) ──────
         if (!snapshot.hasData || snapshot.data!.isLeft()) {
           if (_cached != null) return _buildWeatherContent(_cached!.weather);
