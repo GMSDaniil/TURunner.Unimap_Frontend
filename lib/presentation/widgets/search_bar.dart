@@ -31,6 +31,8 @@ class MapSearchBar extends StatefulWidget {
 
 class _MapSearchBarState extends State<MapSearchBar> {
   late FocusNode _focusNode;
+  final GlobalKey _suggestionsKey = GlobalKey(); // ← NEW
+  final double _navBarHeight = 88; // Fixed height for the navigation bar
 
   @override
   void initState() {
@@ -56,11 +58,27 @@ class _MapSearchBarState extends State<MapSearchBar> {
     final hasFocus = _focusNode.hasFocus;
     final showClose = hasText || hasFocus;
 
+    // 1) figure out where our suggestions area starts
+    double topY = 0;
+    if (_suggestionsKey.currentContext != null) {
+      final box = _suggestionsKey.currentContext!.findRenderObject() as RenderBox;
+      topY = box.localToGlobal(Offset.zero).dy;
+    }
+
+    // 2) compute exactly how much vertical space remains
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final availableHeight = MediaQuery.of(context).size.height
+        - topY
+        - bottomInset
+        - _navBarHeight;            // ← subtract your 88px nav bar
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8), // ← bumped top from 8→16
+            key: _suggestionsKey,               // ← ATTACH KEY HERE
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
             child: Column(
               children: [
                 // ── Search Field with Close Button ───────────────────────
@@ -168,8 +186,14 @@ class _MapSearchBarState extends State<MapSearchBar> {
                         ),
                 ),
 
-                // ── Suggestions dropdown ─────────────────────────────────
-                if (widget.suggestions.isNotEmpty) _buildSuggestionsDropdown(),
+                // 3) use exactly that leftover height
+                if (widget.suggestions.isNotEmpty)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: availableHeight,
+                    ),
+                    child: _buildSuggestionsDropdown(),
+                  ),
               ],
             ),
           ),
@@ -181,23 +205,29 @@ class _MapSearchBarState extends State<MapSearchBar> {
   Widget _buildSuggestionsDropdown() {
     return Container(
       margin: const EdgeInsets.only(top: 4),
-      constraints: const BoxConstraints(maxHeight: 250),
-      color: Colors.white,                           // flat, 2-D background
+      color: Colors.white,
       child: ListView.separated(
-        shrinkWrap: true,
         itemCount: widget.suggestions.length,
-        separatorBuilder: (_, __) => Divider(        // grey separators
+        separatorBuilder: (_, __) => Divider(
           height: 1,
           thickness: 1,
           color: Colors.grey.shade300,
+          indent: 56,    // ← start 56px in (icon + padding)
+          endIndent: 16, // ← leave 16px padding on right
         ),
         itemBuilder: (context, index) {
           final suggestion = widget.suggestions[index];
           return ListTile(
-            leading: const Icon(Icons.location_on_outlined, size: 20),
-            title: Text(suggestion.name),
+            leading: const Icon(
+              Icons.location_on_outlined,
+              size: 22,
+              color: Colors.grey,
+            ),
+            title: Text(
+              suggestion.name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             onTap: () {
-              // clear text, hide suggestions, unfocus, then select
               widget.searchController.clear();
               widget.onClear();
               _focusNode.unfocus();
