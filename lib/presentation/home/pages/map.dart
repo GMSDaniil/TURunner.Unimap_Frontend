@@ -65,8 +65,15 @@ const _canteensZoom = 16.0;
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
+  /// Emits `true` when the search bar gains focus and `false` when it
+  /// loses focus.  Parent widgets can use this to hide/show UI elements.
+  final ValueChanged<bool>? onSearchFocusChanged;
 
-  const MapPage({super.key, required this.scaffoldKeyForBottomSheet});
+  const MapPage({
+    super.key,
+    required this.scaffoldKeyForBottomSheet,
+    this.onSearchFocusChanged,
+  });
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -108,9 +115,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
     );
     _searchFocusNode.addListener(() {
-      setState(() {
-        _searchActive = _searchFocusNode.hasFocus;
-      });
+      final active = _searchFocusNode.hasFocus;
+      if (mounted && _searchActive != active) {
+        setState(() => _searchActive = active);
+        // let the parent know so it can hide / show its navigation bar
+        widget.onSearchFocusChanged?.call(active);
+      }
     });
   }
 

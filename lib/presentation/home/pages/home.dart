@@ -24,6 +24,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int myIndex = 0;
+  bool _hideNav = false; // ← new
 
   late final List<Widget> widgetList;
 
@@ -31,10 +32,19 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     widgetList = [
-      MapPage(scaffoldKeyForBottomSheet: _scaffoldKey),
+      MapPage(
+        scaffoldKeyForBottomSheet: _scaffoldKey,
+        onSearchFocusChanged: _handleSearchFocusChanged,
+      ),
       FavouritesPage(),
       ProfilePage(),
     ];
+  }
+
+  void _handleSearchFocusChanged(bool active) {
+    if (_hideNav != active) {
+      setState(() => _hideNav = active);
+    }
   }
 
   @override
@@ -64,10 +74,12 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        bottomNavigationBar: AnimatedBottomNavigationBar(
-          currentIndex: myIndex,
-          onTap: (index) => setState(() => myIndex = index),
-        ),
+        bottomNavigationBar: _hideNav
+            ? null
+            : AnimatedBottomNavigationBar(
+                currentIndex: myIndex,
+                onTap: (index) => setState(() => myIndex = index),
+              ),
       ),
     );
   }
