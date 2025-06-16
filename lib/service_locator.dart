@@ -4,6 +4,7 @@ import 'package:auth_app/data/repository/pointers.dart';
 import 'package:auth_app/data/source/auth_api_service.dart';
 import 'package:auth_app/data/source/auth_local_service.dart';
 import 'package:auth_app/data/source/pointer_api_service.dart';
+import 'package:auth_app/data/source/student_api_service.dart';
 import 'package:auth_app/data/source/weather_api_service.dart';
 import 'package:auth_app/domain/repository/auth.dart';
 import 'package:auth_app/domain/repository/pointers.dart';
@@ -20,6 +21,7 @@ import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/data/repository/route_repository_impl.dart';
 import 'package:auth_app/domain/usecases/find_walking_route.dart';
 import 'package:auth_app/domain/repository/route_repository.dart';
+import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 import 'package:auth_app/domain/repository/mensa.dart';
@@ -34,6 +36,10 @@ import 'package:auth_app/domain/usecases/find_building_at_point.dart';
 import 'package:auth_app/domain/repository/weather.dart';
 import 'package:auth_app/data/repository/weather.dart';
 import 'package:auth_app/domain/usecases/get_weather_info.dart';
+
+import 'package:auth_app/data/repository/student_repository_impl.dart';
+import 'package:auth_app/domain/repository/student.dart';
+import 'package:auth_app/domain/usecases/get_student_schedule.dart';
 
 final sl = GetIt.instance;
 
@@ -50,6 +56,7 @@ void setupServiceLocator() {
   sl.registerSingleton<PointerApiService>(PointerApiService());
 
   sl.registerSingleton<WeatherApiService>(WeatherApiService());
+  sl.registerSingleton<StudentApiService>(StudentApiService());
 
   // Repositories
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
@@ -69,6 +76,10 @@ void setupServiceLocator() {
   );
 
   sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());
+
+  sl.registerSingleton<StudentRepository>(
+    StudentRepositoryImpl(sl<StudentApiService>()),
+  );
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -91,4 +102,6 @@ void setupServiceLocator() {
   sl.registerSingleton<FindScooterRouteUseCase>(FindScooterRouteUseCase());
 
   sl.registerSingleton<GetWeatherInfoUseCase>(GetWeatherInfoUseCase());
+
+  sl.registerSingleton<GetStudentScheduleUseCase>(GetStudentScheduleUseCase());
 }
