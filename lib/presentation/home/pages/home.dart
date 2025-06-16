@@ -7,83 +7,98 @@ import 'package:auth_app/presentation/home/pages/favourites.dart';
 import 'package:auth_app/presentation/home/pages/map.dart';
 import 'package:auth_app/presentation/home/pages/profile.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
-import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'package:auth_app/presentation/widgets/bottom_navigation.dart'; // Import the new file
+import 'package:auth_app/presentation/widgets/bottom_navigation.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:latlong2/latlong.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int myIndex = 0;
-  bool _hideNav = false; // ← new
 
-  late final List<Widget> widgetList;
+  int _tabIndex = 0;
+  bool _hideNav = false;
+
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
-    widgetList = [
+    _pages = [
       MapPage(
         scaffoldKeyForBottomSheet: _scaffoldKey,
-        onSearchFocusChanged: _handleSearchFocusChanged,
+        onSearchFocusChanged: (active) {
+          if (_hideNav != active) setState(() => _hideNav = active);
+        },
       ),
       FavouritesPage(),
       ProfilePage(),
     ];
   }
 
-  void _handleSearchFocusChanged(bool active) {
-    if (_hideNav != active) {
-      setState(() => _hideNav = active);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    
-
     return Scaffold(
       key: _scaffoldKey,
+      // ── BODY ───────────────────────────────────────────────────────
       body: Scaffold(
-        body: MultiBlocProvider(
-          providers: [
-            BlocProvider(create: (_) => UserDisplayCubit()..displayUser()),
-            BlocProvider(create: (_) => ButtonStateCubit()),
-          ],
-          child: BlocListener<ButtonStateCubit, ButtonState>(
-            listener: (context, state) {
-              if (state is ButtonSuccessState) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WelcomePage()),
-                );
-              }
-            },
-            child: IndexedStack(
-              index: myIndex,
-              children: widgetList,
-            ),
-          ),
-        ),
-        bottomNavigationBar: _hideNav
-            ? null
-            : AnimatedBottomNavigationBar(
-                currentIndex: myIndex,
-                onTap: (index) => setState(() => myIndex = index),
+        body: Stack(
+          children: [
+            // ── Pages & blocs in an IndexedStack ────────────────────
+            MultiBlocProvider(
+              providers: [
+                BlocProvider(create: (_) => UserDisplayCubit()..displayUser()),
+                BlocProvider(create: (_) => ButtonStateCubit()),
+              ],
+              child: BlocListener<ButtonStateCubit, ButtonState>(
+                listener: (context, state) {
+                  if (state is ButtonSuccessState) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WelcomePage()),
+                    );
+                  }
+                },
+                child: IndexedStack(index: _tabIndex, children: _pages),
               ),
+            ),
+
+            // ── Overlay bottom navigation bar ───────────────────────
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                ignoring: _hideNav,
+                child: AnimatedSlide(
+                  offset: _hideNav ? const Offset(0, 1) : Offset.zero,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _hideNav ? 0 : 1,
+                    duration: const Duration(milliseconds: 250),
+                    // NO SafeArea → bar sits flush to bottom, no blank space
+                    child: AnimatedBottomNavigationBar(
+                      currentIndex: _tabIndex,
+                      onTap: (i) => setState(() => _tabIndex = i),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // helper for RouteOptionsSheet from children
   void showRouteOptionsSheet({
     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
     required TravelMode currentMode,
@@ -91,7 +106,7 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onClose,
   }) {
     _scaffoldKey.currentState?.showBottomSheet(
-      (ctx) => RouteOptionsSheet(
+      (_) => RouteOptionsSheet(
         routesNotifier: routesNotifier,
         currentMode: currentMode,
         onClose: onClose,

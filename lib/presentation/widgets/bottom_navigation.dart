@@ -319,3 +319,231 @@ class _NavTab {
   final String label;
   const _NavTab(this.icon, this.label);
 }
+
+class MapScreen extends StatefulWidget {
+  const MapScreen({Key? key}) : super(key: key);
+
+  @override
+  _MapScreenState createState() => _MapScreenState();
+}
+
+class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
+  late final AnimationController _searchCtrl;
+  late final Animation<double> _searchAnim;
+  bool _searchActive = false;
+
+  // For demo we just randomize this
+  final _rnd = math.Random();
+  var _weather = [
+    '☀️ 24°C',
+    '☁️ 22°C',
+    '🌧 18°C',
+    '❄️ 0°C',
+  ];
+  var _selectedWeather = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
+    _searchAnim = CurvedAnimation(parent: _searchCtrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _searchActive = !_searchActive;
+    });
+    if (_searchActive) {
+      _searchCtrl.forward();
+    } else {
+      _searchCtrl.reverse();
+    }
+  }
+
+  void _goToCurrentLocation({bool moveMap = false}) {
+    // TODO: implement current location functionality
+  }
+
+  void _changeWeather() {
+    setState(() {
+      _selectedWeather = (_selectedWeather + 1) % _weather.length;
+    });
+  }
+
+  static const _animDuration = Duration(milliseconds: 250);
+  static const double _navBarHeight = 88;        // ← height of bottom-nav
+
+  // ────────────────────────────────────────────────────────────────
+  // BUILD
+  // ────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // ─────────────────── Map Widget (placeholder) ───────────────────
+          Container(
+            color: Colors.blue[50],
+            child: Center(
+              child: Text(
+                '🗺️ Map View',
+                style: TextStyle(
+                  fontSize: 32,
+                  color: Colors.blueGrey,
+                ),
+              ),
+            ),
+          ),
+
+          // ─────────────────── Search Field + Current Location Button ───────────────────
+          AnimatedBuilder(
+            animation: _searchCtrl,
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  // Search field
+                  Positioned(
+                    top: 40,
+                    left: 20,
+                    right: 20,
+                    child: ScaleTransition(
+                      scale: _searchAnim,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  hintText: 'Search...',
+                                  border: InputBorder.none,
+                                ),
+                                onTap: () {
+                                  // TODO: implement search functionality
+                                },
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close),
+                              onPressed: () {
+                                // TODO: clear search field
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Current location button (FAB)
+                  _buildCurrentLocationButton(),
+                ],
+              );
+            },
+          ),
+
+          // ─────────────────── Weather pill with fade+slide animation ───────────────────
+          Positioned(
+            left: 16,
+            bottom: 16 + _navBarHeight,
+            child: FadeTransition(
+              opacity: _searchAnim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(_searchAnim),
+                child: GestureDetector(
+                  onTap: _changeWeather,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _weather[_selectedWeather],
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueGrey[800],
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: Colors.blueGrey[800],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ─────────────────── Bottom Navigation Bar ───────────────────
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedBottomNavigationBar(
+              currentIndex: 0,
+              onTap: (index) {
+                // TODO: handle bottom nav tap
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Always keep widgets 20 px above the nav bar’s top edge.
+  // (They’ll fade/slide away when the search bar is focused.)
+  double get _bottomOffset => 20 + _navBarHeight;
+
+  Widget _buildCurrentLocationButton() => Positioned(
+        bottom: _bottomOffset,
+        right: 20,
+        child: AnimatedSlide(
+          offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+          duration: _animDuration,
+          curve: Curves.easeInOut,
+          child: AnimatedOpacity(
+            opacity: _searchActive ? 0 : 1,
+            duration: _animDuration,
+            child: FloatingActionButton(
+              backgroundColor: Colors.white,
+              onPressed: () => _goToCurrentLocation(moveMap: true),
+              child: const Icon(Icons.my_location, color: Colors.blue),
+            ),
+          ),
+        ),
+      );
+}

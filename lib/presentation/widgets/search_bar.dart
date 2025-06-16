@@ -181,15 +181,16 @@ class _MapSearchBarState extends State<MapSearchBar> {
   Widget _buildSuggestionsDropdown() {
     return Container(
       margin: const EdgeInsets.only(top: 4),
-      constraints: const BoxConstraints(maxHeight: 200),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
-      ),
-      child: ListView.builder(
+      constraints: const BoxConstraints(maxHeight: 250),
+      color: Colors.white,                           // flat, 2-D background
+      child: ListView.separated(
         shrinkWrap: true,
         itemCount: widget.suggestions.length,
+        separatorBuilder: (_, __) => Divider(        // grey separators
+          height: 1,
+          thickness: 1,
+          color: Colors.grey.shade300,
+        ),
         itemBuilder: (context, index) {
           final suggestion = widget.suggestions[index];
           return ListTile(

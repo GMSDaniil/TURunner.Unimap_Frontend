@@ -21,30 +21,41 @@ class WeatherWidget extends StatefulWidget {
 
 class _WeatherWidgetState extends State<WeatherWidget> {
   Future<Either<String, WeatherResponse>>? _weatherFuture;
-  DateTime? _lastFetchTime;
+  WeatherResponse? _cached;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchWeatherIfNeeded(force: true);
-  }
+  // ── shared, in-memory cache across every WeatherWidget instance ──────────
+  static final Map<String, WeatherResponse> _globalCache = {};
+  static final Map<String, DateTime> _globalFetchTime = {};
 
   void _fetchWeatherIfNeeded({bool force = false}) {
     final now = DateTime.now();
-    if (force ||
-        _lastFetchTime == null ||
-        now.difference(_lastFetchTime!).inMinutes >= 15) {
-      _weatherFuture = sl<GetWeatherInfoUseCase>().call(
-        param: GetWeatherInfoReqParams(
-          lat: widget.location.latitude,
-          lon: widget.location.longitude,
-        ),
-      );
-      _lastFetchTime = now;
-    }
-  }
 
-  
+    // key with ~100 m precision — plenty for a campus map
+    final key = '${widget.location.latitude.toStringAsFixed(3)},'
+                '${widget.location.longitude.toStringAsFixed(3)}';
+
+    // If we already fetched <15 min ago, just reuse it
+    if (!force &&
+        _globalCache.containsKey(key) &&
+        now.difference(_globalFetchTime[key]!).inMinutes < 15) {
+      _cached = _globalCache[key];
+      _weatherFuture ??= Future.value(Right<String, WeatherResponse>(_cached!));
+      return;
+    }
+
+    // Otherwise fetch fresh data and store it globally
+    _weatherFuture = sl<GetWeatherInfoUseCase>().call(
+      param: GetWeatherInfoReqParams(
+        lat: widget.location.latitude,
+        lon: widget.location.longitude,
+      ),
+    )..then((either) {
+        either.fold((_) => null, (r) {
+          _globalCache[key] = r;
+          _globalFetchTime[key] = DateTime.now();
+        });
+      });
+  }
 
   @override
   void didUpdateWidget(covariant WeatherWidget oldWidget) {
@@ -61,68 +72,63 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     return FutureBuilder<Either<String, WeatherResponse>>(
       future: _weatherFuture,
       builder: (context, snapshot) {
+        // ── 1) While waiting, keep last good data (no spinner) ────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
+          if (_cached != null) return _buildWeatherContent(_cached!.weather);
+          // First fetch after login: show spinner until data arrives
           return _weatherBox(
-            child: const CircularProgressIndicator(strokeWidth: 2),
-          );
+              child: const CircularProgressIndicator(strokeWidth: 2));
         }
-        if (!snapshot.hasData || snapshot.data!.isLeft()) {
-          return _weatherBox(
-            child: const Icon(Icons.cloud_off, color: Colors.grey),
-          );
-        }
-        final weather = snapshot.data!
-            .fold(
-              (l) => WeatherResponse(
-                weather: WeatherInfo(
-                  iconUrl: '',
-                  temperature: 0.0,
-                  description: '',
-                  airQualityIndex: 0,
-                  location: '',
-                  lat: 0.0,
-                  lon: 0.0,
-                ),
-                location: '',
-                coordinates: Coordinates(lat: 0.0, lon: 0.0),
-              ),
-              (r) => r,
-            )
-            .weather;
-        final aqi = weather.airQualityIndex;
-        final aqiColor = _getAqiColor(aqi);
 
-        return _weatherBox(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (weather.iconUrl.isNotEmpty)
-                Image.network(weather.iconUrl, width: 35, height: 35),
-              const SizedBox(width: 6),
-              Text(
-                '${weather.temperature.toStringAsFixed(0)}°',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: aqiColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
-          ),
-        );
+        // ── 2) Error → fall back to last good (or cloud-off if none) ──────
+        if (!snapshot.hasData || snapshot.data!.isLeft()) {
+          if (_cached != null) return _buildWeatherContent(_cached!.weather);
+          return _weatherBox(
+              child: const Icon(Icons.cloud_off, color: Colors.grey));
+        }
+
+        // ── 3) Success → cache & show ─────────────────────────────────────
+        final result = snapshot.data!.fold((l) => null, (r) => r)!;
+        _cached = result;
+        return _buildWeatherContent(result.weather);
       },
     );
+  }
 
-    
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper that renders the temperature-plus-AQI pill
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildWeatherContent(WeatherInfo weather) {
+    final aqi = weather.airQualityIndex;
+    final aqiColor = _getAqiColor(aqi);
+
+    return _weatherBox(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (weather.iconUrl.isNotEmpty)
+            Image.network(weather.iconUrl, width: 35, height: 35),
+          const SizedBox(width: 6),
+          Text(
+            '${weather.temperature.toStringAsFixed(0)}°',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: aqiColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
    Color _getAqiColor(int aqi) {

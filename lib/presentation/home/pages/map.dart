@@ -80,6 +80,9 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  static const _animDuration = Duration(milliseconds: 250);
+  static const double _navBarHeight = 88;        // ← height from bottom-nav
+
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
@@ -103,6 +106,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   TravelMode _currentMode = TravelMode.walk;
 
   late final TileProvider _cachedTiles;
+
+  // Consistent animation timing for every disappearing element
+  //static const _animDuration = Duration(milliseconds: 250);
+
+  // ────────────────────────────────────────────────────────────────
+  // Cache WeatherWidget so it isn’t rebuilt (and re-fetching) on
+  // every focus toggle.  A ValueKey guarantees Flutter re-uses the
+  // same State object, keeping the previously-fetched data alive.
+  // ────────────────────────────────────────────────────────────────
+  late final Widget _persistentWeather = WeatherWidget(
+    key: const ValueKey('persistentWeather'),
+    location: const LatLng(matheLat, matheLon),
+  );
 
   // ── lifecycle ────────────────────────────────────────────────────
   @override
@@ -139,21 +155,28 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       body: Stack(
         children: [
           _buildFlutterMap(),
-          if (_searchActive)
-            AnimatedOpacity(
+
+          // ── animated white sheet over the map ──────────────────────
+          AnimatedSlide(
+            offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
+            duration: _animDuration,
+            curve: Curves.easeInOut,
+            child: AnimatedOpacity(
               opacity: _searchActive ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 180),
-              child: GestureDetector(
-                onTap: () {
-                  _searchFocusNode.unfocus();
-                },
-                child: Container(
-                  color: Colors.white.withOpacity(0.92),
-                  width: double.infinity,
-                  height: double.infinity,
+              duration: _animDuration,
+              child: IgnorePointer(
+                ignoring: !_searchActive,
+                child: GestureDetector(
+                  onTap: () {},
+                  child: Container(
+                    color: Colors.white,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
                 ),
               ),
             ),
+          ),
           if (!_creatingRoute)
             MapSearchBar(
               searchController: _searchCtl,
@@ -179,21 +202,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
               focusNode: _searchFocusNode,
             ),
+          // hide FAB & weather while search bar has focus
+          // ── Current-location FAB (no longer hidden) ───────────────
           _buildCurrentLocationButton(),
-          //weather widget
+
+          // ── Weather pill with fade + slide animation ─────────────
           Positioned(
             left: 16,
-            bottom: 20,
-            child: WeatherWidget(
-              location: LatLng(
-                matheLat,
-                matheLon,
-              ), // default mathe gebäude location
+            bottom: _bottomOffset,
+            child: AnimatedSlide(
+              offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+              duration: _animDuration,
+              curve: Curves.easeInOut,
+              child: AnimatedOpacity(
+                opacity: _searchActive ? 0 : 1,
+                duration: _animDuration,
+                child: _persistentWeather,
+              ),
             ),
           ),
         ],
       ),
-      // floatingActionButton removed to hide route-creation button
     );
   }
 
@@ -314,15 +343,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  // ────────────────────────────────────────────────────────────────
+  // Helpers to build overlay widgets
+  // ────────────────────────────────────────────────────────────────
+  // Always place widgets 20 px above the nav bar; they will animate
+  // out of view instead of shifting upward.
+  double get _bottomOffset => 20 + _navBarHeight;
+
   Widget _buildCurrentLocationButton() => Positioned(
-    bottom: 20,
-    right: 20,
-    child: FloatingActionButton(
-      backgroundColor: Colors.white,
-      onPressed: () => _goToCurrentLocation(moveMap: true),
-      child: const Icon(Icons.my_location, color: Colors.blue),
-    ),
-  );
+        bottom: _bottomOffset,
+        right: 20,
+        child: AnimatedSlide(
+          offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+          duration: _animDuration,
+          curve: Curves.easeInOut,
+          child: AnimatedOpacity(
+            opacity: _searchActive ? 0 : 1,
+            duration: _animDuration,
+            child: FloatingActionButton(
+              backgroundColor: Colors.white,
+              onPressed: () => _goToCurrentLocation(moveMap: true),
+              child: const Icon(Icons.my_location, color: Colors.blue),
+            ),
+          ),
+        ),
+      );
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
