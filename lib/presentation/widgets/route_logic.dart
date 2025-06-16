@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/route_data.dart';
@@ -17,6 +19,8 @@ import 'package:flutter_map/flutter_map.dart';
 class RouteLogic {
   /// [rebuildOnly] == true  → called from RoutePlanBar while the planner UI
   /// is already on-screen.  We must **not** pop any routes or auto-fit map.
+  static int _busRequestToken = 0;
+  
   static Future<void> onCreateRoute({
     required BuildContext context,
     required LatLng latlng,
@@ -91,7 +95,11 @@ class RouteLogic {
 
     // Instead of immediately applying, simply call bus and scooter to fetch data in background.
     // Their responses will populate the routesNotifier but not override the displayed walking route.
+    final currentToken = ++_busRequestToken;
     sl<FindBusRouteUseCase>().call(param: params).then((busResult) {
+      if (currentToken != _busRequestToken) {
+        return;
+      }
       busResult.fold(
         (error) {
           ScaffoldMessenger.of(context)
@@ -115,7 +123,12 @@ class RouteLogic {
                 ),
               );
             }
-            routesNotifier.value[TravelMode.bus] = RouteData(segments: segments);
+            setState((){
+              final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+              newMap[TravelMode.bus] = RouteData(segments: segments);
+              routesNotifier.value = newMap;
+            });
+            
           });
           // Note: Do not update currentMode here.
         },
@@ -140,13 +153,29 @@ class RouteLogic {
             );
           }).toList();
           setState(() {
-            routesNotifier.value[TravelMode.scooter] =
-                RouteData(segments: segments);
+            final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+            newMap[TravelMode.scooter] = RouteData(segments: segments);
+            routesNotifier.value = newMap;
           });
           // Note: Again, do not invoke updateCurrentMode here.
         },
       );
     });
+  }
+
+  Future<void> waitForBusRoute(ValueNotifier<Map<TravelMode, RouteData>> routesNotifier) {
+    final completer = Completer<void>();
+    void listener() {
+      final busRoute = routesNotifier.value[TravelMode.bus];
+      if (busRoute != null && busRoute.segments.isNotEmpty) {
+        routesNotifier.removeListener(listener);
+        completer.complete();
+      }
+    }
+    routesNotifier.addListener(listener);
+    // In case the value is already present
+    listener();
+    return completer.future;
   }
 
   static Future<void> onModeChanged({
@@ -165,47 +194,62 @@ class RouteLogic {
       });
       return;
     }
-
     if (mode == TravelMode.bus) {
-      final params = FindRouteReqParams(
-        fromLat: currentLocation?.latitude ?? 52.5135,
-        fromLon: currentLocation?.longitude ?? 13.3245,
-        toLat: destination.latitude,
-        toLon: destination.longitude,
-      );
-      final result = await sl<FindBusRouteUseCase>().call(param: params);
+      // final params = FindRouteReqParams(
+      //   fromLat: currentLocation?.latitude ?? 52.5135,
+      //   fromLon: currentLocation?.longitude ?? 13.3245,
+      //   toLat: destination.latitude,
+      //   toLon: destination.longitude,
+      // );
+      // final result = await sl<FindBusRouteUseCase>().call(param: params);
 
-      result.fold(
-        (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $error')),
-          );
-        },
-        (route) {
-          final segments = <RouteSegment>[];
-          for (final seg in route.segments) {
-            segments.add(
-              RouteSegment(
-                mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
-                path: seg.polyline,
-                distanceMeters: seg.distanceMeters,
-                durrationSeconds: seg.durationSeconds,
-                precisePolyline: seg.precisePolyline,
-                transportType: seg.transportType,
-                transportLine: seg.transportLine,
-                fromStop: seg.fromStop,
-                toStop: seg.toStop,
-              ),
-            );
-          }
-          setState(() {
-            final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
-            newMap[TravelMode.bus] = RouteData(segments: segments);
-            routesNotifier.value = newMap;
-            updateCurrentMode(TravelMode.bus);
-          });
-        },
-      );
+      // result.fold(
+      //   (error) {
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       SnackBar(content: Text('Error: $error')),
+      //     );
+      //   },
+      //   (route) {
+      //     final segments = <RouteSegment>[];
+      //     for (final seg in route.segments) {
+      //       segments.add(
+      //         RouteSegment(
+      //           mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
+      //           path: seg.polyline,
+      //           distanceMeters: seg.distanceMeters,
+      //           durrationSeconds: seg.durationSeconds,
+      //           precisePolyline: seg.precisePolyline,
+      //           transportType: seg.transportType,
+      //           transportLine: seg.transportLine,
+      //           fromStop: seg.fromStop,
+      //           toStop: seg.toStop,
+      //         ),
+      //       );
+      //     }
+      //     setState(() {
+      //       final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+      //       newMap[TravelMode.bus] = RouteData(segments: segments);
+      //       routesNotifier.value = newMap;
+      //       updateCurrentMode(TravelMode.bus);
+      //     });
+      //   },
+      // );
+
+      //KOSITL N1
+      while(!routesNotifier.value.containsKey(mode)) {
+        print("delaying bus route creation");
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      //KOSTIL N2
+      if (!routesNotifier.value.containsKey(TravelMode.walk)) {
+        return;
+      }
+      
+      setState(() {
+        updateCurrentMode(mode);
+      });
+
     } else if (mode == TravelMode.scooter) {
       final params = FindRouteReqParams(
         fromLat: currentLocation?.latitude ?? 52.5135,

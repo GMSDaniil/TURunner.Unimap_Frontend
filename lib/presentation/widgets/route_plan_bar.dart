@@ -235,77 +235,79 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   /* ═══════════════════════━  build  ━═══════════════════════════ */
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      children: [
-        Align(
-          key: RoutePlanBar._barKey,
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            child: Material(
-              color: Colors.white,
-              elevation: 8,
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ◀ way-points
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _searchRow(
-                            icon: Icons.my_location,
-                            ctl: _startCtl,
-                            hint: 'Start',
-                          ),
-                          for (var i = 0; i < _stopCtls.length; i++) ...[
+    return SafeArea(
+      child: Wrap(
+        children: [
+          Align(
+            key: RoutePlanBar._barKey,
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: Material(
+                color: Colors.white,
+                elevation: 8,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ◀ way-points
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _searchRow(
+                              icon: Icons.my_location,
+                              ctl: _startCtl,
+                              hint: 'Start',
+                            ),
+                            for (var i = 0; i < _stopCtls.length; i++) ...[
+                              _divider(),
+                              _searchRow(
+                                icon: Icons.flag_outlined,
+                                ctl: _stopCtls[i],
+                                hint: 'Stop ${i + 1}',
+                                onDelete: () => _removeStop(i),
+                              ),
+                            ],
                             _divider(),
                             _searchRow(
-                              icon: Icons.flag_outlined,
-                              ctl: _stopCtls[i],
-                              hint: 'Stop ${i + 1}',
-                              onDelete: () => _removeStop(i),
+                              icon: Icons.place_outlined,
+                              ctl: _destCtl,
+                              hint: 'Destination',
                             ),
                           ],
-                          _divider(),
-                          _searchRow(
-                            icon: Icons.place_outlined,
-                            ctl: _destCtl,
-                            hint: 'Destination',
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    // ▶ side-buttons
-                    Transform.translate(
-                      offset: const Offset(-8, 8),
-                      child: Column(
-                        children: [
-                          _sideBtn(
-                            icon: Icons.swap_vert,
-                            tooltip: 'Swap',
-                            onTap: _swap,
-                          ),
-                          const SizedBox(height: 8),
-                          _sideBtn(
-                            icon: Icons.add,
-                            tooltip: 'Add stop',
-                            onTap: _addStop,
-                            enabled: _stopCtls.length < 3,
-                          ),
-                        ],
+                      // ▶ side-buttons
+                      Transform.translate(
+                        offset: const Offset(-8, 8),
+                        child: Column(
+                          children: [
+                            _sideBtn(
+                              icon: Icons.swap_vert,
+                              tooltip: 'Swap',
+                              onTap: _swap,
+                            ),
+                            const SizedBox(height: 8),
+                            _sideBtn(
+                              icon: Icons.add,
+                              tooltip: 'Add stop',
+                              onTap: _addStop,
+                              enabled: _stopCtls.length < 3,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
