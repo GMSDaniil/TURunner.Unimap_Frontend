@@ -89,7 +89,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  OverlayEntry? _plannerOverlay;   // top RoutePlanBar overlay
+  OverlayEntry? _plannerOverlay; // top RoutePlanBar overlay
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -99,7 +99,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   TravelMode? _panelMode;
 
   // Controller for programmatic snapping after drag-release
-  final DraggableScrollableController _sheetCtrl = DraggableScrollableController();
+  final DraggableScrollableController _sheetCtrl =
+      DraggableScrollableController();
 
   // helper so we type less ↓
   void _notifyNavBar(bool hide) => widget.onSearchFocusChanged?.call(hide);
@@ -108,7 +109,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
   AnimationController? _mapAnimController;
   final TextEditingController _searchCtl = TextEditingController();
-
+  LatLng? _routeDestination; // Field to store the route destination
   List<Marker> _markers = [];
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
@@ -178,7 +179,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   /* ───────────────────────── Panel helpers ───────────────────── */
   void _clearPanelData() {
     _panelRoutes = null;
-    _panelMode   = null;
+    _panelMode = null;
   }
 
   // ── build ────────────────────────────────────────────────────────
@@ -187,8 +188,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return Scaffold(
       body: SlidingUpPanel(
         // nice rounded top corners on the whole sheet
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController,
         minHeight: 0,
         maxHeight: MediaQuery.of(context).size.height * .31,
@@ -199,7 +199,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 routesNotifier:  _panelRoutes!,
                 currentMode:     _panelMode ?? TravelMode.walk,
                 scrollController: sc,
-                onModeChanged:   (m) => _panelMode = m,
+                onModeChanged:   _changeTravelMode,   // recalculates the route
                 onClose:         () => _panelController.close(),
               ),
         onPanelClosed: () {
@@ -217,13 +217,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
            * This restores the “idle” map state that existed before
            * the user entered the routing workflow.
            *──────────────────────────────────────────────────────────*/
-          _routesNotifier.value = {};      // remove segments -> poly-line gone
-          _currentMode          = TravelMode.walk;
-           
-           _clearPanelData();
-           setState(() => _creatingRoute = false);
-           _notifyNavBar(false);
-         },
+          _routesNotifier.value = {}; // remove segments -> poly-line gone
+          _currentMode = TravelMode.walk;
+
+          _clearPanelData();
+          setState(() => _creatingRoute = false);
+          _notifyNavBar(false);
+        },
         body: Stack(
           children: [
             _buildFlutterMap(),
@@ -306,6 +306,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
   void _startRouteFlow(LatLng destination) {
+    _routeDestination = destination;          // remember for later
     if (_plannerOverlay != null) return;
     setState(() {
       _creatingRoute = true;
@@ -673,8 +674,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     required VoidCallback onClose,
   }) {
     _panelRoutes = routesNotifier;
-    _panelMode   = currentMode;
-    setState(() {});            // rebuild SlidingUpPanel
+    _panelMode = currentMode;
+    setState(() {}); // rebuild SlidingUpPanel
     _notifyNavBar(true);
     _panelController.open();
   }
@@ -798,6 +799,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _changeTravelMode(TravelMode mode) async {
+    if (mode == _currentMode || _routeDestination == null) return;
+
+    // Update UI immediately so the pills highlight correctly
+    setState(() {
+      _currentMode = mode;
+      _panelMode = mode;
+    });
+
+    await RouteLogic.onModeChanged(
+      context: context,
+      mode: mode,
+      destination: _routeDestination!, // ← we stored it earlier
+      currentLocation: _currentLocation,
+      routesNotifier: _routesNotifier,
+      setState: setState,
+      updateCurrentMode: (m) => setState(() => _currentMode = m),
     );
   }
 }
