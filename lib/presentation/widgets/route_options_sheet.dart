@@ -109,12 +109,15 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
     return Material(
       color: Colors.white,
       elevation: 8,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      clipBehavior: Clip.antiAlias,                  // ← clip to shape
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       child: SafeArea(
-        // ➜ make the whole sheet scrollable when it’s taller than the viewport
+        top: false,                                    // keep top inset only
+        bottom: false,                                 // ← disable bottom inset
         child: SingleChildScrollView(
           controller: widget.scrollController,
-          // keep default bounce / physics
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

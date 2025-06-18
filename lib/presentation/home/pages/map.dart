@@ -90,6 +90,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   OverlayEntry? _plannerOverlay; // ← NEW
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
+  
+  // helper so we type less ↓
+  void _notifyNavBar(bool hide) =>
+      widget.onSearchFocusChanged?.call(hide);
 
   // ── controllers & data ───────────────────────────────────────────
   final MapController _mapController = MapController();
@@ -134,8 +138,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final active = _searchFocusNode.hasFocus;
       if (mounted && _searchActive != active) {
         setState(() => _searchActive = active);
-        // let the parent know so it can hide / show its navigation bar
-        widget.onSearchFocusChanged?.call(active);
+        _notifyNavBar(active);
       }
     });
   }
@@ -211,11 +214,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             left: 16,
             bottom: _bottomOffset,
             child: AnimatedSlide(
-              offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+              // hide when either the search bar OR the route sheet is active
+              offset: (_searchActive || _creatingRoute)
+                  ? const Offset(0, 1)
+                  : Offset.zero,
               duration: _animDuration,
               curve: Curves.easeInOut,
               child: AnimatedOpacity(
-                opacity: _searchActive ? 0 : 1,
+                opacity: (_searchActive || _creatingRoute) ? 0 : 1,
                 duration: _animDuration,
                 child: _persistentWeather,
               ),
@@ -262,6 +268,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _plannerOverlay?.remove();
               _plannerOverlay = null;
               setState(() => _creatingRoute = false);
+              
+              _notifyNavBar(false);   // ⬅️ show it again
               // also close directions sheet if open
               _routeSheetEntry?.remove();
               _routeSheetEntry = null;
@@ -593,7 +601,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     required ValueChanged<TravelMode> onModeChanged,
     required VoidCallback onClose,
   }) {
-    if (_routeSheetEntry != null) return;      // already visible
+    if (_routeSheetEntry != null) return;
+    
+    // in case user jumped straight to the sheet without the planner bar
+    _notifyNavBar(true);
 
     late OverlayEntry entry;                   // need late for _onClose
     entry = OverlayEntry(
@@ -610,12 +621,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             onModeChanged:    onModeChanged,
             scrollController: scrollCtr,
             onClose: () {
-              entry.remove();                  // manual dismiss only
+              entry.remove();
               _routeSheetEntry = null;
               onClose();
               _plannerOverlay?.remove();
               _plannerOverlay = null;
               setState(() => _creatingRoute = false);
+              
+             _notifyNavBar(false);   // ⬅️ reveal nav bar
             },
           ),
         ),
