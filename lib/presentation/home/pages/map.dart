@@ -187,40 +187,162 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // Returns true if any panel (building or route) is open
-  bool get _panelActive => _buildingPanelPointer != null || _panelRoutes != null;
-  bool get _isMensaPanel => _buildingPanelPointer != null &&
+  bool get _panelActive =>
+      _buildingPanelPointer != null || _panelRoutes != null;
+  bool get _isMensaPanel =>
+      _buildingPanelPointer != null &&
       _buildingPanelPointer!.category.toLowerCase() == 'canteen';
 
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // Dynamically calculate maxHeight based on panel content
+    // We need to choose how tall the panel should be, based on which content it’s showing.
     double maxHeight;
+
+    // If we’re currently showing a “building info” panel…
     if (_buildingPanelPointer != null) {
-      final p = _buildingPanelPointer!;
-      // Estimate title lines: 32 chars per line, round up and add 1 for safety
-      int titleLines = ((p.name.length / 32).ceil()) + 1;
-      double titleHeight = titleLines * 32.0;
-      double categoryHeight = 20.0;
-      double buttonRowHeight = 56.0;
-      double buttonRows = (p.category.toLowerCase() == 'canteen') ? 2 : 1; // 2 rows for canteen (3 buttons), 1 for others
-      double padding = 60.0;
-      maxHeight = titleHeight + categoryHeight + (buttonRows * buttonRowHeight) + padding;
-      // Clamp to a reasonable min/max
-      maxHeight = maxHeight.clamp(180.0, MediaQuery.of(context).size.height * 0.85);
+      final p =
+          _buildingPanelPointer!; // our Pointer model with name, category, coords
+
+      // ────────────────────────────────────────────────────────────────
+      // 1) Compute available width for text layout (total screen width minus horizontal padding)
+      // ────────────────────────────────────────────────────────────────
+      const horizontalPadding =
+          20.0 * 2; // left + right padding inside the sheet
+      final panelWidth = MediaQuery.of(context).size.width - horizontalPadding;
+      print('Panel width: $panelWidth');
+      // ────────────────────────────────────────────────────────────────
+      // 2) Measure the height of the title (which may wrap to multiple lines)
+      // ────────────────────────────────────────────────────────────────
+      final TextStyle titleStyle =
+          Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
+          // fallback if theme doesn’t provide titleLarge
+          ??
+          const TextStyle(fontSize: 20, fontWeight: FontWeight.bold);
+      //print('Title style: $titleStyle');
+      
+      // Calculate the available width dynamically by subtracting the close button width
+      final closeButtonWidth = 40.0; // Example width of the close button
+      final availableWidth = panelWidth - closeButtonWidth; // Adjust the width for the text
+
+      // Create a TextPainter to measure the rendered size of p.name
+      final TextPainter titlePainter = TextPainter(
+        text: TextSpan(text: p.name, style: titleStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 10, // Set a large number for maxLines
+      )..layout(maxWidth: availableWidth); // Use the adjusted width
+
+      // Calculate the total height using line metrics
+      final lineMetrics = titlePainter.computeLineMetrics();
+      final totalHeight = lineMetrics.fold(0.0, (sum, line) => sum + line.height);
+
+      print('Title size: ${titlePainter.size}, Total height: $totalHeight');
+
+
+      // Get per-line metrics (so we know line height and count)
+      final lineMetrics2 = titlePainter.computeLineMetrics();
+      // Either take the computed height of the first line, or fallback to the fontSize
+      final lineHeight = lineMetrics2.isNotEmpty
+          ? lineMetrics2.first.height
+          : (titleStyle.fontSize ?? 20);
+      // Total title height = number of lines × line height
+      final titleHeight = lineMetrics2.length * lineHeight;
+      print('Title height: $titleHeight');
+      
+
+      // ────────────────────────────────────────────────────────────────
+      // 3) Measure the height of the category text (single line)
+      // ────────────────────────────────────────────────────────────────
+      final TextStyle categoryStyle =
+          Theme.of(context).textTheme.bodyMedium ??
+          const TextStyle(fontSize: 14);
+      //print('Category style: $categoryStyle');
+
+      final TextPainter categoryTP = TextPainter(
+        text: TextSpan(text: p.category, style: categoryStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: panelWidth);
+      print('Category size: ${categoryTP.size}');
+
+      // Category label height
+      final categoryHeight = categoryTP.size.height;
+      print('Category height: $categoryHeight');
+      // ────────────────────────────────────────────────────────────────
+      // 4) Account for all the fixed spacings in the sheet’s header
+      // ────────────────────────────────────────────────────────────────
+      const topPadding = 12.0; // Padding top in BuildingSlideWindow
+      const handleHeight = 4.0; // drag handle height
+      const betweenHandleAndHeader = 12.0; // SizedBox(height:12)
+      const betweenTitleAndCategory = 4.0; // SizedBox(height:4)
+      const afterHeader = 20.0; // SizedBox(height:20)
+      const closeButtonHeight = 28.0; // height of the circular close button
+      // Compute the height of the title+category block
+      final headerContentHeight = titleHeight + betweenTitleAndCategory + categoryHeight;
+      // Ensure header accounts for the larger of text block or close button
+      final headerBlockHeight = headerContentHeight < closeButtonHeight ? closeButtonHeight : headerContentHeight;
+      final headerTotal = topPadding + handleHeight + betweenHandleAndHeader
+          + headerBlockHeight + afterHeader;
+      print('Header total height: $headerTotal');
+
+      // ────────────────────────────────────────────────────────────────
+      // 5) Account for the buttons section (one or two rows of gradient buttons)
+      // ────────────────────────────────────────────────────────────────
+      const buttonHeight = 48.0; // each button’s height
+      const buttonRowSpacing = 16.0; // vertical gap between rows
+
+      // If this is a canteen, we show two rows (route + fav. + menu), otherwise one.
+      final rows = (p.category.toLowerCase() == 'canteen') ? 2 : 1;
+
+      // Total buttons block = (height × rows) + (spacing between rows)
+      final buttonsTotal =
+          (buttonHeight * rows) + (buttonRowSpacing * (rows - 1));
+      print('Buttons total height: $buttonsTotal');
+
+      // ────────────────────────────────────────────────────────────────
+      // 6) Bottom padding + safe area inset
+      // ────────────────────────────────────────────────────────────────
+      const bottomPadding = 28.0; // Padding at bottom of sheet
+      final safeAreaBottom = MediaQuery.of(context).padding.bottom;
+      
+
+      // Final: sum header + buttons + bottom padding + any OS-level safe area
+      maxHeight = headerTotal + buttonsTotal + bottomPadding + safeAreaBottom;
+      print('Max height for building panel: $maxHeight');
+      // Clamp so it’s never too small or taller than 85% of screen height
+      maxHeight = maxHeight.clamp(
+        180.0,
+        MediaQuery.of(context).size.height * 0.85,
+      );
+
+      // ────────────────────────────────────────────────────────────────
+      // If we’re showing the route-options panel instead…
+      // ────────────────────────────────────────────────────────────────
     } else if (_panelRoutes != null) {
-      maxHeight = MediaQuery.of(context).size.height * 0.85;
+      // route sheet always up to 31% of screen height
+      maxHeight = MediaQuery.of(context).size.height * 0.31;
+
+      // ────────────────────────────────────────────────────────────────
+      // Otherwise neither sheet is active, we’ll show a small handle only
+      // ────────────────────────────────────────────────────────────────
     } else {
-      maxHeight = 180;
+      maxHeight = 180.0; // default “peek” height if nothing else is open
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Now build the Scaffold with our SlidingUpPanel, using the computed height
+    // ─────────────────────────────────────────────────────────────────
     return Scaffold(
       body: SlidingUpPanel(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        controller: _panelController,
-        minHeight: 20,
-        maxHeight: maxHeight,
-        snapPoint: 0.4,
-        isDraggable: true,
+        controller: _panelController, // the PanelController instance
+        minHeight: 20, // always leave a 20 px “handle” visible
+        maxHeight: maxHeight, // our dynamic max height
+        snapPoint: 0.2, // when you drag up, snaps at 20% if release early
+        isDraggable: true, // allow dragging
+        // … panelBuilder, onPanelClosed, body, etc. follow here …
         panelBuilder: (sc) {
           if (_buildingPanelPointer != null) {
             final p = _buildingPanelPointer!;
@@ -247,21 +369,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
               onShowMenu: p.category.toLowerCase() == 'canteen'
                   ? () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MensaPage(mensaName: p.name),
-                        ),
-                      )
+                      MaterialPageRoute(
+                        builder: (_) => MensaPage(mensaName: p.name),
+                      ),
+                    )
                   : null,
               // No custom handle or controller needed
             );
           }
           if (_panelRoutes != null) {
             return RouteOptionsSheet(
-              routesNotifier:  _panelRoutes!,
-              currentMode:     _panelMode ?? TravelMode.walk,
+              routesNotifier: _panelRoutes!,
+              currentMode: _panelMode ?? TravelMode.walk,
               scrollController: sc,
-              onModeChanged:   _changeTravelMode,
-              onClose:         () {
+              onModeChanged: _changeTravelMode,
+              onClose: () {
                 _panelController.close();
                 _notifyNavBar(false); // Hide nav bar when closing
               },
@@ -333,8 +455,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 focusNode: _searchFocusNode,
               ),
             // hide FAB & weather while search bar or any panel is active
-            if (!_panelActive)
-              _buildCurrentLocationButton(),
+            if (!_panelActive) _buildCurrentLocationButton(),
             if (!_panelActive)
               Positioned(
                 left: 16,
@@ -369,7 +490,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
   void _startRouteFlow(LatLng destination) {
-    _routeDestination = destination;          // remember for later
+    _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
     setState(() {
       _creatingRoute = true;
