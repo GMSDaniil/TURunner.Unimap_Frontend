@@ -186,6 +186,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SlidingUpPanel(
+        // nice rounded top corners on the whole sheet
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController,
         minHeight: 0,
         maxHeight: MediaQuery.of(context).size.height * .31,

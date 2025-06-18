@@ -143,11 +143,21 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                         .copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    splashRadius: 20,
-                    onPressed: widget.onClose,
-                  ),
+                  // close button in a light-grey circular pill
+Container(
+  width: 36,
+  height: 36,
+  decoration: BoxDecoration(
+    color: Colors.grey.shade200,
+    shape: BoxShape.circle,
+  ),
+  child: IconButton(
+    padding: EdgeInsets.zero,
+    icon: const Icon(Icons.close, size: 18),
+    splashRadius: 18,
+    onPressed: widget.onClose,
+  ),
+),
                 ],
               ),
               const SizedBox(height: 8),
