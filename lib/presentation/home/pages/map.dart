@@ -194,17 +194,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // Dynamically calculate maxHeight based on panel content
+    double maxHeight;
+    if (_buildingPanelPointer != null) {
+      final p = _buildingPanelPointer!;
+      // Estimate title lines: 32 chars per line, round up and add 1 for safety
+      int titleLines = ((p.name.length / 32).ceil()) + 1;
+      double titleHeight = titleLines * 32.0;
+      double categoryHeight = 20.0;
+      double buttonRowHeight = 56.0;
+      double buttonRows = (p.category.toLowerCase() == 'canteen') ? 2 : 1; // 2 rows for canteen (3 buttons), 1 for others
+      double padding = 60.0;
+      maxHeight = titleHeight + categoryHeight + (buttonRows * buttonRowHeight) + padding;
+      // Clamp to a reasonable min/max
+      maxHeight = maxHeight.clamp(180.0, MediaQuery.of(context).size.height * 0.85);
+    } else if (_panelRoutes != null) {
+      maxHeight = MediaQuery.of(context).size.height * 0.85;
+    } else {
+      maxHeight = 180;
+    }
     return Scaffold(
       body: SlidingUpPanel(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController,
-        minHeight: 60, // minimized: just the handle and title
-        maxHeight: MediaQuery.of(context).size.height * 0.85, // maximized
-        snapPoint: 0.4, // middle snap: shows buttons, mensa plan title
-        // Enable snapping to min, mid, and max
-        parallaxEnabled: true,
-        parallaxOffset: 0.1,
-        isDraggable: true, // allow drag for all panels
+        minHeight: 20,
+        maxHeight: maxHeight,
+        snapPoint: 0.4,
+        isDraggable: true,
         panelBuilder: (sc) {
           if (_buildingPanelPointer != null) {
             final p = _buildingPanelPointer!;

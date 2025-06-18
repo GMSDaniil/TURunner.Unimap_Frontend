@@ -24,7 +24,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
     'Thu',
     'Fri',
     'Sat',
-    'Sun',
+    'Sun', // Add Sunday to the list
   ];
   static const weekdayNames = [
     "Monday",
@@ -33,7 +33,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
     "Thursday",
     "Friday",
     "Saturday",
-    "Sunday",
+    "Sunday", // Add Sunday to the list
   ];
 
   @override
@@ -85,7 +85,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
               height: 48,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(7, (i) {
+                children: List.generate(weekdayLabels.length, (i) { // Use full length
                   final isSelected = i == selectedDayIndex;
                   return Expanded(
                     child: GestureDetector(

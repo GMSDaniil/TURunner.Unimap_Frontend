@@ -184,9 +184,9 @@ class BuildingSlideWindow extends StatelessWidget {
                       label: 'Show Mensa Plan',
                       colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
                     ),
-                    const SizedBox(height: 16),
-                    WeeklyMensaPlan(mensaName: title),
-                  ],
+                    // Hide WeeklyMensaPlan and any bottom content for canteens
+                  ]
+                  // else, for non-canteens, you can add more content here
                 ],
               ),
             ),

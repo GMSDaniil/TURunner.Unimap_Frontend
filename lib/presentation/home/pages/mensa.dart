@@ -26,8 +26,9 @@ class _MensaPageState extends State<MensaPage>
     "Thursday",
     "Friday",
     "Saturday",
+    "Sunday",
   ];
-  static const weekdayShort = ["Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  static const weekdayShort = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
   @override
   void initState() {
@@ -126,11 +127,16 @@ class _MensaPageState extends State<MensaPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.mensaName),
+        backgroundColor: Colors.white, // Set app bar background to white
+        iconTheme: const IconThemeData(color: Colors.black), // Make back button/icon black for contrast
+        title: Text(widget.mensaName, style: const TextStyle(color: Colors.black)),
         leading: BackButton(onPressed: () => Navigator.of(context).pop()),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          labelColor: Colors.black, // Tab text color
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.black,
           tabs: List.generate(
             weekdayShort.length,
             (i) => Tab(text: weekdayShort[i]),
