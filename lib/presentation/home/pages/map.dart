@@ -65,6 +65,7 @@ const _canteensZoom = 16.0;
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
+
   /// Emits `true` when the search bar gains focus and `false` when it
   /// loses focus.  Parent widgets can use this to hide/show UI elements.
   final ValueChanged<bool>? onSearchFocusChanged;
@@ -81,19 +82,21 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   static const _animDuration = Duration(milliseconds: 250);
-  static const double _navBarHeight = 88;        // ← height from bottom-nav
+  static const double _navBarHeight = 88; // ← height from bottom-nav
 
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  OverlayEntry? _routeSheetEntry;        // ← new: overlay-based sheet
+  OverlayEntry? _routeSheetEntry; // ← new: overlay-based sheet
   OverlayEntry? _plannerOverlay; // ← NEW
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
-  
+
+  // Controller for programmatic snapping after drag-release
+  final DraggableScrollableController _sheetCtrl = DraggableScrollableController();
+
   // helper so we type less ↓
-  void _notifyNavBar(bool hide) =>
-      widget.onSearchFocusChanged?.call(hide);
+  void _notifyNavBar(bool hide) => widget.onSearchFocusChanged?.call(hide);
 
   // ── controllers & data ───────────────────────────────────────────
   final MapController _mapController = MapController();
@@ -146,9 +149,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _mapAnimController?.dispose();
+    _sheetCtrl.dispose(); // Dispose the sheet controller
     _searchCtl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  /// Snap the sheet to the nearest predefined stop once the user lifts their finger.
+  void _snapToNearest() {
+    const stops = [0.10, 0.15, 0.20, 0.25, 0.30];
+    final current = _sheetCtrl.size;
+    final closest = stops.reduce(
+      (a, b) => (a - current).abs() < (b - current).abs() ? a : b,
+    );
+    _sheetCtrl.animateTo(
+      closest,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
   }
 
   // ── build ────────────────────────────────────────────────────────
@@ -268,8 +286,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _plannerOverlay?.remove();
               _plannerOverlay = null;
               setState(() => _creatingRoute = false);
-              
-              _notifyNavBar(false);   // ⬅️ show it again
+
+              _notifyNavBar(false); // ⬅️ show it again
               // also close directions sheet if open
               _routeSheetEntry?.remove();
               _routeSheetEntry = null;
@@ -360,35 +378,35 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   double get _bottomOffset => 20 + _navBarHeight;
 
   Widget _buildCurrentLocationButton() => Positioned(
-        bottom: _bottomOffset,
-        right: 20,
-        child: AnimatedSlide(
-          offset: _searchActive ? const Offset(0, 1) : Offset.zero,
-          duration: _animDuration,
-          curve: Curves.easeInOut,
-          child: AnimatedOpacity(
-            opacity: _searchActive ? 0 : 1,
-            duration: _animDuration,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              onPressed: () => _goToCurrentLocation(moveMap: true),
-              child: const Icon(Icons.my_location, color: Colors.blue),
-            ),
-          ),
+    bottom: _bottomOffset,
+    right: 20,
+    child: AnimatedSlide(
+      offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _searchActive ? 0 : 1,
+        duration: _animDuration,
+        child: FloatingActionButton(
+          backgroundColor: Colors.white,
+          onPressed: () => _goToCurrentLocation(moveMap: true),
+          child: const Icon(Icons.my_location, color: Colors.blue),
         ),
-      );
+      ),
+    ),
+  );
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
-      var response = await sl<GetPointersUseCase>().call();
-      response.fold(
-        (error) {
-          debugPrint('Error loading pointers: $error');
-          return;
-        },
-        (pointers) {
+    var response = await sl<GetPointersUseCase>().call();
+    response.fold(
+      (error) {
+        debugPrint('Error loading pointers: $error');
+        return;
+      },
+      (pointers) {
         _allPointers = pointers;
-          final m = _allPointers.map((p) {
+        final m = _allPointers.map((p) {
           return Marker(
             point: LatLng(p.lat, p.lng),
             width: 40,
@@ -404,9 +422,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           );
         }).toList();
         setState(() => _markers = m);
-          },
-      );
-      
+      },
+    );
   }
 
   void _searchMarkers(String q) {
@@ -453,7 +470,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               final pCat = p.category.trim().toLowerCase();
               if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
               if (cat.contains('librar')) return pCat.contains('librar');
-              if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
+              if (cat.contains('canteen') || cat.contains('mensa'))
+                return pCat == 'canteen' || pCat == 'mensa';
               if (cat.contains('study room')) return pCat == 'study room';
               return false;
             })
@@ -494,7 +512,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (_routeSheetEntry != null || _plannerOverlay != null) return;
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
-    
+
     if (building != null) {
       final p = _allPointers.firstWhere(
         (x) => x.name == building.name,
@@ -598,38 +616,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _showRouteOptionsSheet({
     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
     required TravelMode currentMode,
-    required ValueChanged<TravelMode> onModeChanged,
+    required Function(TravelMode) onModeChanged,
     required VoidCallback onClose,
   }) {
     if (_routeSheetEntry != null) return;
-    
-    // in case user jumped straight to the sheet without the planner bar
+
+    // In case user jumped straight to the sheet without the planner bar
     _notifyNavBar(true);
 
-    late OverlayEntry entry;                   // need late for _onClose
+    // Declare OverlayEntry first for use in nested callbacks
+    late OverlayEntry entry;
+
     entry = OverlayEntry(
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.35,
-        minChildSize: 0.10,
-        maxChildSize: 0.80,
-        expand: false,                         // never forces full-screen
-        builder: (ctx, scrollCtr) => Material(
-          color: Colors.transparent,
-          child: RouteOptionsSheet(
-            routesNotifier:   routesNotifier,
-            currentMode:      currentMode,
-            onModeChanged:    onModeChanged,
-            scrollController: scrollCtr,
-            onClose: () {
-              entry.remove();
-              _routeSheetEntry = null;
-              onClose();
-              _plannerOverlay?.remove();
-              _plannerOverlay = null;
-              setState(() => _creatingRoute = false);
-              
-             _notifyNavBar(false);   // ⬅️ reveal nav bar
-            },
+        initialChildSize: 0.30,             // 30% of the screen
+        minChildSize: 0.09,                 // Can collapse to ~10%
+        maxChildSize: 0.31,                 // Stop just below nav-bar
+        expand: false,                      // Never forces full-screen
+        builder: (ctx, scrollCtr) => SingleChildScrollView(
+          controller: scrollCtr,
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Material(
+            color: Colors.transparent,
+            child: RouteOptionsSheet(
+              routesNotifier: routesNotifier,
+              currentMode: currentMode,
+              onModeChanged: onModeChanged,
+              scrollController: scrollCtr,
+              onClose: () {
+                entry.remove(); // Remove the overlay
+                _routeSheetEntry = null;
+                onClose(); // Run existing close logic
+                _plannerOverlay?.remove(); // Remove planner overlay
+                _plannerOverlay = null;
+                setState(() => _creatingRoute = false); // Reset state
+                _notifyNavBar(false); // Show navigation bar
+              },
+            ),
           ),
         ),
       ),
@@ -639,7 +662,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _routeSheetEntry = entry;
   }
 
-  // ── animation helper ─────────────────────────────────────────────
+  // ── animation helper ───────────────────in──────────────────────────
   void _animatedMapMove(LatLng dest, double zoom) {
     _mapAnimController?.dispose();
     _mapAnimController = AnimationController(
@@ -702,7 +725,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final pCat = p.category.trim().toLowerCase();
       if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
       if (cat.contains('librar')) return pCat.contains('librar');
-      if (cat.contains('canteen') || cat.contains('mensa')) return pCat == 'canteen' || pCat == 'mensa';
+      if (cat.contains('canteen') || cat.contains('mensa'))
+        return pCat == 'canteen' || pCat == 'mensa';
       if (cat.contains('study room')) return pCat == 'study room';
       return false;
     }).toList();
@@ -759,4 +783,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       },
     );
   }
+}
+
+/// Prevents any inner scrolling or overscroll glow
+class _NoScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildViewportChrome(BuildContext _, Widget child, AxisDirection __) =>
+      child;
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext _) =>
+      const NeverScrollableScrollPhysics();
 }
