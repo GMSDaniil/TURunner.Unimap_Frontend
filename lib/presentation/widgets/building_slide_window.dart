@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
 import 'package:auth_app/presentation/home/pages/mensa.dart';
+import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 /// Re-usable gradient pill button used throughout the bottom sheet.
 class GradientActionButton extends StatelessWidget {
@@ -60,6 +61,7 @@ class BuildingSlideWindow extends StatelessWidget {
   final VoidCallback onAddToFavourites;
   final VoidCallback onClose;
   final VoidCallback? onShowMenu; // optional mensa plan btn
+  final PanelController? panelController; // <-- add this
 
   const BuildingSlideWindow({
     Key? key,
@@ -69,6 +71,7 @@ class BuildingSlideWindow extends StatelessWidget {
     required this.onAddToFavourites,
     required this.onClose,
     this.onShowMenu,
+    this.panelController, // <-- add this
   }) : super(key: key);
 
   // quick access to brand colours (taken from profile-screen gradient)
@@ -85,104 +88,107 @@ class BuildingSlideWindow extends StatelessWidget {
         color: Colors.white, // explicit white background
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag handle
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Header: title & small circular close button aligned with top of title
-                Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start, // align children to top
-                  children: [
-                    // Title + category
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            category,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // smaller circular close button, no top margin
-                    Container(
-                      width: 28,
-                      height: 28,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Default handle for all panels
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.shade200,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        splashRadius: 16,
-                        padding: const EdgeInsets.all(4),
-                        onPressed: onClose,
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Row of action buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: GradientActionButton(
-                        onPressed: onCreateRoute,
-                        icon: Icons.directions,
-                        label: 'Create Route',
-                        colors: const [_purple, _pink],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: GradientActionButton(
-                        onPressed: onAddToFavourites,
-                        icon: Icons.favorite_border,
-                        label: 'Add to Favourites',
-                        colors: const [_deepOrange, _orange],
-                      ),
-                    ),
-                  ],
-                ),
-                if (onShowMenu != null) ...[
-                  const SizedBox(height: 16),
-                  GradientActionButton(
-                    onPressed: onShowMenu!,
-                    icon: Icons.restaurant_menu,
-                    label: 'Show Mensa Plan',
-                    colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
                   ),
-                  const SizedBox(height: 16),
-                  WeeklyMensaPlan(mensaName: title),
+
+                  // Header: title & small circular close button aligned with top of title
+                  Row(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start, // align children to top
+                    children: [
+                      // Title + category
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              category,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // smaller circular close button, no top margin
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade200,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          splashRadius: 16,
+                          padding: const EdgeInsets.all(4),
+                          onPressed: onClose,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Row of action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GradientActionButton(
+                          onPressed: onCreateRoute,
+                          icon: Icons.directions,
+                          label: 'Create Route',
+                          colors: const [_purple, _pink],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GradientActionButton(
+                          onPressed: onAddToFavourites,
+                          icon: Icons.favorite_border,
+                          label: 'Add to Favourites',
+                          colors: const [_deepOrange, _orange],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (onShowMenu != null) ...[
+                    const SizedBox(height: 16),
+                    GradientActionButton(
+                      onPressed: onShowMenu!,
+                      icon: Icons.restaurant_menu,
+                      label: 'Show Mensa Plan',
+                      colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
+                    ),
+                    const SizedBox(height: 16),
+                    WeeklyMensaPlan(mensaName: title),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

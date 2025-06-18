@@ -1,4 +1,4 @@
-/* import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:auth_app/core/constants/api_urls.dart';
@@ -158,4 +158,4 @@ class _MensaPageState extends State<MensaPage>
             ),
     );
   }
-} */
+}

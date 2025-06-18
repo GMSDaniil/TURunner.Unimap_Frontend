@@ -188,18 +188,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // Returns true if any panel (building or route) is open
   bool get _panelActive => _buildingPanelPointer != null || _panelRoutes != null;
+  bool get _isMensaPanel => _buildingPanelPointer != null &&
+      _buildingPanelPointer!.category.toLowerCase() == 'canteen';
 
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SlidingUpPanel(
-        // nice rounded top corners on the whole sheet
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController,
-        minHeight: 0,
-        maxHeight: MediaQuery.of(context).size.height * .31,
-        snapPoint: .3,
+        minHeight: 60, // minimized: just the handle and title
+        maxHeight: MediaQuery.of(context).size.height * 0.85, // maximized
+        snapPoint: 0.4, // middle snap: shows buttons, mensa plan title
+        // Enable snapping to min, mid, and max
+        parallaxEnabled: true,
+        parallaxOffset: 0.1,
+        isDraggable: true, // allow drag for all panels
         panelBuilder: (sc) {
           if (_buildingPanelPointer != null) {
             final p = _buildingPanelPointer!;
@@ -222,15 +227,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               onClose: () {
                 setState(() => _buildingPanelPointer = null);
                 _panelController.close();
-                _notifyNavBar(false); // Hide nav bar when closing
+                _notifyNavBar(false);
               },
-              // onShowMenu: p.category.toLowerCase() == 'canteen'
-              //     ? () => Navigator.of(context).push(
-              //           MaterialPageRoute(
-              //             builder: (_) => MensaPage(mensaName: p.name),
-              //           ),
-              //         )
-              //     : null,
+              onShowMenu: p.category.toLowerCase() == 'canteen'
+                  ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MensaPage(mensaName: p.name),
+                        ),
+                      )
+                  : null,
+              // No custom handle or controller needed
             );
           }
           if (_panelRoutes != null) {
@@ -248,27 +254,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           return const SizedBox.shrink();
         },
         onPanelClosed: () {
-          setState(() => _buildingPanelPointer = null);
-           /*──────────────────────────
-           * If the user drags the panel down (or taps the overlay
-           * “X”) the SlidingUpPanel closes but the RoutePlanBar
-           * overlay that we inserted at the top of the screen is
-           * still alive.  Remove it here so the map UI is clean.
-           *──────────────────────────*/
-          _plannerOverlay?.remove();
-          _plannerOverlay = null;
-
-          /*───────────────────────────────────────────────────────────
-           * Clear any route that is currently painted on the map.
-           * This restores the “idle” map state that existed before
-           * the user entered the routing workflow.
-           *──────────────────────────────────────────────────────────*/
-          _routesNotifier.value = {}; // remove segments -> poly-line gone
-          _currentMode = TravelMode.walk;
-
-          _clearPanelData();
-          setState(() => _creatingRoute = false);
-          _notifyNavBar(false);
+          // Only clear the panel if it is actually closed (not just at minHeight)
+          if (_panelController.panelPosition == 0.0) {
+            setState(() => _buildingPanelPointer = null);
+            _plannerOverlay?.remove();
+            _plannerOverlay = null;
+            _routesNotifier.value = {};
+            _currentMode = TravelMode.walk;
+            _clearPanelData();
+            setState(() => _creatingRoute = false);
+            _notifyNavBar(false);
+          }
         },
         body: Stack(
           children: [
