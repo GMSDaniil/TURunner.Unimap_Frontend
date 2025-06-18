@@ -86,7 +86,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  PersistentBottomSheetController? _routeSheetCtr;
+  OverlayEntry? _routeSheetEntry;        // ← new: overlay-based sheet
   OverlayEntry? _plannerOverlay; // ← NEW
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
@@ -263,7 +263,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _plannerOverlay = null;
               setState(() => _creatingRoute = false);
               // also close directions sheet if open
-              _routeSheetCtr?.close();
+              _routeSheetEntry?.remove();
+              _routeSheetEntry = null;
             },
             onChanged: (newStart, newDest) async {
               // 1️⃣ recalc the route in place
@@ -482,7 +483,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── taps ─────────────────────────────────────────────────────────
   void _onMapTap(LatLng latlng) async {
-    if (_routeSheetCtr != null || _plannerSheetCtr != null) return;
+    if (_routeSheetEntry != null || _plannerOverlay != null) return;
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
     
@@ -592,29 +593,37 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     required ValueChanged<TravelMode> onModeChanged,
     required VoidCallback onClose,
   }) {
-    if (_routeSheetCtr != null) return;
+    if (_routeSheetEntry != null) return;      // already visible
 
-    _routeSheetCtr = widget.scaffoldKeyForBottomSheet.currentState
-        ?.showBottomSheet(
-          (_) => RouteOptionsSheet(
-            routesNotifier: routesNotifier,
-            currentMode: currentMode,
-            onClose: onClose,
-            onModeChanged: onModeChanged,
+    late OverlayEntry entry;                   // need late for _onClose
+    entry = OverlayEntry(
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.35,
+        minChildSize: 0.10,
+        maxChildSize: 0.80,
+        expand: false,                         // never forces full-screen
+        builder: (ctx, scrollCtr) => Material(
+          color: Colors.transparent,
+          child: RouteOptionsSheet(
+            routesNotifier:   routesNotifier,
+            currentMode:      currentMode,
+            onModeChanged:    onModeChanged,
+            scrollController: scrollCtr,
+            onClose: () {
+              entry.remove();                  // manual dismiss only
+              _routeSheetEntry = null;
+              onClose();
+              _plannerOverlay?.remove();
+              _plannerOverlay = null;
+              setState(() => _creatingRoute = false);
+            },
           ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        );
+        ),
+      ),
+    );
 
-    _routeSheetCtr?.closed.then((_) {
-      // clear bottom‐sheet state
-      _routeSheetCtr = null;
-      onClose();
-      // also remove the top RoutePlanBar overlay
-      _plannerOverlay?.remove();
-      _plannerOverlay = null;
-      setState(() => _creatingRoute = false);
-    });
+    Overlay.of(context, rootOverlay: true)!.insert(entry);
+    _routeSheetEntry = entry;
   }
 
   // ── animation helper ─────────────────────────────────────────────

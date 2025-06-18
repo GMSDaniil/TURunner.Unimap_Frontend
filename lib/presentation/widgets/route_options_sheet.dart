@@ -21,6 +21,10 @@ class RouteOptionsSheet extends StatefulWidget {
   final TravelMode currentMode;
   final VoidCallback onClose;
   final ValueChanged<TravelMode> onModeChanged;
+  /// If the sheet is wrapped in a `DraggableScrollableSheet`, Flutter will
+  /// hand us its internal ScrollController so the content keeps scrolling
+  /// smoothly while the panel is being dragged.
+  final ScrollController? scrollController;
 
   const RouteOptionsSheet({
     super.key,
@@ -28,6 +32,7 @@ class RouteOptionsSheet extends StatefulWidget {
     required this.currentMode,
     required this.onClose,
     required this.onModeChanged,
+    this.scrollController,
   });
 
   @override
@@ -106,11 +111,13 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
       elevation: 8,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: SafeArea(
-        child: Padding(
+        // ➜ make the whole sheet scrollable when it’s taller than the viewport
+        child: SingleChildScrollView(
+          controller: widget.scrollController,
+          // keep default bounce / physics
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Drag-handle mimic
               Align(
