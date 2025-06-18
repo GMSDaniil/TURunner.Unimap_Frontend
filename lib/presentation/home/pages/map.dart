@@ -21,6 +21,8 @@ import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
+import 'package:auth_app/presentation/widgets/building_slide_window.dart';
+import 'package:auth_app/presentation/home/pages/mensa.dart';
 
 // Removed invalid import as the file does not exist
 
@@ -91,6 +93,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   PersistentBottomSheetController? _plannerSheetCtr;
   OverlayEntry? _plannerOverlay; // top RoutePlanBar overlay
   bool _searchActive = false;
+  Pointer? _buildingPanelPointer;
+
   final FocusNode _searchFocusNode = FocusNode();
 
   // Sliding-up-panel controller
@@ -182,6 +186,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _panelMode = null;
   }
 
+  // Returns true if any panel (building or route) is open
+  bool get _panelActive => _buildingPanelPointer != null || _panelRoutes != null;
+
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -193,22 +200,61 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         minHeight: 0,
         maxHeight: MediaQuery.of(context).size.height * .31,
         snapPoint: .3,
-        panelBuilder: (sc) => _panelRoutes == null
-            ? const SizedBox.shrink()
-            : RouteOptionsSheet(
-                routesNotifier:  _panelRoutes!,
-                currentMode:     _panelMode ?? TravelMode.walk,
-                scrollController: sc,
-                onModeChanged:   _changeTravelMode,   // recalculates the route
-                onClose:         () => _panelController.close(),
-              ),
+        panelBuilder: (sc) {
+          if (_buildingPanelPointer != null) {
+            final p = _buildingPanelPointer!;
+            return BuildingSlideWindow(
+              title: p.name,
+              category: p.category,
+              onCreateRoute: () {
+                setState(() => _buildingPanelPointer = null);
+                _panelController.close();
+                _startRouteFlow(LatLng(p.lat, p.lng));
+              },
+              onAddToFavourites: () {
+                FavouritesManager().add(p);
+                setState(() => _buildingPanelPointer = null);
+                _panelController.close();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${p.name} added to favourites!')),
+                );
+              },
+              onClose: () {
+                setState(() => _buildingPanelPointer = null);
+                _panelController.close();
+                _notifyNavBar(false); // Hide nav bar when closing
+              },
+              // onShowMenu: p.category.toLowerCase() == 'canteen'
+              //     ? () => Navigator.of(context).push(
+              //           MaterialPageRoute(
+              //             builder: (_) => MensaPage(mensaName: p.name),
+              //           ),
+              //         )
+              //     : null,
+            );
+          }
+          if (_panelRoutes != null) {
+            return RouteOptionsSheet(
+              routesNotifier:  _panelRoutes!,
+              currentMode:     _panelMode ?? TravelMode.walk,
+              scrollController: sc,
+              onModeChanged:   _changeTravelMode,
+              onClose:         () {
+                _panelController.close();
+                _notifyNavBar(false); // Hide nav bar when closing
+              },
+            );
+          }
+          return const SizedBox.shrink();
+        },
         onPanelClosed: () {
-          /*───────────────────────────────────────────────────────────
+          setState(() => _buildingPanelPointer = null);
+           /*──────────────────────────
            * If the user drags the panel down (or taps the overlay
            * “X”) the SlidingUpPanel closes but the RoutePlanBar
            * overlay that we inserted at the top of the screen is
            * still alive.  Remove it here so the map UI is clean.
-           *──────────────────────────────────────────────────────────*/
+           *──────────────────────────*/
           _plannerOverlay?.remove();
           _plannerOverlay = null;
 
@@ -249,7 +295,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            if (!_creatingRoute)
+            if (!_creatingRoute && !_panelActive)
               MapSearchBar(
                 searchController: _searchCtl,
                 suggestions: _suggestions,
@@ -274,32 +320,37 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 },
                 focusNode: _searchFocusNode,
               ),
-            // hide FAB & weather while search bar has focus
-            // ── Current-location FAB (no longer hidden) ───────────────
-            _buildCurrentLocationButton(),
-
-            // ── Weather pill with fade + slide animation ─────────────
-            Positioned(
-              left: 16,
-              bottom: _bottomOffset,
-              child: AnimatedSlide(
-                // hide when either the search bar OR the route sheet is active
-                offset: (_searchActive || _creatingRoute)
-                    ? const Offset(0, 1)
-                    : Offset.zero,
-                duration: _animDuration,
-                curve: Curves.easeInOut,
-                child: AnimatedOpacity(
-                  opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+            // hide FAB & weather while search bar or any panel is active
+            if (!_panelActive)
+              _buildCurrentLocationButton(),
+            if (!_panelActive)
+              Positioned(
+                left: 16,
+                bottom: _bottomOffset,
+                child: AnimatedSlide(
+                  offset: (_searchActive || _creatingRoute)
+                      ? const Offset(0, 1)
+                      : Offset.zero,
                   duration: _animDuration,
-                  child: _persistentWeather,
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+                    duration: _animDuration,
+                    child: _persistentWeather,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  // Opens building info panel
+  void _showBuildingPanel(Pointer p) {
+    setState(() => _buildingPanelPointer = p);
+    _panelController.open();
+    _notifyNavBar(true); // Hide nav bar when opening
   }
 
   // ───────────────────────────────────────────────────────────
@@ -578,15 +629,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ),
       );
       _animatedMapMove(LatLng(p.lat, p.lng), 18);
-      BuildingPopupManager.showBuildingSlideWindow(
-        context: context,
-        scaffoldKey: widget.scaffoldKeyForBottomSheet,
-        title: building.name,
-        category: p.category,
-        location: latlng,
-        onCreateRoute: () => _startRouteFlow(latlng),
-        onClose: () {},
-      );
+      _showBuildingPanel(p);
     } else {
       BuildingPopupManager.showBuildingOrCoordinatesPopup(
         context: context,
@@ -602,15 +645,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _onMarkerTap(Pointer p) {
     if (_plannerOverlay != null) return;
     _animatedMapMove(LatLng(p.lat, p.lng), 18);
-    BuildingPopupManager.showBuildingSlideWindow(
-      context: context,
-      scaffoldKey: widget.scaffoldKeyForBottomSheet,
-      title: p.name,
-      category: p.category,
-      location: LatLng(p.lat, p.lng),
-      onCreateRoute: () => _startRouteFlow(LatLng(p.lat, p.lng)),
-      onClose: () {},
-    );
+    _showBuildingPanel(p);
   }
 
   // ── current location ─────────────────────────────────────────────
