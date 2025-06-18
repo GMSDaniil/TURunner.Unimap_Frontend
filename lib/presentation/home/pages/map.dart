@@ -187,8 +187,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return Scaffold(
       body: SlidingUpPanel(
         controller: _panelController,
-        parallaxEnabled: true,
-        parallaxOffset: .5,
         minHeight: 0,
         maxHeight: MediaQuery.of(context).size.height * .31,
         snapPoint: .3,
