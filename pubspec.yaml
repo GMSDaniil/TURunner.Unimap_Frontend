@@ -22,6 +22,7 @@ dependencies:
   xml: ^6.5.0
   flutter_polyline_points: ^2.1.0
   geolocator: ^14.0.1
+  sliding_up_panel: ^2.0.0
 
 dev_dependencies:
   flutter_test:

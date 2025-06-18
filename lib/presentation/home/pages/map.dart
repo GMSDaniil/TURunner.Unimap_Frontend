@@ -21,11 +21,13 @@ import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
+
 // Removed invalid import as the file does not exist
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/animation.dart';
+import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
@@ -87,10 +89,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  OverlayEntry? _routeSheetEntry; // ← new: overlay-based sheet
-  OverlayEntry? _plannerOverlay; // ← NEW
+  OverlayEntry? _plannerOverlay;   // top RoutePlanBar overlay
   bool _searchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
+
+  // Sliding-up-panel controller
+  final PanelController _panelController = PanelController();
+  ValueNotifier<Map<TravelMode, RouteData>>? _panelRoutes;
+  TravelMode? _panelMode;
 
   // Controller for programmatic snapping after drag-release
   final DraggableScrollableController _sheetCtrl = DraggableScrollableController();
@@ -149,7 +155,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _mapAnimController?.dispose();
-    _sheetCtrl.dispose(); // Dispose the sheet controller
+    _panelController.close();
     _searchCtl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -169,83 +175,128 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  /* ───────────────────────── Panel helpers ───────────────────── */
+  void _clearPanelData() {
+    _panelRoutes = null;
+    _panelMode   = null;
+  }
+
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          _buildFlutterMap(),
+      body: SlidingUpPanel(
+        controller: _panelController,
+        parallaxEnabled: true,
+        parallaxOffset: .5,
+        minHeight: 0,
+        maxHeight: MediaQuery.of(context).size.height * .31,
+        snapPoint: .3,
+        panelBuilder: (sc) => _panelRoutes == null
+            ? const SizedBox.shrink()
+            : RouteOptionsSheet(
+                routesNotifier:  _panelRoutes!,
+                currentMode:     _panelMode ?? TravelMode.walk,
+                scrollController: sc,
+                onModeChanged:   (m) => _panelMode = m,
+                onClose:         () => _panelController.close(),
+              ),
+        onPanelClosed: () {
+          /*───────────────────────────────────────────────────────────
+           * If the user drags the panel down (or taps the overlay
+           * “X”) the SlidingUpPanel closes but the RoutePlanBar
+           * overlay that we inserted at the top of the screen is
+           * still alive.  Remove it here so the map UI is clean.
+           *──────────────────────────────────────────────────────────*/
+          _plannerOverlay?.remove();
+          _plannerOverlay = null;
 
-          // ── animated white sheet over the map ──────────────────────
-          AnimatedSlide(
-            offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
-            duration: _animDuration,
-            curve: Curves.easeInOut,
-            child: AnimatedOpacity(
-              opacity: _searchActive ? 1.0 : 0.0,
+          /*───────────────────────────────────────────────────────────
+           * Clear any route that is currently painted on the map.
+           * This restores the “idle” map state that existed before
+           * the user entered the routing workflow.
+           *──────────────────────────────────────────────────────────*/
+          _routesNotifier.value = {};      // remove segments -> poly-line gone
+          _currentMode          = TravelMode.walk;
+           
+           _clearPanelData();
+           setState(() => _creatingRoute = false);
+           _notifyNavBar(false);
+         },
+        body: Stack(
+          children: [
+            _buildFlutterMap(),
+
+            // ── animated white sheet over the map ──────────────────────
+            AnimatedSlide(
+              offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
               duration: _animDuration,
-              child: IgnorePointer(
-                ignoring: !_searchActive,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    color: Colors.white,
-                    width: double.infinity,
-                    height: double.infinity,
+              curve: Curves.easeInOut,
+              child: AnimatedOpacity(
+                opacity: _searchActive ? 1.0 : 0.0,
+                duration: _animDuration,
+                child: IgnorePointer(
+                  ignoring: !_searchActive,
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: Container(
+                      color: Colors.white,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          if (!_creatingRoute)
-            MapSearchBar(
-              searchController: _searchCtl,
-              suggestions: _suggestions,
-              onSearch: (q) {
-                _searchMarkers(q);
-                setState(() => _suggestions = []);
-              },
-              onClear: () {
-                _searchCtl.clear();
-                setState(() => _suggestions = []);
-              },
-              onCategorySelected: (category, color) {
-                _filterMarkersByCategory(category, color);
-                if (category != null) {
-                  _showCategoryListPopup(category, color ?? Colors.blue);
-                }
-              },
-              onSuggestionSelected: (p) {
-                final dest = LatLng(p.lat, p.lng);
-                _animatedMapMove(dest, 18);
-                _onMapTap(dest);
-              },
-              focusNode: _searchFocusNode,
-            ),
-          // hide FAB & weather while search bar has focus
-          // ── Current-location FAB (no longer hidden) ───────────────
-          _buildCurrentLocationButton(),
+            if (!_creatingRoute)
+              MapSearchBar(
+                searchController: _searchCtl,
+                suggestions: _suggestions,
+                onSearch: (q) {
+                  _searchMarkers(q);
+                  setState(() => _suggestions = []);
+                },
+                onClear: () {
+                  _searchCtl.clear();
+                  setState(() => _suggestions = []);
+                },
+                onCategorySelected: (category, color) {
+                  _filterMarkersByCategory(category, color);
+                  if (category != null) {
+                    _showCategoryListPopup(category, color ?? Colors.blue);
+                  }
+                },
+                onSuggestionSelected: (p) {
+                  final dest = LatLng(p.lat, p.lng);
+                  _animatedMapMove(dest, 18);
+                  _onMapTap(dest);
+                },
+                focusNode: _searchFocusNode,
+              ),
+            // hide FAB & weather while search bar has focus
+            // ── Current-location FAB (no longer hidden) ───────────────
+            _buildCurrentLocationButton(),
 
-          // ── Weather pill with fade + slide animation ─────────────
-          Positioned(
-            left: 16,
-            bottom: _bottomOffset,
-            child: AnimatedSlide(
-              // hide when either the search bar OR the route sheet is active
-              offset: (_searchActive || _creatingRoute)
-                  ? const Offset(0, 1)
-                  : Offset.zero,
-              duration: _animDuration,
-              curve: Curves.easeInOut,
-              child: AnimatedOpacity(
-                opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+            // ── Weather pill with fade + slide animation ─────────────
+            Positioned(
+              left: 16,
+              bottom: _bottomOffset,
+              child: AnimatedSlide(
+                // hide when either the search bar OR the route sheet is active
+                offset: (_searchActive || _creatingRoute)
+                    ? const Offset(0, 1)
+                    : Offset.zero,
                 duration: _animDuration,
-                child: _persistentWeather,
+                curve: Curves.easeInOut,
+                child: AnimatedOpacity(
+                  opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+                  duration: _animDuration,
+                  child: _persistentWeather,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -288,9 +339,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               setState(() => _creatingRoute = false);
 
               _notifyNavBar(false); // ⬅️ show it again
-              // also close directions sheet if open
-              _routeSheetEntry?.remove();
-              _routeSheetEntry = null;
+              // also close the Sliding-up panel if it is open
+              if (_panelController.isPanelOpen) {
+                _panelController.close();
+              }
             },
             onChanged: (newStart, newDest) async {
               // 1️⃣ recalc the route in place
@@ -509,7 +561,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── taps ─────────────────────────────────────────────────────────
   void _onMapTap(LatLng latlng) async {
-    if (_routeSheetEntry != null || _plannerOverlay != null) return;
+    if (_panelController.isPanelOpen || _plannerOverlay != null) return;
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
 
@@ -619,47 +671,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     required Function(TravelMode) onModeChanged,
     required VoidCallback onClose,
   }) {
-    if (_routeSheetEntry != null) return;
-
-    // In case user jumped straight to the sheet without the planner bar
+    _panelRoutes = routesNotifier;
+    _panelMode   = currentMode;
+    setState(() {});            // rebuild SlidingUpPanel
     _notifyNavBar(true);
-
-    // Declare OverlayEntry first for use in nested callbacks
-    late OverlayEntry entry;
-
-    entry = OverlayEntry(
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.30,             // 30% of the screen
-        minChildSize: 0.09,                 // Can collapse to ~10%
-        maxChildSize: 0.31,                 // Stop just below nav-bar
-        expand: false,                      // Never forces full-screen
-        builder: (ctx, scrollCtr) => SingleChildScrollView(
-          controller: scrollCtr,
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Material(
-            color: Colors.transparent,
-            child: RouteOptionsSheet(
-              routesNotifier: routesNotifier,
-              currentMode: currentMode,
-              onModeChanged: onModeChanged,
-              scrollController: scrollCtr,
-              onClose: () {
-                entry.remove(); // Remove the overlay
-                _routeSheetEntry = null;
-                onClose(); // Run existing close logic
-                _plannerOverlay?.remove(); // Remove planner overlay
-                _plannerOverlay = null;
-                setState(() => _creatingRoute = false); // Reset state
-                _notifyNavBar(false); // Show navigation bar
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Overlay.of(context, rootOverlay: true)!.insert(entry);
-    _routeSheetEntry = entry;
+    _panelController.open();
   }
 
   // ── animation helper ───────────────────in──────────────────────────
