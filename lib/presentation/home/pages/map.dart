@@ -499,61 +499,63 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     });
 
     /* slide-in from top */
-    final controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    final slide = Tween(
-      begin: const Offset(0, -1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
+    if (_plannerOverlay == null) {
+      final controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 300),
+      );
+      final slide = Tween(
+        begin: const Offset(0, -1),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
 
-    _plannerOverlay = OverlayEntry(
-      builder: (_) => SlideTransition(
-        position: slide,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: RoutePlanBar(
-            currentLocation: _currentLocation,
-            initialDestination: destination,
-            allPointers: _allPointers,
-            onCancelled: () async {
-              controller.reverse();
-              await controller.forward();
-              _plannerOverlay?.remove();
-              _plannerOverlay = null;
-              setState(() => _creatingRoute = false);
+      _plannerOverlay = OverlayEntry(
+        builder: (_) => SlideTransition(
+          position: slide,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: RoutePlanBar(
+              currentLocation: _currentLocation,
+              initialDestination: destination,
+              allPointers: _allPointers,
+              onCancelled: () async {
+                controller.reverse();
+                await controller.forward();
+                _plannerOverlay?.remove();
+                _plannerOverlay = null;
+                setState(() => _creatingRoute = false);
 
-              _notifyNavBar(false); // ⬅️ show it again
-              // also close the Sliding-up panel if it is open
-              if (_panelController.isPanelOpen) {
-                _panelController.close();
-              }
-            },
-            onChanged: (newStart, newDest) async {
-              // 1️⃣ recalc the route in place
-              await _handleCreateRoute(
-                newDest,
-                startOverride: newStart,
-                rebuildOnly: true,
-              );
+                _notifyNavBar(false); // ⬅️ show it again
+                // also close the Sliding-up panel if it is open
+                if (_panelController.isPanelOpen) {
+                  _panelController.close();
+                }
+              },
+              onChanged: (newStart, newDest) async {
+                // 1️⃣ recalc the route in place
+                await _handleCreateRoute(
+                  newDest,
+                  startOverride: newStart,
+                  rebuildOnly: true,
+                );
 
-              // 2️⃣ once that's done, grab all the points & fit the map
-              final data = _routesNotifier.value[_currentMode];
-              final pts = data?.segments.expand((s) => s.path).toList() ?? [];
-              if (pts.isNotEmpty) {
-                final bounds = LatLngBounds.fromPoints(pts);
-                // you can tweak the padding/zoomThreshold here
-                _animatedMapMove(bounds.center, 16.0);
-              }
-            },
+                // 2️⃣ once that's done, grab all the points & fit the map
+                final data = _routesNotifier.value[_currentMode];
+                final pts = data?.segments.expand((s) => s.path).toList() ?? [];
+                if (pts.isNotEmpty) {
+                  final bounds = LatLngBounds.fromPoints(pts);
+                  // you can tweak the padding/zoomThreshold here
+                  _animatedMapMove(bounds.center, 16.0);
+                }
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
-    controller.forward(); // animate it in
+      Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+      controller.forward(); // animate it in
+    }
 
     // first time in → rebuildOnly=false (default)
     _handleCreateRoute(destination, startOverride: _currentLocation);
