@@ -13,4 +13,7 @@ class ApiUrls {
   static const getMensaMenu = '${baseURL}mensa/all-menus';
   static const getPointers = '${baseURL}Route/all-pointers';
   static const getWeatherInfo = '${baseURL}weather';
+
+  // Student schedule (Moses TU Berlin)
+  static const getStudentSchedule = '${baseURL}student-schedule';
 }
