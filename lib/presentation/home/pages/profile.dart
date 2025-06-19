@@ -1,5 +1,7 @@
+import 'package:auth_app/common/providers/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../../common/widgets/button/basic_app_button.dart';
 import '../../../common/bloc/button/button_state_cubit.dart';
@@ -14,14 +16,19 @@ import '../../../service_locator.dart';
 import '../../../common/bloc/auth/auth_state.dart';
 import '../../../common/bloc/auth/auth_state_cubit.dart';
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
 
   @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  @override
   Widget build(BuildContext context) {
+    final user = Provider.of<UserProvider>(context, listen: false).user;
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => UserDisplayCubit()..displayUser()),
         BlocProvider(create: (_) => ButtonStateCubit()),
       ],
       child: Scaffold(
@@ -33,55 +40,75 @@ class ProfilePage extends StatelessWidget {
         //   automaticallyImplyLeading: false,
         //   centerTitle: true,
         // ),
-        body: SafeArea(
-          child: BlocBuilder<AuthStateCubit, AuthState>(
-            builder: (context, authState) {
-              if (authState is GuestAuthenticated) {
-                return _buildGuestView(context);
-              }
-          
-              return BlocBuilder<UserDisplayCubit, UserDisplayState>(
-                builder: (context, state) {
-                  if (state is UserLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-          
-                  if (state is UserLoaded) {
-                    final user = state.userEntity;
-          
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 32),
-                          _buildProfilePicture(context),
-                          const SizedBox(height: 24),
-                          _buildUsername(user),
-                          const SizedBox(height: 8),
-                          _buildEmail(user),
-                          const SizedBox(height: 16),
-                          _buildDescription(),
-                          const SizedBox(height: 24),
-                          _buildLogoutButton(context),
-                          const SizedBox(height: 24),
-                        ],
+        body: BlocListener<ButtonStateCubit, ButtonState>(
+          listener: (context, state) {
+                if (state is ButtonSuccessState){ 
+                  Provider.of<UserProvider>(context, listen: false).clearUser();
+                  setState(() {
+                    
+                  });
+                }
+              },
+          child: SafeArea(
+            child: user == null
+                ? _buildGuestView(context)
+                :   MultiBlocProvider(
+                  providers: [
+                    BlocProvider(create: (context) => UserDisplayCubit()..displayUser()),
+                  ],
+                  child: BlocListener<UserDisplayCubit, UserDisplayState>(
+                    listener: (context, state) {
+                    if (state is UserLoaded) {
+                      Provider.of<UserProvider>(context, listen: false).setUser(state.userEntity);
+                    }
+                    },
+                    child: Center(
+                      child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+                        builder: (context, state) {
+                          if (state is UserLoading) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                                  
+                          if (state is UserLoaded) {
+                            final user = state.userEntity;
+                                  
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const SizedBox(height: 32),
+                                  _buildProfilePicture(context),
+                                  const SizedBox(height: 24),
+                                  _buildUsername(user),
+                                  const SizedBox(height: 8),
+                                  _buildEmail(user),
+                                  const SizedBox(height: 16),
+                                  // _buildDescription(),
+                                  // const SizedBox(height: 24),
+                                  _buildLogoutButton(context),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                            );
+                          }
+                                  
+                          if (state is LoadUserFailure) {
+                            return Center(child: Text(state.errorMessage));
+                          }
+                                  
+                          return const Center(child: Text('No user data available.'));
+                        },
                       ),
-                    );
-                  }
-          
-                  if (state is LoadUserFailure) {
-                    return Center(child: Text(state.errorMessage));
-                  }
-          
-                  return const Center(child: Text('No user data available.'));
-                },
-              );
-            },
+                    ),
+                  ),
+                ),
+              
+            ),
           ),
         ),
-      ),
-    );
+      );
+    
   }
 
   Widget _buildUsername(UserEntity user) {
@@ -110,11 +137,17 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
-    return BasicAppButton(
-      title: 'Logout',
-      onPressed: () {
-        context.read<ButtonStateCubit>().execute(usecase: sl<LogoutUseCase>());
-      },
+    return Builder(
+      builder: (innerContext) {
+        return BasicAppButton(
+          title: 'Logout',
+          onPressed: () {
+            innerContext.read<ButtonStateCubit>().execute(
+                  usecase: sl<LogoutUseCase>()
+                 );
+          },
+        );
+      }
     );
   }
 
@@ -137,8 +170,8 @@ class ProfilePage extends StatelessWidget {
           const SizedBox(height: 8),
           const Text('-', style: TextStyle(fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 16),
-          _buildDescription(),
-          const SizedBox(height: 24),
+          // _buildDescription(),
+          // const SizedBox(height: 24),
           BasicAppButton(
             title: 'Sign In',
             onPressed: () {
@@ -180,17 +213,17 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            bottom: 0,
-            right: 7,
-            child: ClipOval(
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                color: const Color.fromARGB(255, 218, 99, 99),
-                child: const Icon(Icons.edit, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
+          // Positioned(
+          //   bottom: 0,
+          //   right: 7,
+          //   child: ClipOval(
+          //     child: Container(
+          //       padding: const EdgeInsets.all(6),
+          //       color: const Color.fromARGB(255, 218, 99, 99),
+          //       child: const Icon(Icons.edit, color: Colors.white, size: 20),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

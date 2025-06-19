@@ -1,4 +1,5 @@
 import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
+import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
 
@@ -10,6 +11,7 @@ import 'core/configs/theme/app_theme.dart';
 import 'presentation/auth/pages/signup.dart';
 import 'presentation/auth/pages/signin.dart';
 import 'service_locator.dart';
+import 'package:provider/src/change_notifier_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';      // ← for TileLayer
@@ -70,9 +72,12 @@ class MyApp extends StatelessWidget {
       overlays: [SystemUiOverlay.bottom],
     );
 
-    return BlocProvider(
+    return MultiBlocProvider(
       // BlocProvider provides AuthStateCubit to the whole widget tree
-      create: (context) => AuthStateCubit()..appStarted(),
+      providers: [
+        BlocProvider(create: (context) => AuthStateCubit()..appStarted()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
       child: MaterialApp(
         theme: AppTheme.appTheme,
         debugShowCheckedModeBanner: false,

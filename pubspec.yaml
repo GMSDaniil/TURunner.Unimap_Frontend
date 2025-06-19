@@ -15,6 +15,7 @@ dependencies:
   get_it:
   dartz:
   logger:
+  provider: 
   shared_preferences:
   flutter_map: ^8.1.1
   flutter_map_tile_caching: ^10.1.1

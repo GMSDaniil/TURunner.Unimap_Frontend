@@ -1,8 +1,10 @@
 import 'package:auth_app/common/bloc/auth/sign_in_cubit.dart';
 import 'package:auth_app/common/bloc/button/button_state.dart';
 import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
+import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/common/widgets/button/basic_app_button.dart';
 import 'package:auth_app/data/models/signin_req_params.dart';
+import 'package:auth_app/data/models/signin_response.dart';
 import 'package:auth_app/data/models/signup_req_params.dart';
 import 'package:auth_app/domain/usecases/signin.dart';
 import 'package:auth_app/domain/usecases/signup.dart';
@@ -12,6 +14,7 @@ import 'package:auth_app/service_locator.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 class SignupPage extends StatelessWidget {
   SignupPage({super.key});
@@ -39,30 +42,13 @@ class SignupPage extends StatelessWidget {
       body: MultiBlocProvider(
         providers: [
           BlocProvider(create: (context) => ButtonStateCubit()), // For SignUp
-          BlocProvider(create: (context) => SignInCubit()), // For SignIn
         ],
-        child: BlocListener<ButtonStateCubit, ButtonState>(
-          listener: (context, state) async {
-            if (state is ButtonSuccessState) {
-              // Execute SignIn after successful SignUp
-              final signInCubit = context.read<SignInCubit>();
-              signInCubit.execute(
-                usecase: sl<SigninUseCase>(),
-                params: SigninReqParams(
-                  username: _usernameCon.text,
-                  password: _passwordCon.text,
-                ),
-              );
-            }
-            if (state is ButtonFailureState) {
-              var snackBar = SnackBar(content: Text(state.errorMessage));
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
-            }
-          },
-          child: BlocListener<SignInCubit, ButtonState>(
+          child: BlocListener<ButtonStateCubit, ButtonState>(
             listener: (context, state) {
               if (state is ButtonSuccessState) {
-                // Navigate to HomePage after successful SignIn
+                SignInResponse response = state.data;
+                var userProvider = Provider.of<UserProvider>(context, listen: false);
+                userProvider.setUser(response.user);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),
@@ -101,8 +87,8 @@ class SignupPage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
+    
   }
 
   Widget _signup() {

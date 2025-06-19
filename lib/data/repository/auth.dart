@@ -1,4 +1,5 @@
 import 'package:auth_app/data/models/signin_req_params.dart';
+import 'package:auth_app/data/models/signin_response.dart';
 import 'package:auth_app/data/models/user.dart';
 import 'package:auth_app/data/source/auth_api_service.dart';
 import 'package:auth_app/data/source/auth_local_service.dart';
@@ -13,19 +14,21 @@ import '../models/signup_req_params.dart';
 class AuthRepositoryImpl extends AuthRepository {
 
   
-  @override
-  Future<Either> signup(SignupReqParams signupReq) async {
-   Either result = await sl<AuthApiService>().signup(signupReq);
-   return result.fold(
-    (error){
-      return Left(error);
-    }, 
-    (data) async {
-      Response response = data;
-      // SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-      // sharedPreferences.setString('token', response.data['token']);
-      return Right(response);
-    }
+ @override
+  Future<Either<String, SignInResponse>> signup(SignupReqParams signUpReq) async {
+    Either result = await sl < AuthApiService > ().signup(signUpReq);
+    return result.fold(
+      (error) {
+        return Left(error);
+      },
+      (data) async {
+        Response response = data;
+        SignInResponse signinResponse = SignInResponse.fromJson(response.data);
+        SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+        sharedPreferences.setString('accessToken', signinResponse.accessToken);
+        sharedPreferences.setString('refreshToken', signinResponse.refreshToken);
+        return Right(signinResponse);
+      }
     );
   }
   
@@ -59,7 +62,7 @@ class AuthRepositoryImpl extends AuthRepository {
   }
 
   @override
-  Future < Either > signin(SigninReqParams signinReq) async {
+  Future<Either<String, SignInResponse>> signin(SigninReqParams signinReq) async {
     Either result = await sl < AuthApiService > ().signin(signinReq);
     return result.fold(
       (error) {
@@ -67,10 +70,11 @@ class AuthRepositoryImpl extends AuthRepository {
       },
       (data) async {
         Response response = data;
+        SignInResponse signinResponse = SignInResponse.fromJson(response.data);
         SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-        sharedPreferences.setString('accessToken', response.data['accessToken']);
-        sharedPreferences.setString('refreshToken', response.data['refreshToken']);
-        return Right(response);
+        sharedPreferences.setString('accessToken', signinResponse.accessToken);
+        sharedPreferences.setString('refreshToken', signinResponse.refreshToken);
+        return Right(signinResponse);
       }
     );
   }

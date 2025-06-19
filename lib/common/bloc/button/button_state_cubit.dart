@@ -21,7 +21,7 @@ class ButtonStateCubit extends Cubit<ButtonState> {
         );
       },
       (data) {
-        emit(ButtonSuccessState());
+        emit(ButtonSuccessState(data: data));
       }
 
      );
