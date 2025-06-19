@@ -94,6 +94,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   OverlayEntry? _plannerOverlay; // top RoutePlanBar overlay
   bool _searchActive = false;
   Pointer? _buildingPanelPointer;
+  LatLng? _coordinatePanelLatLng; // NEW: for coordinate panel
 
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -186,9 +187,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _panelMode = null;
   }
 
-  // Returns true if any panel (building or route) is open
+  // Returns true if any panel (building or route or coords) is open
   bool get _panelActive =>
-      _buildingPanelPointer != null || _panelRoutes != null;
+      _buildingPanelPointer != null || _panelRoutes != null || _coordinatePanelLatLng != null;
   bool get _isMensaPanel =>
       _buildingPanelPointer != null &&
       _buildingPanelPointer!.category.toLowerCase() == 'canteen';
@@ -320,6 +321,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       // ────────────────────────────────────────────────────────────────
       // If we’re showing the route-options panel instead…
       // ────────────────────────────────────────────────────────────────
+    } else if (_coordinatePanelLatLng != null) {
+      maxHeight = MediaQuery.of(context).size.height * 0.25; // 35% of screen height
     } else if (_panelRoutes != null) {
       // route sheet always up to 31% of screen height
       maxHeight = MediaQuery.of(context).size.height * 0.31;
@@ -389,12 +392,120 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
             );
           }
+          if (_coordinatePanelLatLng != null) {
+            final latlng = _coordinatePanelLatLng!;
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Material(
+                color: Colors.white,
+                child: SafeArea(
+                  bottom: true,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      12,
+                      20,
+                      MediaQuery.of(context).padding.bottom, // dynamic bottom padding
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Coordinates',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${latlng.latitude.toStringAsFixed(6)}, '
+                                    '${latlng.longitude.toStringAsFixed(6)}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 24,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey.shade200,
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                splashRadius: 16,
+                                padding: const EdgeInsets.all(4),
+                                onPressed: () {
+                                  setState(() => _coordinatePanelLatLng = null);
+                                  _panelController.close();
+                                  _notifyNavBar(false);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 56, // ← bump this to whatever Y-axis thickness you want
+                                child: GradientActionButton(
+                                  onPressed: () {
+                                    setState(() => _coordinatePanelLatLng = null);
+                                    _panelController.close();
+                                    _startRouteFlow(latlng);
+                                  },
+                                  icon: Icons.directions,
+                                  label: 'Create Route',
+                                  colors: const [
+                                    Color(0xFF7B61FF),
+                                    Color(0xFFEA5CFF),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8), // <-- extra space below button
+                      ],
+                    ),
+                  ),
+                ),
+              ));
+          }
           return const SizedBox.shrink();
         },
         onPanelClosed: () {
-          // Only clear the panel if it is actually closed (not just at minHeight)
           if (_panelController.panelPosition == 0.0) {
-            setState(() => _buildingPanelPointer = null);
+            setState(() {
+              _buildingPanelPointer = null;
+              _coordinatePanelLatLng = null;
+            });
             _plannerOverlay?.remove();
             _plannerOverlay = null;
             _routesNotifier.value = {};
@@ -750,9 +861,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── taps ─────────────────────────────────────────────────────────
   void _onMapTap(LatLng latlng) async {
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
-
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
-
     if (building != null) {
       final p = _allPointers.firstWhere(
         (x) => x.name == building.name,
@@ -766,14 +875,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _animatedMapMove(LatLng(p.lat, p.lng), 18);
       _showBuildingPanel(p);
     } else {
-      BuildingPopupManager.showBuildingOrCoordinatesPopup(
-        context: context,
-        scaffoldKey: widget.scaffoldKeyForBottomSheet,
-        latlng: latlng,
-        buildingName: null,
-        category: null,
-        onCreateRoute: () => _startRouteFlow(latlng),
-      );
+      setState(() => _coordinatePanelLatLng = latlng);
+      _panelController.open();
+      _notifyNavBar(true);
     }
   }
 
@@ -919,57 +1023,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return false;
     }).toList();
 
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'All ${category[0].toUpperCase()}${category.substring(1)}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: filtered.length,
-                  itemBuilder: (context, i) {
-                    final p = filtered[i];
-                    return ListTile(
-                      leading: Image.asset(
-                        getPinAssetForCategory(p.category),
-                        width: 32,
-                        height: 32,
-                      ),
-                      title: Text(p.name),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.directions),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _startRouteFlow(LatLng(p.lat, p.lng));
-                        },
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _animatedMapMove(LatLng(p.lat, p.lng), 18);
-                        _onMarkerTap(p);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    // Show the unified SlidingUpPanel for filtered POIs
+    for (final p in filtered) {
+      _showBuildingPanel(p);
+    }
   }
 
   Future<void> _changeTravelMode(TravelMode mode) async {
@@ -996,7 +1053,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 /// Prevents any inner scrolling or overscroll glow
 class _NoScrollBehavior extends ScrollBehavior {
   @override
-  Widget buildViewportChrome(BuildContext _, Widget child, AxisDirection __) =>
+  Widget buildViewportDecoration(BuildContext _, Widget child, AxisDirection __) =>
       child;
   @override
   ScrollPhysics getScrollPhysics(BuildContext _) =>
