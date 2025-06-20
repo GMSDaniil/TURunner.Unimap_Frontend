@@ -35,10 +35,7 @@ class MapMarkerManager {
     double zoom = 17.0,
   }) {
     if (filtered.isNotEmpty) {
-      mapController.move(
-        LatLng(filtered.first.lat, filtered.first.lng),
-        zoom,
-      );
+      mapController.move(LatLng(filtered.first.lat, filtered.first.lng), zoom);
     }
   }
 
@@ -49,8 +46,9 @@ class MapMarkerManager {
     required Function(Pointer) onMarkerTap,
   }) {
     final filtered = allPointers
-        .where((pointer) =>
-            pointer.name.toLowerCase().contains(query.toLowerCase()))
+        .where(
+          (pointer) => pointer.name.toLowerCase().contains(query.toLowerCase()),
+        )
         .toList();
 
     return filtered.map((pointer) {
@@ -74,7 +72,8 @@ class MapMarkerManager {
     required Function(Pointer) onMarkerTap,
   }) {
     return allPointers.map((pointer) {
-      final isHighlighted = highlightedCategory != null &&
+      final isHighlighted =
+          highlightedCategory != null &&
           pointer.category.toLowerCase() == highlightedCategory.toLowerCase();
       return Marker(
         point: LatLng(pointer.lat, pointer.lng),

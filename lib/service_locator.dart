@@ -41,6 +41,13 @@ import 'package:auth_app/data/repository/student_repository_impl.dart';
 import 'package:auth_app/domain/repository/student.dart';
 import 'package:auth_app/domain/usecases/get_student_schedule.dart';
 
+import 'package:auth_app/data/source/favourites_api_service.dart';
+import 'package:auth_app/data/repository/favourites.dart';
+import 'package:auth_app/domain/repository/favourites.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/domain/usecases/add_favourite.dart';
+import 'package:auth_app/domain/usecases/delete_favourite.dart';
+
 final sl = GetIt.instance;
 
 void setupServiceLocator() {
@@ -58,6 +65,8 @@ void setupServiceLocator() {
   sl.registerSingleton<WeatherApiService>(WeatherApiService());
   sl.registerSingleton<StudentApiService>(StudentApiService());
 
+  sl.registerSingleton<FavouritesApiService>(FavouritesApiService());
+
   // Repositories
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
 
@@ -71,15 +80,14 @@ void setupServiceLocator() {
   sl.registerLazySingleton<BuildingRepositoryImpl>(
     () => BuildingRepositoryImpl(sl()),
   );
-  sl.registerLazySingleton<FindBuildingAtPoint>(
-    () => FindBuildingAtPoint(),
-  );
+  sl.registerLazySingleton<FindBuildingAtPoint>(() => FindBuildingAtPoint());
 
   sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());
 
   sl.registerSingleton<StudentRepository>(
     StudentRepositoryImpl(sl<StudentApiService>()),
   );
+  sl.registerSingleton<FavouritesRepository>(FavouritesRepositoryImpl());
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -104,4 +112,8 @@ void setupServiceLocator() {
   sl.registerSingleton<GetWeatherInfoUseCase>(GetWeatherInfoUseCase());
 
   sl.registerSingleton<GetStudentScheduleUseCase>(GetStudentScheduleUseCase());
+
+  sl.registerSingleton<GetFavouritesUseCase>(GetFavouritesUseCase());
+  sl.registerSingleton<AddFavouriteUseCase>(AddFavouriteUseCase());
+  sl.registerSingleton<DeleteFavouriteUseCase>(DeleteFavouriteUseCase());
 }

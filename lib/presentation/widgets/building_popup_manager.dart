@@ -7,6 +7,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/favourites_manager.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
+import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
+import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
+import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/service_locator.dart';
 
 /// Manages all info / coordinate bottom‐sheets that pop up from the map.
 /// Every sheet is opened with **`showBottomSheet` on the root scaffold**
@@ -60,7 +64,49 @@ class BuildingPopupManager {
       (ctx) => BuildingSlideWindow(
         title: title,
         category: category,
-        onShowMenu: category == 'Canteen' ? () => _showMensaMenu(ctx) : null,
+        onShowMenu: category.toLowerCase() == 'canteen'
+            ? () async {
+                // Optional: Show loading indicator
+                showDialog(
+                  context: ctx,
+                  barrierDismissible: false,
+                  builder: (_) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
+
+                final result = await sl<GetMensaMenuUseCase>().call(
+                  param: GetMenuReqParams(mensaName: title),
+                );
+
+                // Remove loading indicator
+                Navigator.of(ctx).pop();
+
+                result.fold(
+                  (error) => ScaffoldMessenger.of(
+                    ctx,
+                  ).showSnackBar(SnackBar(content: Text('Fehler: $error'))),
+                  (menu) => showModalBottomSheet(
+                    context: ctx,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                    ),
+                    builder: (_) => DraggableScrollableSheet(
+                      expand: false,
+                      initialChildSize: 0.6,
+                      minChildSize: 0.4,
+                      maxChildSize: 0.95,
+                      builder: (context, scrollController) => WeeklyMensaPlan(
+                        menu: menu,
+                        scrollController: scrollController,
+                      ),
+                    ),
+                  ),
+                );
+              }
+            : null,
         onCreateRoute: onCreateRoute ?? () {},
         onAddToFavourites: () {
           FavouritesManager().add(pointer);

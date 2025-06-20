@@ -3,6 +3,10 @@ import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
 import 'package:auth_app/presentation/home/pages/mensa.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
+import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
+import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/service_locator.dart';
+
 /// Re-usable gradient pill button used throughout the bottom sheet.
 class GradientActionButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -60,8 +64,8 @@ class BuildingSlideWindow extends StatelessWidget {
   final VoidCallback onCreateRoute;
   final VoidCallback onAddToFavourites;
   final VoidCallback onClose;
-  final VoidCallback? onShowMenu; // optional mensa plan btn
-  final PanelController? panelController; // <-- add this
+  final VoidCallback? onShowMenu;
+  final PanelController? panelController;
 
   const BuildingSlideWindow({
     Key? key,
@@ -70,8 +74,8 @@ class BuildingSlideWindow extends StatelessWidget {
     required this.onCreateRoute,
     required this.onAddToFavourites,
     required this.onClose,
-    this.onShowMenu,
-    this.panelController, // <-- add this
+    required this.onShowMenu,
+    this.panelController,
   }) : super(key: key);
 
   // quick access to brand colours (taken from profile-screen gradient)
@@ -79,6 +83,10 @@ class BuildingSlideWindow extends StatelessWidget {
   static const _pink = Color(0xFFB750FF);
   static const _orange = Color(0xFFFF3C2A);
   static const _deepOrange = Color(0xFFFF6E3B);
+
+  bool get isCanteen =>
+      category.trim().toLowerCase() == 'canteen' ||
+      category.trim().toLowerCase() == 'mensa';
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +184,7 @@ class BuildingSlideWindow extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (onShowMenu != null) ...[
+                  if (isCanteen && onShowMenu != null) ...[
                     const SizedBox(height: 16),
                     GradientActionButton(
                       onPressed: onShowMenu!,
@@ -184,9 +192,7 @@ class BuildingSlideWindow extends StatelessWidget {
                       label: 'Show Mensa Plan',
                       colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
                     ),
-                    // Hide WeeklyMensaPlan and any bottom content for canteens
-                  ]
-                  // else, for non-canteens, you can add more content here
+                  ],
                 ],
               ),
             ),

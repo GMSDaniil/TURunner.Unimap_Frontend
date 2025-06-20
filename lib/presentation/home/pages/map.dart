@@ -22,6 +22,7 @@ import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
+import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
 import 'package:auth_app/presentation/home/pages/mensa.dart';
 
 // Removed invalid import as the file does not exist
@@ -189,7 +190,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // Returns true if any panel (building or route or coords) is open
   bool get _panelActive =>
-      _buildingPanelPointer != null || _panelRoutes != null || _coordinatePanelLatLng != null;
+      _buildingPanelPointer != null ||
+      _panelRoutes != null ||
+      _coordinatePanelLatLng != null;
   bool get _isMensaPanel =>
       _buildingPanelPointer != null &&
       _buildingPanelPointer!.category.toLowerCase() == 'canteen';
@@ -223,10 +226,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ??
           const TextStyle(fontSize: 20, fontWeight: FontWeight.bold);
       //print('Title style: $titleStyle');
-      
+
       // Calculate the available width dynamically by subtracting the close button width
       final closeButtonWidth = 40.0; // Example width of the close button
-      final availableWidth = panelWidth - closeButtonWidth; // Adjust the width for the text
+      final availableWidth =
+          panelWidth - closeButtonWidth; // Adjust the width for the text
 
       // Create a TextPainter to measure the rendered size of p.name
       final TextPainter titlePainter = TextPainter(
@@ -237,10 +241,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
       // Calculate the total height using line metrics
       final lineMetrics = titlePainter.computeLineMetrics();
-      final totalHeight = lineMetrics.fold(0.0, (sum, line) => sum + line.height);
+      final totalHeight = lineMetrics.fold(
+        0.0,
+        (sum, line) => sum + line.height,
+      );
 
       print('Title size: ${titlePainter.size}, Total height: $totalHeight');
-
 
       // Get per-line metrics (so we know line height and count)
       final lineMetrics2 = titlePainter.computeLineMetrics();
@@ -251,7 +257,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       // Total title height = number of lines × line height
       final titleHeight = lineMetrics2.length * lineHeight;
       print('Title height: $titleHeight');
-      
 
       // ────────────────────────────────────────────────────────────────
       // 3) Measure the height of the category text (single line)
@@ -281,11 +286,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       const afterHeader = 20.0; // SizedBox(height:20)
       const closeButtonHeight = 28.0; // height of the circular close button
       // Compute the height of the title+category block
-      final headerContentHeight = titleHeight + betweenTitleAndCategory + categoryHeight;
+      final headerContentHeight =
+          titleHeight + betweenTitleAndCategory + categoryHeight;
       // Ensure header accounts for the larger of text block or close button
-      final headerBlockHeight = headerContentHeight < closeButtonHeight ? closeButtonHeight : headerContentHeight;
-      final headerTotal = topPadding + handleHeight + betweenHandleAndHeader
-          + headerBlockHeight + afterHeader;
+      final headerBlockHeight = headerContentHeight < closeButtonHeight
+          ? closeButtonHeight
+          : headerContentHeight;
+      final headerTotal =
+          topPadding +
+          handleHeight +
+          betweenHandleAndHeader +
+          headerBlockHeight +
+          afterHeader;
       print('Header total height: $headerTotal');
 
       // ────────────────────────────────────────────────────────────────
@@ -307,7 +319,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       // ────────────────────────────────────────────────────────────────
       const bottomPadding = 28.0; // Padding at bottom of sheet
       final safeAreaBottom = MediaQuery.of(context).padding.bottom;
-      
 
       // Final: sum header + buttons + bottom padding + any OS-level safe area
       maxHeight = headerTotal + buttonsTotal + bottomPadding + safeAreaBottom;
@@ -322,7 +333,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       // If we’re showing the route-options panel instead…
       // ────────────────────────────────────────────────────────────────
     } else if (_coordinatePanelLatLng != null) {
-      maxHeight = MediaQuery.of(context).size.height * 0.25; // 35% of screen height
+      maxHeight =
+          MediaQuery.of(context).size.height * 0.25; // 35% of screen height
     } else if (_panelRoutes != null) {
       // route sheet always up to 31% of screen height
       maxHeight = MediaQuery.of(context).size.height * 0.31;
@@ -371,12 +383,42 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 _notifyNavBar(false);
               },
               onShowMenu: p.category.toLowerCase() == 'canteen'
+                  ? () async {
+                      // Ladeindikator anzeigen
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            const Center(child: CircularProgressIndicator()),
+                      );
+                      final result = await sl<GetMensaMenuUseCase>().call(
+                        param: GetMenuReqParams(mensaName: p.name),
+                      );
+                      Navigator.of(context).pop(); // Ladeindikator schließen
+                      result.fold(
+                        (error) => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Fehler: $error')),
+                        ),
+                        (menu) => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                          ),
+                          builder: (_) => WeeklyMensaPlan(menu: menu),
+                        ),
+                      );
+                    }
+                  : null,
+              /*onShowMenu: p.category.toLowerCase() == 'canteen'
                   ? () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => MensaPage(mensaName: p.name),
                       ),
                     )
-                  : null,
+                  : null, */
               // No custom handle or controller needed
             );
           }
@@ -395,7 +437,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           if (_coordinatePanelLatLng != null) {
             final latlng = _coordinatePanelLatLng!;
             return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: Material(
                 color: Colors.white,
                 child: SafeArea(
@@ -405,7 +449,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       20,
                       12,
                       20,
-                      MediaQuery.of(context).padding.bottom, // dynamic bottom padding
+                      MediaQuery.of(
+                        context,
+                      ).padding.bottom, // dynamic bottom padding
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -473,10 +519,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                           children: [
                             Expanded(
                               child: SizedBox(
-                                height: 56, // ← bump this to whatever Y-axis thickness you want
+                                height:
+                                    56, // ← bump this to whatever Y-axis thickness you want
                                 child: GradientActionButton(
                                   onPressed: () {
-                                    setState(() => _coordinatePanelLatLng = null);
+                                    setState(
+                                      () => _coordinatePanelLatLng = null,
+                                    );
                                     _panelController.close();
                                     _startRouteFlow(latlng);
                                   },
@@ -491,12 +540,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8), // <-- extra space below button
+                        const SizedBox(
+                          height: 8,
+                        ), // <-- extra space below button
                       ],
                     ),
                   ),
                 ),
-              ));
+              ),
+            );
           }
           return const SizedBox.shrink();
         },
@@ -1053,8 +1105,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 /// Prevents any inner scrolling or overscroll glow
 class _NoScrollBehavior extends ScrollBehavior {
   @override
-  Widget buildViewportDecoration(BuildContext _, Widget child, AxisDirection __) =>
-      child;
+  Widget buildViewportDecoration(
+    BuildContext _,
+    Widget child,
+    AxisDirection __,
+  ) => child;
   @override
   ScrollPhysics getScrollPhysics(BuildContext _) =>
       const NeverScrollableScrollPhysics();

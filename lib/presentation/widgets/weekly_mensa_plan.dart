@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:auth_app/service_locator.dart';
-import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
-import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/mensa_menu_response.dart';
-import 'package:dartz/dartz.dart' hide State;
 
+/// Expects an already loaded [menu] as a parameter.
 class WeeklyMensaPlan extends StatefulWidget {
-  final String mensaName;
+  final MensaMenuResponse menu;
+  final ScrollController? scrollController;
 
-  const WeeklyMensaPlan({Key? key, required this.mensaName}) : super(key: key);
+  const WeeklyMensaPlan({Key? key, required this.menu, this.scrollController})
+    : super(key: key);
 
   @override
   State<WeeklyMensaPlan> createState() => _WeeklyMensaPlanState();
@@ -16,76 +15,72 @@ class WeeklyMensaPlan extends StatefulWidget {
 
 class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
   int selectedDayIndex = 0;
-
-  static const weekdayLabels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun', // Add Sunday to the list
-  ];
+  static const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   static const weekdayNames = [
     "Monday",
     "Tuesday",
     "Wednesday",
     "Thursday",
     "Friday",
-    "Saturday",
-    "Sunday", // Add Sunday to the list
   ];
 
   @override
   void initState() {
     super.initState();
-    selectedDayIndex = DateTime.now().weekday - 1;
+    final today = DateTime.now().weekday;
+    // If today is saturday or sonnday, we set the selected day to friday
+    // otherwise set it to the previous day (Mon-Fri)
+    selectedDayIndex = today >= 6 ? 4 : today - 1;
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Either<String, MensaMenuResponse>>(
-      future: sl<GetMensaMenuUseCase>().call(
-        param: GetMenuReqParams(mensaName: widget.mensaName),
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isLeft()) {
-          return const Text("No menu available.");
-        }
+    final response = widget.menu;
 
-        final response = snapshot.data!.getOrElse(
-          () => MensaMenuResponse(mensaName: '', days: []),
-        );
-        if (response.days.isEmpty) {
-          return const Text("No menu available.");
-        }
+    if (response.days.isEmpty) {
+      return const Center(child: Text("No menu available."));
+    }
 
-        // Find the menu for the selected day
-        final selectedDayName = weekdayNames[selectedDayIndex];
-        final selectedMenu = response.days.firstWhere(
-          (d) => d.dayName.toLowerCase() == selectedDayName.toLowerCase(),
-          orElse: () =>
-              MensaDayMenu(dayName: '', isAvailable: false, groups: {}),
-        );
+    //menu for the selected day
+    final selectedDayName = weekdayNames[selectedDayIndex];
+    final selectedMenu = response.days.firstWhere(
+      (d) => d.dayName.toLowerCase() == selectedDayName.toLowerCase(),
+      orElse: () => MensaDayMenu(dayName: '', isAvailable: false, groups: {}),
+    );
 
-        return Column(
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            // Title
             const Text(
               "Weekly Mensa Plan",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
-            const SizedBox(height: 8),
-
+            const SizedBox(height: 12),
             // Weekday selector bar
             SizedBox(
               height: 48,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(weekdayLabels.length, (i) { // Use full length
+                children: List.generate(weekdayLabels.length, (i) {
                   final isSelected = i == selectedDayIndex;
                   return Expanded(
                     child: GestureDetector(
@@ -125,17 +120,9 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                 }),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Show menu or closed message
-            if (selectedDayIndex >= 5)
-              const Center(
-                child: Text(
-                  "Closed today",
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-              )
-            else if (!selectedMenu.isAvailable || selectedMenu.groups.isEmpty)
+            if (!selectedMenu.isAvailable || selectedMenu.groups.isEmpty)
               const Center(
                 child: Text(
                   "No menu for today.",
@@ -143,9 +130,9 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                 ),
               )
             else
-              SizedBox(
-                height: 300,
+              Expanded(
                 child: ListView(
+                  controller: widget.scrollController,
                   children: selectedMenu.groups.entries.expand((entry) {
                     final groupName = entry.key;
                     final dishes = entry.value;
@@ -156,7 +143,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                           groupName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 18,
                           ),
                         ),
                       ),
@@ -180,8 +167,37 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                 ),
               ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
+}
+
+void showWeeklyMensaPlanBottomSheet(
+  BuildContext context,
+  MensaMenuResponse menu,
+) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => DraggableScrollableSheet(
+      expand: true,
+      initialChildSize: 0.80, // 80 %?
+      minChildSize: 0.80,
+      maxChildSize: 0.80,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: WeeklyMensaPlan(
+            menu: menu,
+            scrollController: scrollController,
+          ),
+        );
+      },
+    ),
+  );
 }
