@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
-import 'package:auth_app/presentation/home/pages/mensa.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';

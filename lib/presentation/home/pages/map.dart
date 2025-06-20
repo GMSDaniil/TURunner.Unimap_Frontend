@@ -23,7 +23,6 @@ import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
-import 'package:auth_app/presentation/home/pages/mensa.dart';
 
 // Removed invalid import as the file does not exist
 

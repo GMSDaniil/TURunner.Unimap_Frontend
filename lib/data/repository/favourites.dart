@@ -50,20 +50,17 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
       params.pointerId,
     );
 
-    return result.fold(
-      (errorMessage) => Left(errorMessage),
-      (response) {
-        try {
-          final data = response.data is String
-              ? jsonDecode(response.data)
-              : response.data;
-          final status = FavouriteStatusResponse.fromJson(data);
-          return Right(status);
-        } catch (e) {
-          return Left('Failed to parse addFavourite response');
-        }
-      },
-    );
+    return result.fold((errorMessage) => Left(errorMessage), (response) {
+      try {
+        final data = response.data is String
+            ? jsonDecode(response.data)
+            : response.data;
+        final status = FavouriteStatusResponse.fromJson(data);
+        return Right(status);
+      } catch (e) {
+        return Left('Failed to parse addFavourite response');
+      }
+    });
   }
 
   @override
@@ -75,19 +72,16 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
       params.pointerId,
     );
 
-    return result.fold(
-      (errorMessage) => Left(errorMessage),
-      (response) {
-        try {
-          final data = response.data is String
-              ? jsonDecode(response.data)
-              : response.data;
-          final status = FavouriteStatusResponse.fromJson(data);
-          return Right(status);
-        } catch (e) {
-          return Left('Failed to parse deleteFavourite response');
-        }
-      },
-    );
+    return result.fold((errorMessage) => Left(errorMessage), (response) {
+      try {
+        final data = response.data is String
+            ? jsonDecode(response.data)
+            : response.data;
+        final status = FavouriteStatusResponse.fromJson(data);
+        return Right(status);
+      } catch (e) {
+        return Left('Failed to parse deleteFavourite response');
+      }
+    });
   }
 }
