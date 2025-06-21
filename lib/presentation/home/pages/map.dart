@@ -139,6 +139,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     location: const LatLng(matheLat, matheLon),
   );
 
+  String? _activeCategory;
+  Color? _activeCategoryColor;
+  List<Pointer> _activeCategoryPointers = [];
+
   // ── lifecycle ────────────────────────────────────────────────────
   @override
   void initState() {
@@ -191,7 +195,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool get _panelActive =>
       _buildingPanelPointer != null ||
       _panelRoutes != null ||
-      _coordinatePanelLatLng != null;
+      _coordinatePanelLatLng != null ||
+      (_activeCategory != null && _activeCategoryPointers.isNotEmpty);
   bool get _isMensaPanel =>
       _buildingPanelPointer != null &&
       _buildingPanelPointer!.category.toLowerCase() == 'canteen';
@@ -341,6 +346,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       // ────────────────────────────────────────────────────────────────
       // Otherwise neither sheet is active, we’ll show a small handle only
       // ────────────────────────────────────────────────────────────────
+    } else if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
+      maxHeight = MediaQuery.of(context).size.height * 0.7;
     } else {
       maxHeight = 180.0; // default “peek” height if nothing else is open
     }
@@ -358,6 +365,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         isDraggable: true, // allow dragging
         // … panelBuilder, onPanelClosed, body, etc. follow here …
         panelBuilder: (sc) {
+          // Category list has highest priority
+          if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
+            return _buildCategoryListPanel(sc);
+          }
+          
+          // Building info panel
           if (_buildingPanelPointer != null) {
             final p = _buildingPanelPointer!;
             return BuildingSlideWindow(
@@ -556,6 +569,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             setState(() {
               _buildingPanelPointer = null;
               _coordinatePanelLatLng = null;
+              _activeCategory = null;
+              _activeCategoryPointers = [];
             });
             _plannerOverlay?.remove();
             _plannerOverlay = null;
@@ -1074,10 +1089,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return false;
     }).toList();
 
-    // Show the unified SlidingUpPanel for filtered POIs
-    for (final p in filtered) {
-      _showBuildingPanel(p);
-    }
+    // Set active category and show it in sliding panel instead of modal
+    setState(() {
+      _activeCategory = category;
+      _activeCategoryColor = color;
+      _activeCategoryPointers = filtered;
+    });
+
+    // Open the sliding panel and hide navigation bar
+    _panelController.open();
+    _notifyNavBar(true);
   }
 
   Future<void> _changeTravelMode(TravelMode mode) async {
@@ -1097,6 +1118,129 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       routesNotifier: _routesNotifier,
       setState: setState,
       updateCurrentMode: (m) => setState(() => _currentMode = m),
+    );
+  }
+
+  Widget _buildCategoryListPanel(ScrollController sc) {
+    return Column(
+      children: [
+        // Panel handle for dragging
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(top: 12, bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        
+        // Header with category title and close button
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'All ${_activeCategory}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // Close button to hide the category list
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey.shade200,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  splashRadius: 16,
+                  padding: const EdgeInsets.all(4),
+                  onPressed: () {
+                    // Clear category state and close panel
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Scrollable list of category items
+        Expanded(
+          child: ListView.builder(
+            controller: sc, // Important: use the provided scroll controller
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _activeCategoryPointers.length,
+            itemBuilder: (context, i) {
+              final p = _activeCategoryPointers[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  // Show category-specific pin icon
+                  leading: Image.asset(
+                    getPinAssetForCategory(p.category),
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(p.category),
+                  // Navigation button to start route planning
+                  trailing: IconButton(
+                    icon: const Icon(Icons.directions, color: Colors.blue),
+                    onPressed: () {
+                      // Clear category state and start route flow
+                      setState(() {
+                        _activeCategory = null;
+                        _activeCategoryPointers = [];
+                      });
+                      _panelController.close();
+                      _startRouteFlow(LatLng(p.lat, p.lng));
+                    },
+                  ),
+                  // Tap to show building details
+                  onTap: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryPointers = [];
+                      _buildingPanelPointer = p; // Show building info panel
+                    });
+                    _animatedMapMove(LatLng(p.lat, p.lng), 18);
+                    // Panel will automatically rebuild and show building info
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
