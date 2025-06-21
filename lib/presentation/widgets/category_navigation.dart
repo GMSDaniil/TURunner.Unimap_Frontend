@@ -39,7 +39,7 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                 _buildChip(
                   icon: Icons.local_cafe,
                   label: 'Cafés',
-                  color: Colors.orange,
+                  color: Color(0xFFB89B8A), // Café brown to match the pin
                 ),
                 _buildChip(
                   icon: Icons.local_library,
