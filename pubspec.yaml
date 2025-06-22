@@ -15,7 +15,7 @@ dependencies:
   get_it:
   dartz:
   logger:
-  provider: 
+  provider:
   shared_preferences:
   flutter_map: ^8.1.1
   flutter_map_tile_caching: ^10.1.1
@@ -51,7 +51,6 @@ flutter:
         - asset: assets/fonts/Nunito-Regular.ttf
         - asset: assets/fonts/Nunito-Bold.ttf
           weight: 700
-  
 
 flutter_icons:
   android: true
