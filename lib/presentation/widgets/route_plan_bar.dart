@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/presentation/widgets/search_bar.dart';
+import 'route_search_bar.dart';  // ← new import
 
 typedef OnCancelled = void Function();
 
@@ -436,36 +437,34 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    // White backdrop that covers everything, tap outside to cancel
     return Material(
       color: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
-            MapSearchBar(
+            RouteSearchBar(
               searchController: _searchCtl,
               suggestions: _suggestions.map((c) => Pointer(
                 name: c.label,
                 lat: c.pos.latitude,
                 lng: c.pos.longitude,
-                category: '', // No category in this context
+                category: '',
               )).toList(),
-              onSearch: (_) {}, // No-op, handled by suggestions
               onClear: () {
                 _searchCtl.clear();
                 setState(() {});
-                widget.onCancel(); // keep this for closing on clear
               },
-              onCategorySelected: (_, __) {}, // No categories in this context
               onSuggestionSelected: (Pointer p) {
                 final cand = widget.pool.firstWhere(
-                  (c) => c.label == p.name && c.pos.latitude == p.lat && c.pos.longitude == p.lng,
+                  (c) =>
+                      c.label == p.name &&
+                      c.pos.latitude == p.lat &&
+                      c.pos.longitude == p.lng,
                   orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)),
                 );
                 widget.onPicked(cand);
               },
-              focusNode: _pillFocus,     // ← NEW
-              showCategories: false,     // ← NEW: ensure categories never show
+              focusNode: _pillFocus,
             ),
             Expanded(child: GestureDetector(onTap: widget.onCancel)),
           ],
