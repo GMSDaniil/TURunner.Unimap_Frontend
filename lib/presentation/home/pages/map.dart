@@ -606,32 +606,49 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            if (!_creatingRoute && !_panelActive)
-              MapSearchBar(
-                searchController: _searchCtl,
-                suggestions: _suggestions,
-                onSearch: (q) {
-                  _searchMarkers(q);
-                  setState(() => _suggestions = []);
-                },
-                onClear: () {
-                  _searchCtl.clear();
-                  setState(() => _suggestions = []);
-                },
-                onCategorySelected: (category, color) {
-                  _filterMarkersByCategory(category, color);
-                  if (category != null) {
-                    _showCategoryListPopup(category, color ?? Colors.blue);
-                  }
-                },
-                onSuggestionSelected: (p) {
-                  final dest = LatLng(p.lat, p.lng);
-                  _animatedMapMove(dest, 18);
-                  _onMapTap(dest);
-                },
-                focusNode: _searchFocusNode,
+            // --- Animated Search Bar and Category Navigation ---
+            AnimatedSlide(
+              offset: (_panelActive || _creatingRoute)
+                  ? const Offset(0, -1)
+                  : Offset.zero,
+              duration: _animDuration,
+              curve: Curves.easeInOut,
+              child: AnimatedOpacity(
+                opacity: (_panelActive || _creatingRoute) ? 0.0 : 1.0,
+                duration: _animDuration,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MapSearchBar(
+                      searchController: _searchCtl,
+                      suggestions: _suggestions,
+                      onSearch: (q) {
+                        _searchMarkers(q);
+                        setState(() => _suggestions = []);
+                      },
+                      onClear: () {
+                        _searchCtl.clear();
+                        setState(() => _suggestions = []);
+                      },
+                      onCategorySelected: (category, color) {
+                        _filterMarkersByCategory(category, color);
+                        if (category != null) {
+                          _showCategoryListPopup(category, color ?? Colors.blue);
+                        }
+                      },
+                      onSuggestionSelected: (p) {
+                        final dest = LatLng(p.lat, p.lng);
+                        _animatedMapMove(dest, 18);
+                        _onMapTap(dest);
+                      },
+                      focusNode: _searchFocusNode,
+                    ),
+                    // If you want to show the CategoryNavigationBar here, add it below:
+                    // CategoryNavigationBar(...),
+                  ],
+                ),
               ),
-            // hide FAB & weather while search bar or any panel is active
+            ),
             if (!_panelActive) _buildCurrentLocationButton(),
             if (!_panelActive)
               Positioned(
