@@ -69,45 +69,40 @@ class _MapSearchBarState extends State<MapSearchBar> {
         ? IconButton(
             icon: const Icon(Icons.arrow_back),
             splashRadius: 20,
-            padding: EdgeInsets.zero,        // keep exactly same inset
+            padding: EdgeInsets.zero,
             onPressed: () {
-              // clear text first
+              // route-building mode: just close overlay, don’t clear or refresh suggestions
+              if (!widget.showCategories) {
+                widget.onBack?.call();
+                return;
+              }
+              // main-page mode: clear text and then close/unfocus
               widget.searchController.clear();
               widget.onClear();
-              // if a special back-handler is provided → use it
-              if (widget.onBack != null) {
-                widget.onBack!();
-              } else {
-                _focusNode.unfocus();        // default: just unfocus
-              }
+              _focusNode.unfocus();
               setState(() {});
             },
           )
         : Icon(Icons.search, color: Colors.grey[700]);
 
-    // 1) figure out where our suggestions area starts
-    double topY;
-    if (!widget.showCategories) {
-      // In route creation overlay: leave 24px for visual breathing room
-      topY = 24;
-    } else if (_suggestionsKey.currentContext != null) {
-      // On main map page: measure as before
-      final box =
-          _suggestionsKey.currentContext!.findRenderObject() as RenderBox;
-      topY = box.localToGlobal(Offset.zero).dy;
-    } else {
-      topY = 0;
-    }
+    // 1) figure out where our suggestions area starts dynamically
+    final ctx = _suggestionsKey.currentContext;
+    final double topY = ctx != null
+      // get global Y of the padded search area
+      ? (ctx.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy + 24
+      : 0.0;
 
-    // 2) compute exactly how much vertical space remains
-    final bottomInset = widget.includeBottomSafeArea
-        ? MediaQuery.of(context).padding.bottom
-        : 0.0;
+     // 2) compute exactly how much vertical space remains
+     //     • we *always* subtract the safe-area inset so the list never
+     //       spills under the gesture / nav bar
+     //     • optionally we *pad* the column with it (SafeArea bottom: …)
+     final bottomInset = MediaQuery.of(context).padding.bottom;
+
     final availableHeight =
         MediaQuery.of(context).size.height -
         topY -
         bottomInset -
-        _navBarHeight; // ← subtract your 88px nav bar
+        _navBarHeight; // ← subtract your 88 px nav bar
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,8 +222,8 @@ class _MapSearchBarState extends State<MapSearchBar> {
                           ),
                   ),
 
-                // 3) use exactly that leftover height
-                if (widget.suggestions.isNotEmpty)
+                // 3) show suggestions only while focused
+                if (_focusNode.hasFocus && widget.suggestions.isNotEmpty)
                   ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: availableHeight),
                     child: _buildSuggestionsDropdown(),

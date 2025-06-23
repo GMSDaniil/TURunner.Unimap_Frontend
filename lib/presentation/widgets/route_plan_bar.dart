@@ -189,7 +189,8 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         Expanded(
           child: GestureDetector(
             onTap: () async {
-              final picked = await _openSearchOverlay(context, ctl.text, hint);
+              // always start with a clear search bar, but keep ctl.text if canceled
+              final picked = await _openSearchOverlay(context, '', hint);
               if (picked != null) {
                 setState(() {
                   final old = _pool
@@ -390,13 +391,14 @@ class _RouteSearchOverlay extends StatefulWidget {
 class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
     with SingleTickerProviderStateMixin {
   static const _animDuration = Duration(milliseconds: 300);
-  static const _fadeDuration = Duration(milliseconds: 100); // faster fade
+  static const _fadeIn = Duration(milliseconds: 250);
+  static const _fadeOut = Duration(milliseconds: 150);
+  late final AnimationController _fadeCtr;
+  late final Animation<double> _fadeAnim;
 
   late TextEditingController _searchCtl;
   late List<_Cand> _suggestions;
   late final FocusNode _pillFocus;
-
-  bool _visible = false;
 
   @override
   void initState() {
@@ -411,10 +413,16 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
       if (!_pillFocus.hasFocus) _pillFocus.requestFocus();
     });
 
-    // start hidden, then animate in
+    // set up fade controller & start fade-in
+    _fadeCtr = AnimationController(
+      vsync: this,
+      duration: _fadeIn,
+      reverseDuration: _fadeOut,
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtr, curve: Curves.easeInOut);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-     setState(() => _visible = true);
-    _pillFocus.requestFocus();
+      _fadeCtr.forward();
+      _pillFocus.requestFocus();
     });
   }
 
@@ -433,67 +441,59 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
   }
 
   void _closeOverlay() {
-    // trigger reverse animation
-    setState(() => _visible = false);
-    Future.delayed(_animDuration, widget.onCancel);
+    // reverse fade and then remove
+    _fadeCtr.reverse().then((_) => widget.onCancel());
   }
 
   @override
   void dispose() {
     _searchCtl.dispose();
     _pillFocus.dispose();
+    _fadeCtr.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: SafeArea(
-        child: AnimatedOpacity(
-          opacity: _visible ? 1 : 0,
-          duration: _fadeDuration,
-          curve: Curves.easeInOut,
-          child: Material(
-            color: Colors.white,
-            // keep top/status-bar padding but DON’T add bottom padding
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  RouteSearchBar(
-                    searchController: _searchCtl,
-                    suggestions: _suggestions
-                        .map((c) => Pointer(
-                              name: c.label,
-                              lat: c.pos.latitude,
-                              lng: c.pos.longitude,
-                              category: '',
-                            ))
-                        .toList(),
-                    onClear: () {
-                      _searchCtl.clear();
-                      setState(() {});
-                    },
-                    onSuggestionSelected: (Pointer p) {
-                      final cand = widget.pool.firstWhere(
-                        (c) =>
-                            c.label == p.name &&
-                            c.pos.latitude == p.lat &&
-                            c.pos.longitude == p.lng,
-                        orElse: () =>
-                            _Cand(p.name, LatLng(p.lat, p.lng)),
-                      );
-                     widget.onPicked(cand);
-                     _closeOverlay();
-                    },
-                    focusNode: _pillFocus,
-                   onBack: _closeOverlay,
-                  ),
-                  Expanded(child: GestureDetector(onTap: _closeOverlay)),
-                ],
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Material(
+        color: Colors.white,
+        child: SafeArea(
+          bottom: true,
+          child: Column(
+            children: [
+              RouteSearchBar(
+                searchController: _searchCtl,
+                suggestions: _suggestions
+                    .map((c) => Pointer(
+                          name: c.label,
+                          lat: c.pos.latitude,
+                          lng: c.pos.longitude,
+                          category: '',
+                        ))
+                    .toList(),
+                onClear: () {
+                  _searchCtl.clear();
+                  setState(() {});
+                },
+                onSuggestionSelected: (Pointer p) {
+                  final cand = widget.pool.firstWhere(
+                    (c) =>
+                        c.label == p.name &&
+                        c.pos.latitude == p.lat &&
+                        c.pos.longitude == p.lng,
+                    orElse: () =>
+                        _Cand(p.name, LatLng(p.lat, p.lng)),
+                  );
+                 widget.onPicked(cand);
+                 _closeOverlay();
+                },
+                focusNode: _pillFocus,
+               onBack: _closeOverlay,
               ),
-            ),
+              Expanded(child: GestureDetector(onTap: _closeOverlay)),
+            ],
           ),
         ),
       ),
