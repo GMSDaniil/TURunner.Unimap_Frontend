@@ -15,6 +15,7 @@ class MapSearchBar extends StatefulWidget {
   final FocusNode? focusNode;
   final bool showCategories; // ← NEW
   final VoidCallback? onBack;           // ← NEW optional callback
+  final bool includeBottomSafeArea;     // ← NEW  (defaults to true)
 
   const MapSearchBar({
     Key? key,
@@ -27,6 +28,7 @@ class MapSearchBar extends StatefulWidget {
     this.focusNode,
     this.showCategories = true, // ← NEW
     this.onBack,                           // ← NEW
+    this.includeBottomSafeArea = true,     // ← NEW
   }) : super(key: key);
 
   @override
@@ -84,15 +86,23 @@ class _MapSearchBarState extends State<MapSearchBar> {
         : Icon(Icons.search, color: Colors.grey[700]);
 
     // 1) figure out where our suggestions area starts
-    double topY = 0;
-    if (_suggestionsKey.currentContext != null) {
+    double topY;
+    if (!widget.showCategories) {
+      // In route creation overlay: leave 24px for visual breathing room
+      topY = 24;
+    } else if (_suggestionsKey.currentContext != null) {
+      // On main map page: measure as before
       final box =
           _suggestionsKey.currentContext!.findRenderObject() as RenderBox;
       topY = box.localToGlobal(Offset.zero).dy;
+    } else {
+      topY = 0;
     }
 
     // 2) compute exactly how much vertical space remains
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomInset = widget.includeBottomSafeArea
+        ? MediaQuery.of(context).padding.bottom
+        : 0.0;
     final availableHeight =
         MediaQuery.of(context).size.height -
         topY -
@@ -103,6 +113,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SafeArea(
+          bottom: widget.includeBottomSafeArea,
           child: Padding(
             key: _suggestionsKey, // ← ATTACH KEY HERE
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),

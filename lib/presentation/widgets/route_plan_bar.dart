@@ -387,10 +387,16 @@ class _RouteSearchOverlay extends StatefulWidget {
   State<_RouteSearchOverlay> createState() => _RouteSearchOverlayState();
 }
 
-class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
+class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
+    with SingleTickerProviderStateMixin {
+  static const _animDuration = Duration(milliseconds: 300);
+  static const _fadeDuration = Duration(milliseconds: 100); // faster fade
+
   late TextEditingController _searchCtl;
   late List<_Cand> _suggestions;
-  late final FocusNode _pillFocus;       // ← NEW
+  late final FocusNode _pillFocus;
+
+  bool _visible = false;
 
   @override
   void initState() {
@@ -399,18 +405,16 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
     _suggestions = _getSuggestions(widget.initialText);
     _searchCtl.addListener(_onSearchChanged);
 
-    /* keep the pill focused → MapSearchBar never shows category chips */
+    // keep the pill focused
     _pillFocus = FocusNode();
-    // whenever focus is lost, take it back immediately
     _pillFocus.addListener(() {
-      if (!_pillFocus.hasFocus) {
-        _pillFocus.requestFocus();
-      }
+      if (!_pillFocus.hasFocus) _pillFocus.requestFocus();
     });
 
-    // grab focus right after first frame
+    // start hidden, then animate in
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _pillFocus.requestFocus();
+     setState(() => _visible = true);
+    _pillFocus.requestFocus();
     });
   }
 
@@ -428,47 +432,69 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
         .toList();
   }
 
+  void _closeOverlay() {
+    // trigger reverse animation
+    setState(() => _visible = false);
+    Future.delayed(_animDuration, widget.onCancel);
+  }
+
   @override
   void dispose() {
     _searchCtl.dispose();
-    _pillFocus.dispose();               // ← NEW
+    _pillFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Colors.transparent,
       child: SafeArea(
-        child: Column(
-          children: [
-            RouteSearchBar(
-              searchController: _searchCtl,
-              suggestions: _suggestions.map((c) => Pointer(
-                name: c.label,
-                lat: c.pos.latitude,
-                lng: c.pos.longitude,
-                category: '',
-              )).toList(),
-              onClear: () {
-                _searchCtl.clear();
-                setState(() {});
-              },
-              onSuggestionSelected: (Pointer p) {
-                final cand = widget.pool.firstWhere(
-                  (c) =>
-                      c.label == p.name &&
-                      c.pos.latitude == p.lat &&
-                      c.pos.longitude == p.lng,
-                  orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)),
-                );
-                widget.onPicked(cand);
-              },
-              focusNode: _pillFocus,
-              onBack: widget.onCancel,   // ← close overlay
+        child: AnimatedOpacity(
+          opacity: _visible ? 1 : 0,
+          duration: _fadeDuration,
+          curve: Curves.easeInOut,
+          child: Material(
+            color: Colors.white,
+            // keep top/status-bar padding but DON’T add bottom padding
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  RouteSearchBar(
+                    searchController: _searchCtl,
+                    suggestions: _suggestions
+                        .map((c) => Pointer(
+                              name: c.label,
+                              lat: c.pos.latitude,
+                              lng: c.pos.longitude,
+                              category: '',
+                            ))
+                        .toList(),
+                    onClear: () {
+                      _searchCtl.clear();
+                      setState(() {});
+                    },
+                    onSuggestionSelected: (Pointer p) {
+                      final cand = widget.pool.firstWhere(
+                        (c) =>
+                            c.label == p.name &&
+                            c.pos.latitude == p.lat &&
+                            c.pos.longitude == p.lng,
+                        orElse: () =>
+                            _Cand(p.name, LatLng(p.lat, p.lng)),
+                      );
+                     widget.onPicked(cand);
+                     _closeOverlay();
+                    },
+                    focusNode: _pillFocus,
+                   onBack: _closeOverlay,
+                  ),
+                  Expanded(child: GestureDetector(onTap: _closeOverlay)),
+                ],
+              ),
             ),
-            Expanded(child: GestureDetector(onTap: widget.onCancel)),
-          ],
+          ),
         ),
       ),
     );

@@ -36,6 +36,7 @@ class RouteSearchBar extends StatelessWidget {
       onSuggestionSelected: onSuggestionSelected,
       focusNode: focusNode,
       showCategories: false,            // hide the chips permanently
+      includeBottomSafeArea: false,     // ❗ avoid double bottom padding
       onBack: onBack,                   // hand arrow-back press to caller
     );
   }
