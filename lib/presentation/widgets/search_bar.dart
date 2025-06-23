@@ -14,6 +14,7 @@ class MapSearchBar extends StatefulWidget {
   final Function(Pointer) onSuggestionSelected;
   final FocusNode? focusNode;
   final bool showCategories; // ← NEW
+  final VoidCallback? onBack;           // ← NEW optional callback
 
   const MapSearchBar({
     Key? key,
@@ -25,6 +26,7 @@ class MapSearchBar extends StatefulWidget {
     required this.onSuggestionSelected,
     this.focusNode,
     this.showCategories = true, // ← NEW
+    this.onBack,                           // ← NEW
   }) : super(key: key);
 
   @override
@@ -58,7 +60,28 @@ class _MapSearchBarState extends State<MapSearchBar> {
     final borderRadius = BorderRadius.circular(28);
     final hasText = widget.searchController.text.isNotEmpty;
     final hasFocus = _focusNode.hasFocus;
-    final showClose = hasText || hasFocus;
+    // show the “×” only when there’s something to clear
+    final showClose = hasText;
+    // decide which leading icon to show
+    final Widget _leadingIcon = hasFocus
+        ? IconButton(
+            icon: const Icon(Icons.arrow_back),
+            splashRadius: 20,
+            padding: EdgeInsets.zero,        // keep exactly same inset
+            onPressed: () {
+              // clear text first
+              widget.searchController.clear();
+              widget.onClear();
+              // if a special back-handler is provided → use it
+              if (widget.onBack != null) {
+                widget.onBack!();
+              } else {
+                _focusNode.unfocus();        // default: just unfocus
+              }
+              setState(() {});
+            },
+          )
+        : Icon(Icons.search, color: Colors.grey[700]);
 
     // 1) figure out where our suggestions area starts
     double topY = 0;
@@ -110,10 +133,8 @@ class _MapSearchBarState extends State<MapSearchBar> {
                           textInputAction: TextInputAction.search,
                           decoration: InputDecoration(
                             hintText: 'Search location',
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: Colors.grey[700],
-                            ),
+                            // show ⟵ when focused, otherwise magnifier
+                            prefixIcon: _leadingIcon,
                             suffixIcon: const SizedBox.shrink(),
                             filled: true,
                             fillColor: Colors.white,
@@ -160,10 +181,10 @@ class _MapSearchBarState extends State<MapSearchBar> {
                             splashRadius: 16,
                             padding: const EdgeInsets.all(4),
                             onPressed: () {
+                              // × only clears the field, keeps focus
                               widget.searchController.clear();
                               widget.onClear();
-                              _focusNode.unfocus();
-                              setState(() {}); // rebuild to hide button
+                              setState(() {});   // rebuild to hide button
                             },
                           ),
                         ),

@@ -13,6 +13,7 @@ class RouteSearchBar extends StatelessWidget {
   final ValueChanged<Pointer> onSuggestionSelected;
   final VoidCallback onClear;
   final FocusNode? focusNode;
+  final VoidCallback onBack;                // ← NEW
 
   const RouteSearchBar({
     Key? key,
@@ -21,6 +22,7 @@ class RouteSearchBar extends StatelessWidget {
     required this.onSuggestionSelected,
     required this.onClear,
     this.focusNode,
+    required this.onBack,
   }) : super(key: key);
 
   @override
@@ -34,6 +36,7 @@ class RouteSearchBar extends StatelessWidget {
       onSuggestionSelected: onSuggestionSelected,
       focusNode: focusNode,
       showCategories: false,            // hide the chips permanently
+      onBack: onBack,                   // hand arrow-back press to caller
     );
   }
 }

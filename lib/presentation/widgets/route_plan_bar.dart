@@ -465,6 +465,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
                 widget.onPicked(cand);
               },
               focusNode: _pillFocus,
+              onBack: widget.onCancel,   // ← close overlay
             ),
             Expanded(child: GestureDetector(onTap: widget.onCancel)),
           ],
