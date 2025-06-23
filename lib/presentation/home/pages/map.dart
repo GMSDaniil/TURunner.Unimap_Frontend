@@ -91,7 +91,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  OverlayEntry? _plannerOverlay; // top RoutePlanBar overlay
+  OverlayEntry?      _plannerOverlay;   // top Route-Plan bar overlay
+  AnimationController? _plannerAnimCtr; // drives its in/out animation
+  bool   _panelClosingStarted = false;
+  double _lastPanelPos        = 1.0;   // track previous slide position
   bool _searchActive = false;
   Pointer? _buildingPanelPointer;
   LatLng? _coordinatePanelLatLng; // NEW: for coordinate panel
@@ -165,25 +168,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _mapAnimController?.dispose();
+    _plannerAnimCtr?.dispose();          // ← tidy up Route-Plan bar anim
     _panelController.close();
     _searchCtl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  /// Snap the sheet to the nearest predefined stop once the user lifts their finger.
-  void _snapToNearest() {
-    const stops = [0.10, 0.15, 0.20, 0.25, 0.30];
-    final current = _sheetCtrl.size;
-    final closest = stops.reduce(
-      (a, b) => (a - current).abs() < (b - current).abs() ? a : b,
-    );
-    _sheetCtrl.animateTo(
-      closest,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-    );
-  }
+  // /// Snap the sheet to the nearest predefined stop once the user lifts their finger.
+  // void _snapToNearest() {
+  //   const stops = [0.10, 0.15, 0.20, 0.25, 0.30];
+  //   final current = _sheetCtrl.size;
+  //   final closest = stops.reduce(
+  //     (a, b) => (a - current).abs() < (b - current).abs() ? a : b,
+  //   );
+  //   _sheetCtrl.animateTo(
+  //     closest,
+  //     duration: const Duration(milliseconds: 200),
+  //     curve: Curves.easeOut,
+  //   );
+  // }
 
   /* ───────────────────────── Panel helpers ───────────────────── */
   void _clearPanelData() {
@@ -363,7 +367,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         maxHeight: maxHeight, // our dynamic max height
         snapPoint: 0.2, // when you drag up, snaps at 20% if release early
         isDraggable: true, // allow dragging
-        // … panelBuilder, onPanelClosed, body, etc. follow here …
+        onPanelSlide: (pos) {
+          // start top-bar fade-out only when
+          //  • it is fully shown           (animation finished),
+          //  • the user is dragging down   (pos < _lastPanelPos),
+          //  • and we haven’t started yet.
+          if (!_panelClosingStarted &&
+              _plannerAnimCtr?.isCompleted == true &&
+              pos < _lastPanelPos &&          // downward motion
+              pos < 0.95) {                   // allow a small nudge first
+            _panelClosingStarted = true;
+            _dismissPlannerOverlay();         // kicks off reverse anim
+          }
+          _lastPanelPos = pos;                // update tracker
+        },
         panelBuilder: (sc) {
           // Category list has highest priority
           if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
@@ -559,12 +576,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-              ),
-            );
+              )
+              );
           }
           return const SizedBox.shrink();
         },
-        onPanelClosed: () {
+        onPanelClosed: () async {
           if (_panelController.panelPosition == 0.0) {
             setState(() {
               _buildingPanelPointer = null;
@@ -572,8 +589,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _activeCategory = null;
               _activeCategoryPointers = [];
             });
-            _plannerOverlay?.remove();
-            _plannerOverlay = null;
+
+            // if the user *tapped* the close handle without dragging,
+            // the bar is still up → dismiss it now
+            await _dismissPlannerOverlay();
             _routesNotifier.value = {};
             _currentMode = TravelMode.walk;
             _clearPanelData();
@@ -609,7 +628,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             // --- Animated Search Bar and Category Navigation ---
             AnimatedSlide(
               offset: (_panelActive || _creatingRoute)
-                  ? const Offset(0, -1)
+                  ? const Offset(0, -0.06)
                   : Offset.zero,
               duration: _animDuration,
               curve: Curves.easeInOut,
@@ -686,69 +705,80 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _startRouteFlow(LatLng destination) {
     _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
+
+    _panelClosingStarted = false;      // reset every time we open the flow
     setState(() {
       _creatingRoute = true;
       _currentMode = TravelMode.walk; // reset to walking
       _routesNotifier.value = {}; // drop any old routes
     });
 
-    /* slide-in from top */
+    /* ────────────────────────────────────────────────────────────
+     *  Animated Route-Plan bar
+     *  – slides in + fades in (like the search bar),
+     *  – slides out + fades out on cancel.
+     * ─────────────────────────────────────────────────────────── */
     if (_plannerOverlay == null) {
-      final controller = AnimationController(
+      _plannerAnimCtr = AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 300),
       );
-      final slide = Tween(
-        begin: const Offset(0, -1),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOut));
+      final curved =
+          CurvedAnimation(parent: _plannerAnimCtr!, curve: Curves.easeInOut);
 
-      _plannerOverlay = OverlayEntry(
-        builder: (_) => SlideTransition(
-          position: slide,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: RoutePlanBar(
-              currentLocation: _currentLocation,
-              initialDestination: destination,
-              allPointers: _allPointers,
-              onCancelled: () async {
-                controller.reverse();
-                await controller.forward();
-                _plannerOverlay?.remove();
-                _plannerOverlay = null;
-                setState(() => _creatingRoute = false);
+       // Same feel as the search-bar: only 6 % of its height moves.
+       final slide = Tween<Offset>(
+         begin: const Offset(0, -0.06),
+         end: Offset.zero,
+       ).animate(curved);
 
-                _notifyNavBar(false); // ⬅️ show it again
-                // also close the Sliding-up panel if it is open
-                if (_panelController.isPanelOpen) {
-                  _panelController.close();
-                }
-              },
-              onChanged: (newStart, newDest) async {
-                // 1️⃣ recalc the route in place
-                await _handleCreateRoute(
-                  newDest,
-                  startOverride: newStart,
-                  rebuildOnly: true,
-                );
+       final fade = Tween<double>(begin: 0, end: 1).animate(curved);
 
-                // 2️⃣ once that's done, grab all the points & fit the map
-                final data = _routesNotifier.value[_currentMode];
-                final pts = data?.segments.expand((s) => s.path).toList() ?? [];
-                if (pts.isNotEmpty) {
-                  final bounds = LatLngBounds.fromPoints(pts);
-                  // you can tweak the padding/zoomThreshold here
-                  _animatedMapMove(bounds.center, 16.0);
-                }
-              },
-            ),
-          ),
-        ),
-      );
+       _plannerOverlay = OverlayEntry(
+         builder: (_) => SlideTransition(
+           position: slide,
+           child: FadeTransition(
+             opacity: fade,
+             child: Align(
+               alignment: Alignment.topCenter,
+               child: RoutePlanBar(
+                 currentLocation: _currentLocation,
+                 initialDestination: destination,
+                 allPointers: _allPointers,
+                 onCancelled: () async {
+                   await _dismissPlannerOverlay();      // animate-out first
+                   setState(() => _creatingRoute = false);
+                   _notifyNavBar(false); // ⬅️ show it again
+                   // also close the Sliding-up panel if it is open
+                   if (_panelController.isPanelOpen) {
+                     _panelController.close();
+                   }
+                 },
+                 onChanged: (newStart, newDest) async {
+                   // 1️⃣ recalc the route in place
+                   await _handleCreateRoute(
+                     newDest,
+                     startOverride: newStart,
+                     rebuildOnly: true,
+                   );
+
+                   // 2️⃣ once that's done, grab all the points & fit the map
+                   final data = _routesNotifier.value[_currentMode];
+                   final pts = data?.segments.expand((s) => s.path).toList() ?? [];
+                   if (pts.isNotEmpty) {
+                     final bounds = LatLngBounds.fromPoints(pts);
+                     // you can tweak the padding/zoomThreshold here
+                     _animatedMapMove(bounds.center, 16.0);
+                   }
+                 },
+               ),
+             ),
+           ),
+         ),
+       );
 
       Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
-      controller.forward(); // animate it in
+      _plannerAnimCtr!.forward();                           // animate it in
     }
 
     // first time in → rebuildOnly=false (default)
@@ -827,8 +857,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           child: const Icon(Icons.my_location, color: Colors.blue),
         ),
       ),
-    ),
-  );
+      ),
+    );
+  
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
@@ -1075,6 +1106,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _showPlannerBar() {
     final dest = _currentLocation ?? LatLng(matheLat, matheLon);
     _startRouteFlow(dest);
+  }
+
+  /*───────────────────────────────────────────────────────────────
+   * Route-Plan bar teardown animation (fade & slide out)
+   *──────────────────────────────────────────────────────────────*/
+  Future<void> _dismissPlannerOverlay() async {
+    if (_plannerOverlay == null) return;
+
+    // Play the reverse animation only if the forward one has finished.
+    if (_plannerAnimCtr != null && _plannerAnimCtr!.isCompleted) {
+      await _plannerAnimCtr!.reverse();
+    }
+
+    _plannerOverlay!.remove();
+    _plannerOverlay  = null;
+    _plannerAnimCtr?.dispose();
+    _plannerAnimCtr  = null;
   }
 
   // ── utils ───────────────────────────────────────────────────────
