@@ -13,6 +13,7 @@ class MapSearchBar extends StatefulWidget {
   final Function(String? category, Color? color) onCategorySelected;
   final Function(Pointer) onSuggestionSelected;
   final FocusNode? focusNode;
+  final bool showCategories; // ← NEW
 
   const MapSearchBar({
     Key? key,
@@ -23,6 +24,7 @@ class MapSearchBar extends StatefulWidget {
     required this.onCategorySelected,
     required this.onSuggestionSelected,
     this.focusNode,
+    this.showCategories = true, // ← NEW
   }) : super(key: key);
 
   @override
@@ -61,23 +63,25 @@ class _MapSearchBarState extends State<MapSearchBar> {
     // 1) figure out where our suggestions area starts
     double topY = 0;
     if (_suggestionsKey.currentContext != null) {
-      final box = _suggestionsKey.currentContext!.findRenderObject() as RenderBox;
+      final box =
+          _suggestionsKey.currentContext!.findRenderObject() as RenderBox;
       topY = box.localToGlobal(Offset.zero).dy;
     }
 
     // 2) compute exactly how much vertical space remains
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final availableHeight = MediaQuery.of(context).size.height
-        - topY
-        - bottomInset
-        - _navBarHeight;            // ← subtract your 88px nav bar
+    final availableHeight =
+        MediaQuery.of(context).size.height -
+        topY -
+        bottomInset -
+        _navBarHeight; // ← subtract your 88px nav bar
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SafeArea(
           child: Padding(
-            key: _suggestionsKey,               // ← ATTACH KEY HERE
+            key: _suggestionsKey, // ← ATTACH KEY HERE
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
             child: Column(
               children: [
@@ -106,12 +110,17 @@ class _MapSearchBarState extends State<MapSearchBar> {
                           textInputAction: TextInputAction.search,
                           decoration: InputDecoration(
                             hintText: 'Search location',
-                            prefixIcon: Icon(Icons.search, color: Colors.grey[700]),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.grey[700],
+                            ),
                             suffixIcon: const SizedBox.shrink(),
                             filled: true,
                             fillColor: Colors.white,
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 16),
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: borderRadius,
                               borderSide: BorderSide.none,
@@ -119,10 +128,9 @@ class _MapSearchBarState extends State<MapSearchBar> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: borderRadius,
                               borderSide: BorderSide(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withOpacity(0.65),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(0.65),
                                 width: 2,
                               ),
                             ),
@@ -166,32 +174,31 @@ class _MapSearchBarState extends State<MapSearchBar> {
                 const SizedBox(height: 8),
 
                 // ── Animated collapse/expand of category chips ─────────
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, anim) => FadeTransition(
-                    opacity: anim,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, -0.2),
-                        end: Offset.zero,
-                      ).animate(anim),
-                      child: child,
+                if (widget.showCategories)
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, -0.2),
+                          end: Offset.zero,
+                        ).animate(anim),
+                        child: child,
+                      ),
                     ),
+                    child: hasFocus
+                        ? const SizedBox(key: ValueKey('hidden_chips'))
+                        : CategoryNavigationBar(
+                            key: const ValueKey('visible_chips'),
+                            onCategorySelected: widget.onCategorySelected,
+                          ),
                   ),
-                  child: hasFocus
-                      ? const SizedBox(key: ValueKey('hidden_chips'))
-                      : CategoryNavigationBar(
-                          key: const ValueKey('visible_chips'),
-                          onCategorySelected: widget.onCategorySelected,
-                        ),
-                ),
 
                 // 3) use exactly that leftover height
                 if (widget.suggestions.isNotEmpty)
                   ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: availableHeight,
-                    ),
+                    constraints: BoxConstraints(maxHeight: availableHeight),
                     child: _buildSuggestionsDropdown(),
                   ),
               ],
@@ -212,7 +219,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
           height: 1,
           thickness: 1,
           color: Colors.grey.shade300,
-          indent: 56,    // ← start 56px in (icon + padding)
+          indent: 56, // ← start 56px in (icon + padding)
           endIndent: 16, // ← leave 16px padding on right
         ),
         itemBuilder: (context, index) {

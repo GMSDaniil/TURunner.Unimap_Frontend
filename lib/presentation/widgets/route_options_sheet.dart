@@ -21,6 +21,7 @@ class RouteOptionsSheet extends StatefulWidget {
   final TravelMode currentMode;
   final VoidCallback onClose;
   final ValueChanged<TravelMode> onModeChanged;
+
   /// If the sheet is wrapped in a `DraggableScrollableSheet`, Flutter will
   /// hand us its internal ScrollController so the content keeps scrolling
   /// smoothly while the panel is being dragged.
@@ -42,7 +43,6 @@ class RouteOptionsSheet extends StatefulWidget {
 class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   late TravelMode _mode;
   bool _loading = false;
-  
 
   /// Human-readable duration rounded to the nearest minute.
   @override
@@ -68,7 +68,8 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   }
 
   String get _prettyDuration {
-    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60).round();
+    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60)
+        .round();
     return '$mins min';
   }
 
@@ -81,14 +82,15 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
 
   /// Colour helpers to keep chips/glows on brand.
   Color get _activeColor => Theme.of(context).colorScheme.primary;
-  Color get _onActive   => Theme.of(context).colorScheme.onPrimary;
+  Color get _onActive => Theme.of(context).colorScheme.onPrimary;
 
- @override
+  @override
   void didUpdateWidget(covariant RouteOptionsSheet oldWidget) {
     print('RouteOptionsSheet didUpdateWidget');
     super.didUpdateWidget(oldWidget);
     // If new data for the currently selected mode arrives, stop loading
-    if (widget.routesNotifier.value[_mode] != oldWidget.routesNotifier.value[_mode]) {
+    if (widget.routesNotifier.value[_mode] !=
+        oldWidget.routesNotifier.value[_mode]) {
       setState(() {
         _loading = false;
       });
@@ -102,20 +104,18 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     return Material(
       color: Colors.white,
       elevation: 8,
-      clipBehavior: Clip.antiAlias,                  // ← clip to shape
+      clipBehavior: Clip.antiAlias, // ← clip to shape
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(
-        top: false,                                    // keep top inset only
-        bottom: false,                                 // ← disable bottom inset
+        top: false, // keep top inset only
+        bottom: false, // ← disable bottom inset
         child: SingleChildScrollView(
           controller: widget.scrollController,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -126,7 +126,8 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
               Align(
                 alignment: Alignment.topCenter,
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
@@ -139,25 +140,26 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                   Expanded(
                     child: Text(
                       'Route options',
-                      style: Theme.of(context).textTheme.titleLarge!
-                        .copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   // close button in a light-grey circular pill
-Container(
-  width: 36,
-  height: 36,
-  decoration: BoxDecoration(
-    color: Colors.grey.shade200,
-    shape: BoxShape.circle,
-  ),
-  child: IconButton(
-    padding: EdgeInsets.zero,
-    icon: const Icon(Icons.close, size: 18),
-    splashRadius: 18,
-    onPressed: widget.onClose,
-  ),
-),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.close, size: 18),
+                      splashRadius: 18,
+                      onPressed: widget.onClose,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -174,42 +176,56 @@ Container(
               ),
               const SizedBox(height: 24),
               // ── Info card ───────────────────────────────────────────
-              _loading ? const SizedBox(
-                height: 60,
-                child: Center(child: CircularProgressIndicator()),
-              ) : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12, blurRadius: 8, offset: Offset(0,2)
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.timer, size: 22),
-                        const SizedBox(width: 6),
-                        Text(_prettyDuration,
-                          style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.social_distance_rounded, size: 22),
-                        const SizedBox(width: 6),
-                        Text(_prettyDistance,
-                          style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ),
-                  ],
-                ),
+              _loading
+                  ? const SizedBox(
+                      height: 60,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
                       ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.timer, size: 22),
+                              const SizedBox(width: 6),
+                              Text(
+                                _prettyDuration,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.social_distance_rounded,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _prettyDistance,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
               const SizedBox(height: 28),
               // ── Segments info ──────────────────────────────────────
               // if (segments.isNotEmpty)
@@ -253,7 +269,8 @@ class _ModeSelector extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon,
+                Icon(
+                  icon,
                   size: 20,
                   color: active ? theme.colorScheme.onPrimary : Colors.black87,
                 ),
@@ -263,7 +280,9 @@ class _ModeSelector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: active ? theme.colorScheme.onPrimary : Colors.black87,
+                    color: active
+                        ? theme.colorScheme.onPrimary
+                        : Colors.black87,
                   ),
                 ),
               ],
@@ -299,9 +318,7 @@ class _SegmentInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isBus
-            ? Colors.blue.shade50
-            : Colors.green.shade50,
+        color: isBus ? Colors.blue.shade50 : Colors.green.shade50,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -318,17 +335,14 @@ class _SegmentInfoCard extends StatelessWidget {
           Text(
             'Distance: ${segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m'}',
           ),
-          Text(
-            'Duration: ${(segment.durrationSeconds/ 60).round()} min',
-          ),
+          Text('Duration: ${(segment.durrationSeconds / 60).round()} min'),
           if (isBus && segment.transportType != null)
             Text('Type: ${segment.transportType}'),
           if (isBus && segment.transportLine != null)
             Text('Line: ${segment.transportLine}'),
           if (isBus && segment.fromStop != null)
             Text('From: ${segment.fromStop}'),
-          if (isBus && segment.toStop != null)
-            Text('To: ${segment.toStop}'),
+          if (isBus && segment.toStop != null) Text('To: ${segment.toStop}'),
         ],
       ),
     );

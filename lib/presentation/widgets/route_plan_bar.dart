@@ -2,9 +2,11 @@
 //
 // Inline-search route planner (start | ≤3 stops | destination)
 // ------------------------------------------------------------
+import 'dart:async';                     // ← NEW
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
+import 'package:auth_app/presentation/widgets/search_bar.dart';
 
 typedef OnCancelled = void Function();
 
@@ -68,6 +70,40 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   _Cand? _startCand, _destCand;
+
+  /*═══════════════════════════════════════════════════════════════
+   * FULL-SCREEN SEARCH  ➜ runs as an OverlayEntry (no new route)
+   *══════════════════════════════════════════════════════════════*/
+  OverlayEntry? _searchEntry;
+  Future<_Cand?> _openSearchOverlay(
+    BuildContext ctx,
+    String       initial,
+    String       hint,
+  ) {
+    final completer = Completer<_Cand?>();
+
+    _searchEntry = OverlayEntry(
+      builder: (_) => _RouteSearchOverlay(
+        initialText : initial,
+        hint        : hint,
+        pool        : _pool,
+        isTaken     : (c) => _chosen.contains(c),
+        onPicked    : (c) {
+          _searchEntry?.remove();
+          _searchEntry = null;
+          completer.complete(c);
+        },
+        onCancel    : () {
+          _searchEntry?.remove();
+          _searchEntry = null;
+          completer.complete(null);
+        },
+      ),
+    );
+
+    Overlay.of(ctx, rootOverlay: true)!.insert(_searchEntry!);
+    return completer.future;
+  }
 
   @override
   void initState() {
@@ -150,27 +186,42 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         Icon(icon, size: 20, color: Colors.grey.shade800),
         const SizedBox(width: 12),
         Expanded(
-          child: _AutocompleteBox(
-            controller: ctl,
-            hint: hint,
-            pool: _pool,
-            isTaken: (c) => _chosen.contains(c),
-            onPicked: (newCand, previousText) {
-              setState(() {
-                final old = _pool
-                    .where((c) => c.label == previousText)
-                    .cast<_Cand?>()
-                    .firstWhere((_) => true, orElse: () => null);
-                if (old != null) _chosen.remove(old);
-                _chosen.add(newCand);
-              });
-               // if start or dest changed, update and fire
-               if (hint == 'Start')     _startCand = newCand;
-               else if (hint == 'Destination') _destCand = newCand;
-               if (_startCand != null && _destCand != null) {
-                 widget.onChanged(_startCand!.pos, _destCand!.pos);
-               }
+          child: GestureDetector(
+            onTap: () async {
+              final picked = await _openSearchOverlay(context, ctl.text, hint);
+              if (picked != null) {
+                setState(() {
+                  final old = _pool
+                      .where((c) => c.label == ctl.text)
+                      .cast<_Cand?>()
+                      .firstWhere((_) => true, orElse: () => null);
+                  if (old != null) _chosen.remove(old);
+                  _chosen.add(picked);
+                  ctl.text = picked.label;
+                  if (hint == 'Start')     _startCand = picked;
+                  else if (hint == 'Destination') _destCand = picked;
+                  // fire onChanged if both endpoints are set
+                  if (_startCand != null && _destCand != null) {
+                    widget.onChanged(_startCand!.pos, _destCand!.pos);
+                  }
+                });
+              }
             },
+            child: AbsorbPointer(
+              child: TextField(
+                controller: ctl,
+                readOnly: true,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  border: InputBorder.none,
+                  filled: true,
+                  fillColor: Colors.white,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                ),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
           ),
         ),
         if (onDelete != null)
@@ -181,7 +232,6 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
               width: 24,
               height: 24,
               child: Center(
-                // round “minus-in-circle” instead of a second X
                 child: Icon(
                   Icons.remove_circle_outline,
                   size: 20,
@@ -312,213 +362,115 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 }
 
-/* ──────────────────────────────────────────────────────────────── */
-/* Improved inline-autocomplete box                                */
-/* ──────────────────────────────────────────────────────────────── */
-class _AutocompleteBox extends StatefulWidget {
-  final TextEditingController controller;
-  final String hint;
+/*───────────────────────────────────────────────────────────────
+ * Overlay-based search UI (pill + suggestions)
+ *──────────────────────────────────────────────────────────────*/
+class _RouteSearchOverlay extends StatefulWidget {
+  final String initialText;
   final List<_Cand> pool;
   final bool Function(_Cand) isTaken;
-  final void Function(_Cand newPick, String previousText) onPicked;
+  final void Function(_Cand) onPicked;
+  final VoidCallback onCancel;
+  final String hint;
 
-  const _AutocompleteBox({
-    required this.controller,
-    required this.hint,
+  const _RouteSearchOverlay({
+    required this.initialText,
     required this.pool,
     required this.isTaken,
     required this.onPicked,
+    required this.onCancel,
+    required this.hint,
   });
 
   @override
-  State<_AutocompleteBox> createState() => _AutocompleteBoxState();
+  State<_RouteSearchOverlay> createState() => _RouteSearchOverlayState();
 }
 
-class _AutocompleteBoxState extends State<_AutocompleteBox> {
-  late final FocusNode _focus;
+class _RouteSearchOverlayState extends State<_RouteSearchOverlay> {
+  late TextEditingController _searchCtl;
+  late List<_Cand> _suggestions;
+  late final FocusNode _pillFocus;       // ← NEW
 
   @override
   void initState() {
     super.initState();
-    _focus = FocusNode();
+    _searchCtl = TextEditingController(text: widget.initialText);
+    _suggestions = _getSuggestions(widget.initialText);
+    _searchCtl.addListener(_onSearchChanged);
 
-    // when the field gains focus and is empty → open the overlay immediately
-    _focus.addListener(() {
-      if (_focus.hasFocus)
-        _openOverlay('');
-      else
-        _removeOverlay();
+    /* keep the pill focused → MapSearchBar never shows category chips */
+    _pillFocus = FocusNode();
+    // whenever focus is lost, take it back immediately
+    _pillFocus.addListener(() {
+      if (!_pillFocus.hasFocus) {
+        _pillFocus.requestFocus();
+      }
     });
+
+    // grab focus right after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pillFocus.requestFocus();
+    });
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _suggestions = _getSuggestions(_searchCtl.text);
+    });
+  }
+
+  List<_Cand> _getSuggestions(String q) {
+    final lower = q.toLowerCase();
+    return widget.pool
+        .where((c) => !widget.isTaken(c) && (lower.isEmpty || c.label.toLowerCase().contains(lower)))
+        .take(40)
+        .toList();
   }
 
   @override
   void dispose() {
-    _removeOverlay();
-    _focus.dispose();
+    _searchCtl.dispose();
+    _pillFocus.dispose();               // ← NEW
     super.dispose();
   }
 
-  /* ── overlay machinery ───────────────────────────────────────── */
-  OverlayEntry? _entry;
-
-  void _openOverlay(String text) {
-    _removeOverlay();
-
-    final matches = _optionsFor(text);
-    if (matches.isEmpty) return;
-
-    // ② ── find whole-bar rectangle, not the individual field
-    final barBox =
-        RoutePlanBar._barKey.currentContext?.findRenderObject() as RenderBox?;
-    final barPos = barBox?.localToGlobal(Offset.zero) ?? Offset.zero;
-    final top = barPos.dy + (barBox?.size.height ?? 0) + 4;
-
-    _entry = OverlayEntry(
-      builder: (_) => Positioned(
-        // ③ ── full-width, aligned with screen edges
-        left: 0,
-        right: 0,
-        top: top,
-        child: Material(
-          color: Colors.white,
-          elevation: 6,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(12),
-              top: Radius.circular(12),
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 300),
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: matches.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, thickness: .6, indent: 48),
-              itemBuilder: (_, idx) {
-                final cand = matches[idx];
-
-                /* highlight the typed part */
-                final lowerQ = text.toLowerCase();
-                final label   = cand.label;
-                final start   = label.toLowerCase().indexOf(lowerQ);
-                final end     = start + lowerQ.length;
-
-                return InkWell(
-                  onTap: () {
-                    final prev = widget.controller.text;
-                    widget.controller.text = cand.label;
-                    widget.onPicked(cand, prev);
-                    _focus.unfocus();
-                  },
-                  child: SizedBox(
-                    height: 44,                              // tighter row
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 16),
-                        const Icon(Icons.location_on_outlined,
-                            size: 18, color: Colors.black54),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: RichText(
-                            overflow: TextOverflow.ellipsis,
-                            text: TextSpan(
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black87
-                              ),
-                              children: [
-                                if (start >= 0) ...[
-                                  TextSpan(text: label.substring(0, start)),
-                                  TextSpan(
-                                    text: label.substring(start, end),
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                  TextSpan(text: label.substring(end)),
-                                ] else
-                                  TextSpan(text: label),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Overlay.of(context, rootOverlay: true)!.insert(_entry!);
-  }
-
-  void _removeOverlay() {
-    _entry?.remove();
-    _entry = null;
-  }
-
-  List<_Cand> _optionsFor(String q) {
-    final lower = q.toLowerCase();
-    return widget.pool
-        .where(
-          (c) =>
-              !widget.isTaken(c) &&
-              (lower.isEmpty || c.label.toLowerCase().contains(lower)),
-        )
-        .take(40) // safety limit
-        .toList();
-  }
-
-  /* ── build input field ───────────────────────────────────────── */
   @override
   Widget build(BuildContext context) {
-    // thin, border-less TextField with a clear ("×") button
-    final hasText = widget.controller.text.isNotEmpty;
-    final isEditing = _focus.hasFocus;
-
-    return TextField(
-      controller: widget.controller,
-      focusNode: _focus,
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
-        border: InputBorder.none,
-        filled: true,
-        fillColor: Colors.white,
-        // only show when in edit & has text
-        suffixIcon: (isEditing && hasText)
-            ? GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  widget.controller.clear();
-                  setState(() {});
-                  _openOverlay('');
-                },
-                child: const Icon(Icons.clear, size: 18),
-              )
-            : null,
-        // keep the field’s height fixed
-        suffixIconConstraints:
-            const BoxConstraints.tightFor(width: 18, height: 18),
+    // White backdrop that covers everything, tap outside to cancel
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            MapSearchBar(
+              searchController: _searchCtl,
+              suggestions: _suggestions.map((c) => Pointer(
+                name: c.label,
+                lat: c.pos.latitude,
+                lng: c.pos.longitude,
+                category: '', // No category in this context
+              )).toList(),
+              onSearch: (_) {}, // No-op, handled by suggestions
+              onClear: () {
+                _searchCtl.clear();
+                setState(() {});
+                widget.onCancel(); // keep this for closing on clear
+              },
+              onCategorySelected: (_, __) {}, // No categories in this context
+              onSuggestionSelected: (Pointer p) {
+                final cand = widget.pool.firstWhere(
+                  (c) => c.label == p.name && c.pos.latitude == p.lat && c.pos.longitude == p.lng,
+                  orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)),
+                );
+                widget.onPicked(cand);
+              },
+              focusNode: _pillFocus,     // ← NEW
+              showCategories: false,     // ← NEW: ensure categories never show
+            ),
+            Expanded(child: GestureDetector(onTap: widget.onCancel)),
+          ],
+        ),
       ),
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: widget.controller.text.trim() == 'Current location'
-            ? Colors.black.withOpacity(0.45)
-            : Colors.black,
-      ),
-      onChanged: (txt) {
-        setState(() {});
-        _openOverlay(txt);
-      },
-      onTap: () => _openOverlay(widget.controller.text),
     );
   }
 }
