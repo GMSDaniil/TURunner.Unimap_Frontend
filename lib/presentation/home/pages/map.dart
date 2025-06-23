@@ -363,9 +363,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       body: SlidingUpPanel(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController, // the PanelController instance
-        minHeight: 20, // always leave a 20 px “handle” visible
+        minHeight: 0, 
         maxHeight: maxHeight, // our dynamic max height
-        snapPoint: 0.2, // when you drag up, snaps at 20% if release early
+        snapPoint: 0.29, // when you drag up, snaps at 29% if release early
         isDraggable: true, // allow dragging
         onPanelSlide: (pos) {
           // start top-bar fade-out only when
