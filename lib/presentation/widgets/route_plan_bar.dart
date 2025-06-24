@@ -440,17 +440,14 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
         .toList();
   }
 
+  // helper to fade‐out then fire success callback
+  void _fadeOutThenPick(_Cand cand) {
+    _fadeCtr.reverse().then((_) => widget.onPicked(cand));
+  }
+
   void _closeOverlay() {
     // reverse fade and then remove
     _fadeCtr.reverse().then((_) => widget.onCancel());
-  }
-
-  @override
-  void dispose() {
-    _searchCtl.dispose();
-    _pillFocus.dispose();
-    _fadeCtr.dispose();
-    super.dispose();
   }
 
   @override
@@ -480,17 +477,15 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                 onSuggestionSelected: (Pointer p) {
                   final cand = widget.pool.firstWhere(
                     (c) =>
-                        c.label == p.name &&
-                        c.pos.latitude == p.lat &&
-                        c.pos.longitude == p.lng,
-                    orElse: () =>
-                        _Cand(p.name, LatLng(p.lat, p.lng)),
+                      c.label == p.name &&
+                      c.pos.latitude == p.lat &&
+                      c.pos.longitude == p.lng,
+                    orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)),
                   );
-                 widget.onPicked(cand);
-                 _closeOverlay();
+                  _fadeOutThenPick(cand);
                 },
                 focusNode: _pillFocus,
-               onBack: _closeOverlay,
+                onBack: _closeOverlay,
               ),
               Expanded(child: GestureDetector(onTap: _closeOverlay)),
             ],
