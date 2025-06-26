@@ -25,14 +25,14 @@ class ScooterRouteSegment {
   }
 }
 
-class FindScooterRouteResponse {
+class FindScooterRouteSegment {
   final LatLng start;
   final LatLng end;
   final double distanceMeters;
   final int durationSeconds;
   final List<ScooterRouteSegment> segments;
 
-  FindScooterRouteResponse({
+  FindScooterRouteSegment({
     required this.start,
     required this.end,
     required this.distanceMeters,
@@ -40,8 +40,8 @@ class FindScooterRouteResponse {
     required this.segments,
   });
 
-  factory FindScooterRouteResponse.fromJson(Map<String, dynamic> map) {
-    return FindScooterRouteResponse(
+  factory FindScooterRouteSegment.fromJson(Map<String, dynamic> map) {
+    return FindScooterRouteSegment(
       start: LatLng(map['Start'][0], map['Start'][1]),
       end: LatLng(map['End'][0], map['End'][1]),
       distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
@@ -52,12 +52,12 @@ class FindScooterRouteResponse {
     );
   }
 
-  factory FindScooterRouteResponse.fromSegmentsList(List<dynamic> list) {
+  factory FindScooterRouteSegment.fromSegmentsList(List<dynamic> list) {
   final segments = list
       .map((e) => ScooterRouteSegment.fromJson(e as Map<String, dynamic>))
       .toList();
 
-  return FindScooterRouteResponse(
+  return FindScooterRouteSegment(
     start: segments.first.polyline.first,
     end: segments.last.polyline.last,
     distanceMeters: segments.fold(0.0, (sum, s) => sum + s.distanceMeters),
@@ -65,4 +65,20 @@ class FindScooterRouteResponse {
     segments: segments,
   );
 }
+}
+
+class FindScooterRouteResponse {
+  final List<ScooterRouteSegment> segments;
+
+  FindScooterRouteResponse({
+    required this.segments,
+  });
+
+  factory FindScooterRouteResponse.fromJson(List<dynamic>  json) {
+    return FindScooterRouteResponse(
+      segments: json
+          .map((e) => ScooterRouteSegment.fromJson(e))
+          .toList(),
+    );
+  }
 }

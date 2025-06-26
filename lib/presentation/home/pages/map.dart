@@ -754,11 +754,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                      _panelController.close();
                    }
                  },
-                 onChanged: (newStart, newDest) async {
+                 onChanged: (route) async {
                    // 1️⃣ recalc the route in place
                    await _handleCreateRoute(
-                     newDest,
-                     startOverride: newStart,
+                     route,
                      rebuildOnly: true,
                    );
 
@@ -782,7 +781,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
 
     // first time in → rebuildOnly=false (default)
-    _handleCreateRoute(destination, startOverride: _currentLocation);
+    _handleCreateRoute([_currentLocation!, _routeDestination!]);
   }
 
   // ── search listener ──────────────────────────────────────────────
@@ -804,6 +803,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     LatLng _closest(LatLng s, List<LatLng> line) {
       double best = double.infinity;
+      if (line.isEmpty) return s; // no points, return start point
       LatLng bestP = line.first;
       for (final p in line) {
         final d = Distance().as(LengthUnit.Meter, s, p);
@@ -1026,14 +1026,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── route creation & sheet ───────────────────────────────────────
   Future<void> _handleCreateRoute(
-    LatLng dest, {
-    LatLng? startOverride,
+    List<LatLng> route, {
     bool rebuildOnly = false,
   }) async {
     await RouteLogic.onCreateRoute(
       context: context,
-      latlng: dest,
-      currentLocation: startOverride ?? _currentLocation,
+      route: route,
       routesNotifier: _routesNotifier,
       setState: setState,
       animatedMapMove: _animatedMapMove,
@@ -1044,8 +1042,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         await RouteLogic.onModeChanged(
           context: context,
           mode: m,
-          destination: dest,
-          currentLocation: _currentLocation,
+          route: route,
           routesNotifier: _routesNotifier,
           setState: setState,
           updateCurrentMode: (nm) => setState(() => _currentMode = nm),
@@ -1178,8 +1175,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     await RouteLogic.onModeChanged(
       context: context,
       mode: mode,
-      destination: _routeDestination!, // ← we stored it earlier
-      currentLocation: _currentLocation,
+      route: [_currentLocation!, _routeDestination!],
       routesNotifier: _routesNotifier,
       setState: setState,
       updateCurrentMode: (m) => setState(() => _currentMode = m),

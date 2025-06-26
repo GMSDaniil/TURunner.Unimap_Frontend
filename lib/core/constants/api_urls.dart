@@ -8,7 +8,7 @@ class ApiUrls {
 
   //TODO
   static const findRoute = '${baseURL}Route/walking';
-  static const findBusRoute = '${baseURL}Route/hybrid';
+  static const findBusRoute = '${baseURL}Route/hybrid-several-points';
   static const findScooterRoute = '${baseURL}Route/scooter-route';
   static const getMensaMenu = '${baseURL}mensa/all-menus';
   static const getPointers = '${baseURL}Route/all-pointers';

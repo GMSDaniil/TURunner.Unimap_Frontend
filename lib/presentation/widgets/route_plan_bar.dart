@@ -19,7 +19,7 @@ class RoutePlanBar extends StatefulWidget {
   final List<Pointer> allPointers; // supply from MapPage
   final OnCancelled onCancelled;
   /// Called whenever both Start and Destination have been (re-)selected.
-  final void Function(LatLng start, LatLng dest) onChanged;
+  final void Function(List<LatLng>) onChanged;
 
   const RoutePlanBar({
     super.key,
@@ -57,6 +57,8 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   final List<TextEditingController> _stopCtls = [];
 
   final Set<_Cand> _chosen = {}; // what’s already used?
+
+  final List<_Cand> _route = []; // all stops (up to 3)
 
   late final List<_Cand> _pool; // all searchable locations
 
@@ -130,6 +132,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
     if (widget.currentLocation != null) {
       _startCand = _pool.first;
       _chosen.add(_startCand!);
+      _route.add(_startCand!);
     }
     if (widget.initialDestination != null) {
       final lab = _prettyLabel(widget.initialDestination!);
@@ -139,7 +142,10 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
       );
       _destCand = cand;
       _chosen.add(_destCand!);
+      _route.add(_destCand!);
     }
+
+    // print(_route);
   }
 
   @override
@@ -199,12 +205,28 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                       .firstWhere((_) => true, orElse: () => null);
                   if (old != null) _chosen.remove(old);
                   _chosen.add(picked);
+
+                  
+
                   ctl.text = picked.label;
-                  if (hint == 'Start')     _startCand = picked;
-                  else if (hint == 'Destination') _destCand = picked;
+                  // if (hint == 'Start')     _startCand = picked;
+                  // else if (hint == 'Destination') _destCand = picked;
+                  switch (hint) {
+                    case 'Start':
+                      _startCand = picked;
+                      break;
+                    case 'Destination':
+                      _destCand = picked;
+                      break;
+                    default:
+                      // for stops, we just update the text
+                      final index = _stopCtls.indexOf(ctl);
+                      _route.insert(index+1, picked); // +1 for start location
+                  }
+                  // print(_route.map((c) => c.pos).toList());
                   // fire onChanged if both endpoints are set
                   if (_startCand != null && _destCand != null) {
-                    widget.onChanged(_startCand!.pos, _destCand!.pos);
+                    widget.onChanged(_route.map((c) => c.pos).toList());
                   }
                 });
               }
@@ -268,20 +290,38 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
       }
     }
 
+    List<_Cand> newRoute = [];
+    for(int i = _route.length - 1; i >= 0; i--) {
+      newRoute.add(_route[i]);
+    }
+
+    _route.clear();
+    _route.addAll(newRoute);
+
+    // print(_route.map((c) => c.label).toList());
+
      // 3️⃣ notify map if we now have both endpoints
     if (_startCand != null && _destCand != null) {
-      widget.onChanged(_startCand!.pos, _destCand!.pos);
+      widget.onChanged(_route.map((c) => c.pos).toList());
     }
   }
 
   void _addStop() {
     if (_stopCtls.length == 3) return;
+    if (_stopCtls.length != _route.length - 2) return; //user must choose stop before creating a new one
     setState(() => _stopCtls.add(TextEditingController()));
   }
 
   void _removeStop(int i) {
     _stopCtls[i].dispose();
-    setState(() => _stopCtls.removeAt(i));
+
+    setState(() {
+      _stopCtls.removeAt(i);
+      _route.removeAt(i + 1); // +1 for start location
+      // print(_route.map((c) => c.label).toList());
+
+      widget.onChanged(_route.map((c) => c.pos).toList());
+    });
   }
 
   /* ═══════════════════════━  build  ━═══════════════════════════ */

@@ -72,9 +72,7 @@ class RouteRepositoryImpl implements RouteRepository {
           final data = response.data is String
               ? jsonDecode(response.data)
               : response.data;
-          final route = data is List
-              ? FindScooterRouteResponse.fromSegmentsList(data)
-              : FindScooterRouteResponse.fromJson(data);
+          final route = FindScooterRouteResponse.fromJson(data);
           return Right(route);
         } catch (e) {
           print('Error parsing route data: $e');

@@ -43,14 +43,14 @@ class BusRouteSegment {
   }
 }
 
-class FindBusRouteResponse {
+class FindBusRouteResponseSegment {
   final LatLng start;
   final LatLng end;
   final List<BusRouteSegment> segments;
   final int durationSeconds;
   final double distanceMeters;
 
-  FindBusRouteResponse({
+  FindBusRouteResponseSegment({
     required this.start,
     required this.end,
     required this.segments,
@@ -58,14 +58,30 @@ class FindBusRouteResponse {
     required this.distanceMeters,
   });
 
-  factory FindBusRouteResponse.fromJson(Map<String, dynamic> map) {
-    return FindBusRouteResponse(
+  factory FindBusRouteResponseSegment.fromJson(Map<String, dynamic> map) {
+    return FindBusRouteResponseSegment(
       start: LatLng(map['Start'][0], map['Start'][1]),
       end: LatLng(map['End'][0], map['End'][1]),
       distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
       durationSeconds: map['DurationSeconds'] ?? 0,
       segments: (map['Segments'] as List)
           .map((e) => BusRouteSegment.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+class FindBusRouteResponse {
+  List<FindBusRouteResponseSegment> segments;
+
+  FindBusRouteResponse({
+    required this.segments,
+  });
+
+  factory FindBusRouteResponse.fromJson(List<dynamic> json) {
+    return FindBusRouteResponse(
+      segments: json
+          .map((e) => FindBusRouteResponseSegment.fromJson(e))
           .toList(),
     );
   }

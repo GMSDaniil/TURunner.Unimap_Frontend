@@ -12,9 +12,9 @@ import 'package:dio/dio.dart';
 class FindRouteApiService {
   Future<Either<String, Response>> getRoute(FindRouteReqParams params) async {
     try {
-      final response = await sl<DioClient>().get(
+      final response = await sl<DioClient>().post(
         ApiUrls.findRoute,
-        queryParameters: params.toMap(),
+        data: params.toMap(),
       );
 
       if (response.statusCode != 200) {
@@ -34,9 +34,9 @@ class FindRouteApiService {
 
   Future<Either<String, Response>> getBusRoute(FindRouteReqParams params) async {
     try {
-      final response = await sl<DioClient>().get(
+      final response = await sl<DioClient>().post(
         ApiUrls.findBusRoute,
-        queryParameters: params.toMap(),
+        data: params.toMap(),
       );
 
       if (response.statusCode != 200) {
@@ -55,9 +55,9 @@ class FindRouteApiService {
 
   Future<Either<String, Response>> getScooterRoute(FindRouteReqParams params) async {
     try {
-      final response = await sl<DioClient>().get(
+      final response = await sl<DioClient>().post(
         ApiUrls.findScooterRoute,
-        queryParameters: params.toMap(),
+        data: params.toMap(),
       );
 
       if (response.statusCode != 200) {

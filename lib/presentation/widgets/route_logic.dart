@@ -23,8 +23,7 @@ class RouteLogic {
   
   static Future<void> onCreateRoute({
     required BuildContext context,
-    required LatLng latlng,
-    required LatLng? currentLocation,
+    required List<LatLng> route,
     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
     required void Function(void Function()) setState,
     required void Function(LatLng, double) animatedMapMove,
@@ -40,10 +39,7 @@ class RouteLogic {
     bool rebuildOnly = false,     // ← your new arg
   }) async {
     final params = FindRouteReqParams(
-      fromLat: currentLocation?.latitude ?? 52.5135,
-      fromLon: currentLocation?.longitude ?? 13.3245,
-      toLat: latlng.latitude,
-      toLon: latlng.longitude,
+      points: route.map((p) => MapPoint(p.latitude, p.longitude)).toList(),
     );
 
     // Fetch and display the walking route immediately
@@ -53,17 +49,19 @@ class RouteLogic {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Error: $error')));
       },
-      (route) {
+      (routeResponse) {
         setState(() {
           routesNotifier.value[TravelMode.walk] = RouteData(
-            segments: [
+            segments: routeResponse.segments.map((route) =>
+            
               RouteSegment(
                 mode: TravelMode.walk,
                 path: route.foot,
                 distanceMeters: route.distanceMeters,
                 durrationSeconds: route.durationSeconds,
               ),
-            ],
+            
+            ).toList(),
           );
         });
 
@@ -72,7 +70,11 @@ class RouteLogic {
           if (mounted && Navigator.of(context).canPop()) {
             Navigator.of(context).pop();   // close the building sheet
           }
-          final walkPath = route.foot;
+          
+          List<LatLng> walkPath = [];
+          for (final segment in routeResponse.segments) {
+            walkPath.addAll(segment.foot);
+          }
           if (walkPath.isNotEmpty) {
             final bounds = LatLngBounds.fromPoints(walkPath);
             animatedMapMove(bounds.center, 16.5);
@@ -105,10 +107,12 @@ class RouteLogic {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Bus route error: $error')));
         },
-        (route) {
+        (routeResponse) {
           setState(() {
             final segments = <RouteSegment>[];
-            for (final seg in route.segments) {
+            for (final route in routeResponse.segments) {
+              for (final seg in route.segments) {
+                // Convert each segment to RouteSegment
               segments.add(
                 RouteSegment(
                   mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
@@ -122,6 +126,7 @@ class RouteLogic {
                   toStop: seg.toStop,
                 ),
               );
+              }
             }
             setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
@@ -142,19 +147,22 @@ class RouteLogic {
               .showSnackBar(SnackBar(content: Text('Scooter route error: $error')));
         },
         (response) {
-          final segments = response.segments.map((seg) {
-            return RouteSegment(
-              mode: seg.type.toLowerCase() == 'walking'
-                  ? TravelMode.walk
-                  : TravelMode.scooter,
-              path: seg.polyline,
-              distanceMeters: seg.distanceMeters,
-              durrationSeconds: seg.durationSeconds,
-            );
-          }).toList();
+          List<RouteSegment> scooterSegments = [];
+          for (final seg in response.segments){
+              scooterSegments.add(
+                RouteSegment(
+                  mode: seg.type.toLowerCase() == 'walking'
+                      ? TravelMode.walk
+                      : TravelMode.scooter,
+                  path: seg.polyline,
+                  distanceMeters: seg.distanceMeters,
+                  durrationSeconds: seg.durationSeconds,
+                ),
+              );
+          }
           setState(() {
             final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
-            newMap[TravelMode.scooter] = RouteData(segments: segments);
+            newMap[TravelMode.scooter] = RouteData(segments: scooterSegments);
             routesNotifier.value = newMap;
           });
           // Note: Again, do not invoke updateCurrentMode here.
@@ -181,8 +189,7 @@ class RouteLogic {
   static Future<void> onModeChanged({
     required BuildContext context,
     required TravelMode mode,
-    required LatLng destination,
-    required LatLng? currentLocation,
+    required List<LatLng> route,
     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
     required void Function(void Function()) setState,
     // A callback to update the current mode in your state
@@ -252,10 +259,7 @@ class RouteLogic {
 
     } else if (mode == TravelMode.scooter) {
       final params = FindRouteReqParams(
-        fromLat: currentLocation?.latitude ?? 52.5135,
-        fromLon: currentLocation?.longitude ?? 13.3245,
-        toLat: destination.latitude,
-        toLon: destination.longitude,
+        points: route.map((p) => MapPoint(p.latitude, p.longitude)).toList(),
       );
       final result = await sl<FindScooterRouteUseCase>().call(param: params);
 
@@ -266,9 +270,10 @@ class RouteLogic {
           );
         },
         (response) {
-          final segments = response.segments
-              .map(
-                (seg) => RouteSegment(
+          List<RouteSegment> scooterSegments = [];
+          for (final seg in response.segments){
+              scooterSegments.add(
+                RouteSegment(
                   mode: seg.type.toLowerCase() == 'walking'
                       ? TravelMode.walk
                       : TravelMode.scooter,
@@ -276,11 +281,11 @@ class RouteLogic {
                   distanceMeters: seg.distanceMeters,
                   durrationSeconds: seg.durationSeconds,
                 ),
-              )
-              .toList();
+              );
+          }
           setState(() {
             final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
-            newMap[TravelMode.scooter] = RouteData(segments: segments);
+            newMap[TravelMode.scooter] = RouteData(segments: scooterSegments);
             routesNotifier.value = newMap;
             updateCurrentMode(TravelMode.scooter);
           });
