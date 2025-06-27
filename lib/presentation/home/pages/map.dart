@@ -605,8 +605,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         },
         body: Stack(
           children: [
-            // _buildFlutterMap(),
-            MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
+            _buildFlutterMap(),
+            // MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
 
             // ── animated white sheet over the map ──────────────────────
             AnimatedSlide(
