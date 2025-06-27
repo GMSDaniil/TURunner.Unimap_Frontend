@@ -39,6 +39,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/presentation/widgets/search_bar.dart';
 import 'package:auth_app/presentation/widgets/route_plan_bar.dart';
+import 'package:auth_app/presentation/widgets/category_top_bar.dart';
 //import 'package:flutter_map/plugin_api.dart' show FitBoundsOptions;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -92,10 +93,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
   PersistentBottomSheetController? _plannerSheetCtr;
-  OverlayEntry?      _plannerOverlay;   // top Route-Plan bar overlay
+  OverlayEntry? _plannerOverlay; // top Route-Plan bar overlay
   AnimationController? _plannerAnimCtr; // drives its in/out animation
-  bool   _panelClosingStarted = false;
-  double _lastPanelPos        = 1.0;   // track previous slide position
+  bool _panelClosingStarted = false;
+  double _lastPanelPos = 1.0; // track previous slide position
   bool _searchActive = false;
   Pointer? _buildingPanelPointer;
   LatLng? _coordinatePanelLatLng; // NEW: for coordinate panel
@@ -169,7 +170,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _mapAnimController?.dispose();
-    _plannerAnimCtr?.dispose();          // ← tidy up Route-Plan bar anim
+    _plannerAnimCtr?.dispose(); // ← tidy up Route-Plan bar anim
     _panelController.close();
     _searchCtl.dispose();
     _searchFocusNode.dispose();
@@ -364,7 +365,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       body: SlidingUpPanel(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         controller: _panelController, // the PanelController instance
-        minHeight: 0, 
+        minHeight: 0,
         maxHeight: maxHeight, // our dynamic max height
         snapPoint: 0.29, // when you drag up, snaps at 29% if release early
         isDraggable: true, // allow dragging
@@ -375,19 +376,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           //  • and we haven’t started yet.
           if (!_panelClosingStarted &&
               _plannerAnimCtr?.isCompleted == true &&
-              pos < _lastPanelPos &&          // downward motion
-              pos < 0.95) {                   // allow a small nudge first
+              pos < _lastPanelPos && // downward motion
+              pos < 0.95) {
+            // allow a small nudge first
             _panelClosingStarted = true;
-            _dismissPlannerOverlay();         // kicks off reverse anim
+            _dismissPlannerOverlay(); // kicks off reverse anim
           }
-          _lastPanelPos = pos;                // update tracker
+          _lastPanelPos = pos; // update tracker
         },
         panelBuilder: (sc) {
           // Category list has highest priority
           if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
             return _buildCategoryListPanel(sc);
           }
-          
+
           // Building info panel
           if (_buildingPanelPointer != null) {
             final p = _buildingPanelPointer!;
@@ -570,15 +572,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 8,
-                        ), // <-- extra space below button
+                        const SizedBox(height: 8),
                       ],
                     ),
                   ),
                 ),
-              )
-              );
+              ),
+            );
           }
           return const SizedBox.shrink();
         },
@@ -590,6 +590,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _activeCategory = null;
               _activeCategoryPointers = [];
             });
+
+            _filterMarkersByCategory(null, null);
 
             // if the user *tapped* the close handle without dragging,
             // the bar is still up → dismiss it now
@@ -652,9 +654,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         setState(() => _suggestions = []);
                       },
                       onCategorySelected: (category, color) {
-                        _filterMarkersByCategory(category, color);
+                        //print('Category tapped: $category');
                         if (category != null) {
-                          _showCategoryListPopup(category, color ?? Colors.blue);
+                          _showCategoryListPopup(
+                            category,
+                            color ?? Colors.blue,
+                          );
                         }
                       },
                       onSuggestionSelected: (p) {
@@ -688,6 +693,28 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+            if (_activeCategory != null)
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  child: CategoryTopBar(
+                    title: _activeCategory!,
+                    onClose: () {
+                      setState(() {
+                        _activeCategory = null;
+                        _activeCategoryColor = null;
+                        _activeCategoryPointers = [];
+                      });
+                      _filterMarkersByCategory(null, null);
+                      _panelController.close();
+                      _notifyNavBar(false);
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -708,7 +735,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
 
-    _panelClosingStarted = false;      // reset every time we open the flow
+    _panelClosingStarted = false; // reset every time we open the flow
     setState(() {
       _creatingRoute = true;
       _currentMode = TravelMode.walk; // reset to walking
@@ -725,61 +752,61 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         vsync: this,
         duration: const Duration(milliseconds: 300),
       );
-      final curved =
-          CurvedAnimation(parent: _plannerAnimCtr!, curve: Curves.easeInOut);
+      final curved = CurvedAnimation(
+        parent: _plannerAnimCtr!,
+        curve: Curves.easeInOut,
+      );
 
-       // Same feel as the search-bar: only 6 % of its height moves.
-       final slide = Tween<Offset>(
-         begin: const Offset(0, -0.06),
-         end: Offset.zero,
-       ).animate(curved);
+      // Same feel as the search-bar: only 6 % of its height moves.
+      final slide = Tween<Offset>(
+        begin: const Offset(0, -0.06),
+        end: Offset.zero,
+      ).animate(curved);
 
-       final fade = Tween<double>(begin: 0, end: 1).animate(curved);
+      final fade = Tween<double>(begin: 0, end: 1).animate(curved);
 
-       _plannerOverlay = OverlayEntry(
-         builder: (_) => SlideTransition(
-           position: slide,
-           child: FadeTransition(
-             opacity: fade,
-             child: Align(
-               alignment: Alignment.topCenter,
-               child: RoutePlanBar(
-                 currentLocation: _currentLocation,
-                 initialDestination: destination,
-                 allPointers: _allPointers,
-                 onCancelled: () async {
-                   await _dismissPlannerOverlay();      // animate-out first
-                   setState(() => _creatingRoute = false);
-                   _notifyNavBar(false); // ⬅️ show it again
-                   // also close the Sliding-up panel if it is open
-                   if (_panelController.isPanelOpen) {
-                     _panelController.close();
-                   }
-                 },
-                 onChanged: (route) async {
-                   // 1️⃣ recalc the route in place
-                   await _handleCreateRoute(
-                     route,
-                     rebuildOnly: true,
-                   );
+      _plannerOverlay = OverlayEntry(
+        builder: (_) => SlideTransition(
+          position: slide,
+          child: FadeTransition(
+            opacity: fade,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: RoutePlanBar(
+                currentLocation: _currentLocation,
+                initialDestination: destination,
+                allPointers: _allPointers,
+                onCancelled: () async {
+                  await _dismissPlannerOverlay(); // animate-out first
+                  setState(() => _creatingRoute = false);
+                  _notifyNavBar(false); // show it again
+                  // also close the Sliding-up panel if it is open
+                  if (_panelController.isPanelOpen) {
+                    _panelController.close();
+                  }
+                },
+                onChanged: (route) async {
+                  // 1. recalc the route in place
+                  await _handleCreateRoute(route, rebuildOnly: true);
 
-                   // 2️⃣ once that's done, grab all the points & fit the map
-                   final data = _routesNotifier.value[_currentMode];
-                   final pts = data?.segments.expand((s) => s.path).toList() ?? [];
-                   if (pts.isNotEmpty) {
-                     final bounds = LatLngBounds.fromPoints(pts);
-                     // you can tweak the padding/zoomThreshold here
-                     _animatedMapMove(bounds.center, 16.0);
-                   }
-                 },
-               ),
-             ),
-           ),
-         ),
-       );
+                  // 2. once that's done, grab all the points & fit the map
+                  final data = _routesNotifier.value[_currentMode];
+                  final pts =
+                      data?.segments.expand((s) => s.path).toList() ?? [];
+                  if (pts.isNotEmpty) {
+                    final bounds = LatLngBounds.fromPoints(pts);
+                    // you can tweak the padding/zoomThreshold here
+                    _animatedMapMove(bounds.center, 16.0);
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
+      );
 
       Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
-      _plannerAnimCtr!.forward();                           // animate it in
+      _plannerAnimCtr!.forward(); // animate it in
     }
 
     // first time in → rebuildOnly=false (default)
@@ -859,9 +886,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           child: const Icon(Icons.my_location, color: Colors.blue),
         ),
       ),
-      ),
-    );
-  
+    ),
+  );
 
   // ── markers, filter & search ─────────────────────────────────────
   Future<void> _loadBuildingMarkers() async {
@@ -1119,9 +1145,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
 
     _plannerOverlay!.remove();
-    _plannerOverlay  = null;
+    _plannerOverlay = null;
     _plannerAnimCtr?.dispose();
-    _plannerAnimCtr  = null;
+    _plannerAnimCtr = null;
   }
 
   // ── utils ───────────────────────────────────────────────────────
@@ -1142,6 +1168,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _showCategoryListPopup(String category, Color color) {
+    print('ShowCategoryListPopup called for $category');
     final cat = category.trim().toLowerCase();
     final filtered = _allPointers.where((p) {
       final pCat = p.category.trim().toLowerCase();
@@ -1153,15 +1180,50 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return false;
     }).toList();
 
-    // Set active category and show it in sliding panel instead of modal
+    /* print('Popup for: $category');
+    print('---');
+    print('Filtered pointers: ${filtered.length}');
+    print('ActiveCategory: $category');*/
+
     setState(() {
       _activeCategory = category;
       _activeCategoryColor = color;
       _activeCategoryPointers = filtered;
+      // open sliding panel and hide navigation bar
+      _markers = filtered.map((pointer) {
+        return Marker(
+          point: LatLng(pointer.lat, pointer.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _onMarkerTap(pointer),
+            child: Image.asset(
+              getPinAssetForCategory(pointer.category),
+              width: 40,
+              height: 40,
+            ),
+          ),
+        );
+      }).toList();
     });
 
-    // Open the sliding panel and hide navigation bar
     _panelController.open();
+
+    // animate map to the category center
+    if (cat.contains('café') || cat.contains('cafe')) {
+      _animatedMapMove(_cafesCenter, _cafesZoom);
+    } else if (cat.contains('librar')) {
+      _animatedMapMove(_librariesCenter, _librariesZoom);
+    } else if (cat.contains('mensa') || cat.contains('canteen')) {
+      _animatedMapMove(_canteensCenter, _canteensZoom);
+    }
+
+    // Panel open
+    _panelController.animatePanelToPosition(
+      0.6, //panel höhe
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
     _notifyNavBar(true);
   }
 
@@ -1185,6 +1247,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildCategoryListPanel(ScrollController sc) {
+    //print('Build Category List Panel called');
     return Column(
       children: [
         // Panel handle for dragging
@@ -1197,21 +1260,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(2),
           ),
         ),
-        
-        // Header with category title and close button
+
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
               Expanded(
                 child: Text(
-                  'All ${_activeCategory}',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  '${_activeCategory}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              // Close button to hide the category list
               Container(
                 width: 28,
                 height: 28,
@@ -1224,12 +1285,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   splashRadius: 16,
                   padding: const EdgeInsets.all(4),
                   onPressed: () {
-                    // Clear category state and close panel
                     setState(() {
                       _activeCategory = null;
                       _activeCategoryColor = null;
                       _activeCategoryPointers = [];
                     });
+                    _filterMarkersByCategory(null, null);
                     _panelController.close();
                     _notifyNavBar(false);
                   },
@@ -1238,13 +1299,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             ],
           ),
         ),
-        
+
         const SizedBox(height: 20),
-        
+
         // Scrollable list of category items
         Expanded(
           child: ListView.builder(
-            controller: sc, // Important: use the provided scroll controller
+            controller: sc,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: _activeCategoryPointers.length,
             itemBuilder: (context, i) {
@@ -1263,8 +1324,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ],
                 ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  // Show category-specific pin icon
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   leading: Image.asset(
                     getPinAssetForCategory(p.category),
                     width: 32,
@@ -1275,28 +1338,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(p.category),
-                  // Navigation button to start route planning
                   trailing: IconButton(
                     icon: const Icon(Icons.directions, color: Colors.blue),
                     onPressed: () {
-                      // Clear category state and start route flow
                       setState(() {
                         _activeCategory = null;
+                        _activeCategoryColor = null;
                         _activeCategoryPointers = [];
                       });
                       _panelController.close();
                       _startRouteFlow(LatLng(p.lat, p.lng));
                     },
                   ),
-                  // Tap to show building details
                   onTap: () {
                     setState(() {
                       _activeCategory = null;
+                      _activeCategoryColor = null;
                       _activeCategoryPointers = [];
-                      _buildingPanelPointer = p; // Show building info panel
                     });
-                    _animatedMapMove(LatLng(p.lat, p.lng), 18);
-                    // Panel will automatically rebuild and show building info
+                    _filterMarkersByCategory(null, null);
+                    _panelController.close();
+                    _notifyNavBar(false);
                   },
                 ),
               );

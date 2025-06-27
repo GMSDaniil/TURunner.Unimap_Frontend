@@ -16,17 +16,4 @@ class MensaApiService {
       return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
     }
   }
-
-  /*Future<Either> fetchMensaMeals(GetMenuReqParams params) async {
-    try{
-      final response = await sl<DioClient>().post(
-        ApiUrls.getMensaMenu,
-        data: params.toMap(),
-      );
-      return Right(response);
-    } on DioException catch (e) {
-      return Left(e.response!.data['message']);
-    }
-    
-  }*/
 }

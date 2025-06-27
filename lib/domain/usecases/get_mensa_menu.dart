@@ -34,11 +34,3 @@ class GetMensaMenuUseCase
     }
   }
 }
-
-/*
-class GetMensaMenuUseCase {
-  Future<List<MealModel>> call(GetMenuReqParams params) async {
-    return await sl<MensaRepository>().getMensaMenu(params);
-  }
-}
-*/
