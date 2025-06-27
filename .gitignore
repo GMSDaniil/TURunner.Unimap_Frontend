@@ -1,3 +1,5 @@
+config.env
+
 # Miscellaneous
 *.class
 *.log

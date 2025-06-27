@@ -18,6 +18,7 @@ import 'package:auth_app/presentation/widgets/category_navigation.dart'
     show CategoryNavigationBar;
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
 import 'package:auth_app/presentation/widgets/map_widget.dart';
+import 'package:auth_app/presentation/widgets/mapbox_map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
@@ -602,7 +603,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         },
         body: Stack(
           children: [
-            _buildFlutterMap(),
+            // _buildFlutterMap(),
+            MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
 
             // ── animated white sheet over the map ──────────────────────
             AnimatedSlide(

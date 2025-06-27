@@ -2,9 +2,11 @@ import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
 import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'common/bloc/auth/auth_state.dart';
 import 'core/configs/theme/app_theme.dart';
@@ -29,6 +31,8 @@ Future<void> main() async {
 
   // 2) create a tile‐cache store called 'mapStore'
   await FMTC.FMTCStore('mapStore').manage.create();
+
+  await dotenv.load(fileName: "config.env");
 
   // // 3) bulk–download your campus region (15–18) in the background
   // final region = FMTC.RectangleRegion(

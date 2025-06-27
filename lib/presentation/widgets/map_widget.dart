@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/route_segment.dart';
@@ -80,10 +81,19 @@ class MapWidget extends StatelessWidget {
       ),
       children: [
         // Tile provider layer
+        // TileLayer(
+        //   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        //   userAgentPackageName: 'com.example.app',
+        //   tileProvider: cachedTileProvider,
+        // ),
         TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.app',
-          tileProvider: cachedTileProvider,
+          urlTemplate: 'https://api.mapbox.com/styles/v1/{username}/{style_id}/tiles/256/{z}/{x}/{y}@2x?access_token={accessToken}',
+          // urlTemplate: 'https://api.mapbox.com/v4/mapbox.standard/{z}/{x}/{y}.png?access_token={accessToken}',
+          additionalOptions: {
+            'accessToken': dotenv.env['MAPBOX_ACCESS_TOKEN']!,
+            'username': 'mapbox',
+            'style_id': 'streets-v12',
+          },
         ),
         // Polyline layer for routes
         PolylineLayer(

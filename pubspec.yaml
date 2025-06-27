@@ -24,6 +24,8 @@ dependencies:
   flutter_polyline_points: ^2.1.0
   geolocator: ^14.0.1
   sliding_up_panel: ^2.0.0
+  flutter_dotenv: 
+  mapbox_maps_flutter: 
 
 dev_dependencies:
   flutter_test:
@@ -36,6 +38,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - config.env
     - assets/images/
     # - assets/campus_buildings.json
     # - assets/campus_buildings_centroids.json
@@ -44,6 +47,7 @@ flutter:
     - assets/icons/pin_cafe.png
     - assets/icons/pin_library.png
     - assets/icons/pin_default.png
+
 
   fonts:
     - family: Nunito
