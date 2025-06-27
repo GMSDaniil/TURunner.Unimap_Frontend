@@ -28,9 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context, listen: false).user;
     return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => ButtonStateCubit()),
-      ],
+      providers: [BlocProvider(create: (_) => ButtonStateCubit())],
       child: Scaffold(
         // appBar: AppBar(
         //   title: Text(
@@ -42,73 +40,80 @@ class _ProfilePageState extends State<ProfilePage> {
         // ),
         body: BlocListener<ButtonStateCubit, ButtonState>(
           listener: (context, state) {
-                if (state is ButtonSuccessState){ 
-                  Provider.of<UserProvider>(context, listen: false).clearUser();
-                  setState(() {
-                    
-                  });
-                }
-              },
+            if (state is ButtonSuccessState) {
+              Provider.of<UserProvider>(context, listen: false).clearUser();
+              setState(() {});
+            }
+          },
           child: SafeArea(
             child: user == null
                 ? _buildGuestView(context)
-                :   MultiBlocProvider(
-                  providers: [
-                    BlocProvider(create: (context) => UserDisplayCubit()..displayUser()),
-                  ],
-                  child: BlocListener<UserDisplayCubit, UserDisplayState>(
-                    listener: (context, state) {
-                    if (state is UserLoaded) {
-                      Provider.of<UserProvider>(context, listen: false).setUser(state.userEntity);
-                    }
-                    },
-                    child: Center(
-                      child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-                        builder: (context, state) {
-                          if (state is UserLoading) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
-                                  
-                          if (state is UserLoaded) {
-                            final user = state.userEntity;
-                                  
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const SizedBox(height: 32),
-                                  _buildProfilePicture(context),
-                                  const SizedBox(height: 24),
-                                  _buildUsername(user),
-                                  const SizedBox(height: 8),
-                                  _buildEmail(user),
-                                  const SizedBox(height: 16),
-                                  // _buildDescription(),
-                                  // const SizedBox(height: 24),
-                                  _buildLogoutButton(context),
-                                  const SizedBox(height: 24),
-                                ],
-                              ),
+                : MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (context) => UserDisplayCubit()..displayUser(),
+                      ),
+                    ],
+                    child: BlocListener<UserDisplayCubit, UserDisplayState>(
+                      listener: (context, state) {
+                        if (state is UserLoaded) {
+                          Provider.of<UserProvider>(
+                            context,
+                            listen: false,
+                          ).setUser(state.userEntity);
+                        }
+                      },
+                      child: Center(
+                        child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+                          builder: (context, state) {
+                            if (state is UserLoading) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            if (state is UserLoaded) {
+                              final user = state.userEntity;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(height: 32),
+                                    _buildProfilePicture(context),
+                                    const SizedBox(height: 24),
+                                    _buildUsername(user),
+                                    const SizedBox(height: 8),
+                                    _buildEmail(user),
+                                    const SizedBox(height: 16),
+                                    // _buildDescription(),
+                                    // const SizedBox(height: 24),
+                                    _buildLogoutButton(context),
+                                    const SizedBox(height: 24),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            if (state is LoadUserFailure) {
+                              return Center(child: Text(state.errorMessage));
+                            }
+
+                            return const Center(
+                              child: Text('No user data available.'),
                             );
-                          }
-                                  
-                          if (state is LoadUserFailure) {
-                            return Center(child: Text(state.errorMessage));
-                          }
-                                  
-                          return const Center(child: Text('No user data available.'));
-                        },
+                          },
+                        ),
                       ),
                     ),
                   ),
-                ),
-              
-            ),
           ),
         ),
-      );
-    
+      ),
+    );
   }
 
   Widget _buildUsername(UserEntity user) {
@@ -143,11 +148,11 @@ class _ProfilePageState extends State<ProfilePage> {
           title: 'Logout',
           onPressed: () {
             innerContext.read<ButtonStateCubit>().execute(
-                  usecase: sl<LogoutUseCase>()
-                 );
+              usecase: sl<LogoutUseCase>(),
+            );
           },
         );
-      }
+      },
     );
   }
 

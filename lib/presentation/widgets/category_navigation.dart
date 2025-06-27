@@ -44,7 +44,7 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                 _buildChip(
                   icon: Icons.local_library,
                   label: 'Libraries',
-                  color: Colors.yellow,
+                  color: Colors.yellow[800]!,
                 ),
                 _buildChip(
                   icon: Icons.restaurant,
@@ -76,24 +76,23 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
     required Color color,
   }) {
     final isSelected = _selectedCategory == label;
+    // no selection state without any highlight!
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
-        color: isSelected ? color.withOpacity(0.15) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         elevation: 2,
         shadowColor: Colors.black12,
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: () {
+            // Toggle selection: deselect if already selected, select otherwise
             setState(() {
               _selectedCategory = isSelected ? null : label;
             });
-            // pass nulls when unselected
-            widget.onCategorySelected(
-              _selectedCategory,
-              _selectedCategory != null ? color : null,
-            );
+            // show the popup info list
+            widget.onCategorySelected(label, color);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
