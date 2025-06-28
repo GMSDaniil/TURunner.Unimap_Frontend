@@ -3,14 +3,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/domain/entities/building_entity.dart';
 
 class BuildingModel extends BuildingEntity {
-  BuildingModel({required String name, required List<LatLng> polygon})
+  BuildingModel({required String name, required String polygon})
       : super(name: name, polygon: polygon);
 
   factory BuildingModel.fromJson(Map<String, dynamic> json) {
     // ÄNDERUNG: Die Feldnamen an das campus_buildings.json angepasst
     return BuildingModel(
       name: json['Name'], // vorher: json['name']
-      polygon: parsePolygonOrMultiPolygonFromWKT(json['Contour']),
+      polygon: json['Contour'],
     );
   }
 }

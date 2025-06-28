@@ -1,4 +1,3 @@
-
 import 'package:auth_app/core/utils/point_in_polygon.dart';
 import 'package:auth_app/data/source/pointer_api_service.dart';
 import 'package:auth_app/domain/entities/building_entity.dart';
@@ -44,7 +43,7 @@ class PointersRepositoryImpl implements PointersRepository {
           return pointers.where((pointer) => pointer.contourWKT != null).map((pointer) {
             return BuildingEntity(
               name: pointer.name,
-              polygon: pointer.contourWKT!,
+              polygon: pointer.contourWKT!.toString(),
             );
           }).toList();
         },
@@ -53,7 +52,7 @@ class PointersRepositoryImpl implements PointersRepository {
       return _cache!.where((pointer) => pointer.contourWKT != null).map((pointer) {
         return BuildingEntity(
           name: pointer.name,
-          polygon: pointer.contourWKT!,
+          polygon: pointer.contourWKT!.toString(),
         );
       }).toList();
     }
@@ -62,11 +61,27 @@ class PointersRepositoryImpl implements PointersRepository {
   @override
   Future<BuildingEntity?> findBuildingAt(LatLng point) async {
     final buildings = await getBuildings();
+    print('🔍 Checking point: ${point.latitude}, ${point.longitude}');
+    print('📍 Total buildings to check: ${buildings.length}');
+    
     for (final building in buildings) {
-      if (pointInPolygon(point, building.polygon)) {
+      print('🏢 Checking ${building.name}');
+      
+      if (building.name == 'Chemiegebäude') {
+        print('🧪 DEBUGGING CHEMIEGEBÄUDE:');
+        print('WKT: ${building.polygon.substring(0, 100)}...');
+      }
+      
+      final isInside = pointInPolygon(point, building.polygon);
+      print('Result for ${building.name}: $isInside');
+      
+      if (isInside) {
+        print('✅ Found building: ${building.name}');
         return building;
       }
     }
+    
+    print('🚫 No building found at clicked location');
     return null;
   }
 }
