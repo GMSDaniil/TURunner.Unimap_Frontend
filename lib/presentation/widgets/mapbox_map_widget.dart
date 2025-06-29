@@ -292,7 +292,6 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     mapboxMap.style.setStyleImportConfigProperties("basemap",{
       "showPointOfInterestLabels" : false,
       "lightPreset": "day",
-      "buildingHighlightColor" : 'red',
     });
 
     mapboxMap.compass.updateSettings(
@@ -310,14 +309,14 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
     // Highlight selected building
-    var tapInteractionBuildings =
-        TapInteraction(StandardBuildings(), (feature, pos) {
-      mapboxMap.setFeatureStateForFeaturesetFeature(
-          feature, StandardBuildingsState(highlight: true));
-      widget.onMapTap(LatLng(pos.point.coordinates.lat.toDouble(), pos.point.coordinates.lng.toDouble()));
+    // var tapInteractionBuildings =
+    //     TapInteraction(StandardBuildings(), (feature, pos) {
+    //   mapboxMap.setFeatureStateForFeaturesetFeature(
+    //       feature, StandardBuildingsState(highlight: true));
+    //   widget.onMapTap(LatLng(pos.point.coordinates.lat.toDouble(), pos.point.coordinates.lng.toDouble()));
       
-    });
-    mapboxMap.addInteraction(tapInteractionBuildings);
+    // });
+    // mapboxMap.addInteraction(tapInteractionBuildings);
 
     
 
