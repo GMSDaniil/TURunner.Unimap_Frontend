@@ -10,13 +10,23 @@ class StudentApiService {
     GetStudentScheduleReqParams params,
   ) async {
     try {
-      final url =
-          '${ApiUrls.getStudentSchedule}?stupo=${params.stupo}&semester=${params.semester}'
-          '${params.filterDates != null ? '&filter_dates=${params.filterDates}' : ''}';
-      final response = await sl<DioClient>().get(url);
+      print('🔍 Request params: ${params.toMap()}');
+      
+      final response = await sl<DioClient>().get(
+        ApiUrls.getStudentSchedule,
+        queryParameters: params.toMap(),
+      );
+      
+      print('✅ API Response received');
+      print('📊 Response type: ${response.data.runtimeType}');
+      
       return Right(response);
     } on DioException catch (e) {
-      return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
+      print('❌ DioException: ${e.message}');
+      return Left(e.response?.data['message'] ?? e.message ?? 'Network error');
+    } catch (e) {
+      print('❌ Unknown error: $e');
+      return Left('Unknown error occurred');
     }
   }
 }

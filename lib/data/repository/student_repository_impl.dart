@@ -11,20 +11,21 @@ class StudentRepositoryImpl implements StudentRepository {
   StudentRepositoryImpl(this.apiService);
 
   @override
-  Future<Either<String, StudentScheduleResponse>> getStudentSchedule(GetStudentScheduleReqParams params) async {
+  Future<Either<String, StudentScheduleResponse>> getStudentSchedule(
+    GetStudentScheduleReqParams params,
+  ) async {
     final result = await apiService.fetchStudentSchedule(params);
 
     return result.fold(
       (errorMessage) => Left(errorMessage),
       (response) {
         try {
-          final data = response.data is String
-              ? jsonDecode(response.data)
-              : response.data;
-          final schedule = StudentScheduleResponse.fromJson(data);
-          return Right(schedule);
+          final scheduleResponse = StudentScheduleResponse.fromJson(response.data);
+          return Right(scheduleResponse);
         } catch (e) {
-          return Left('Failed to parse student schedule data');
+          print('❌ Parsing error: $e');
+          print('📄 Response data: ${response.data}');
+          return Left('Failed to parse student schedule data: $e');
         }
       },
     );
