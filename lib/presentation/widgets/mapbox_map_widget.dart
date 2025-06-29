@@ -144,6 +144,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         id: layerId,
         sourceId: sourceId,
         lineColor: color,
+        lineEmissiveStrength: 1.0,
         lineWidth: 5.0,
         lineDasharray: dashArray,
         lineCap: LineCap.ROUND,
