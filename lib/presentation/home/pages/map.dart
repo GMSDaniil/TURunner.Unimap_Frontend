@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
+import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
@@ -30,6 +31,7 @@ import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/animation.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
@@ -65,7 +67,7 @@ const _librariesCenter = LatLng(52.51250, 13.32619); //  4 libraries
 const _librariesZoom = 15.5;
 
 const _canteensCenter = LatLng(52.51351, 13.32496); //  4 main mensas¹
-const _canteensZoom = 16.0;
+const _canteensZoom = 15.0;
 // ¹ the Marchstraße (northern) mensa was left out on purpose; including it
 //   made the view less useful for day-to-day campus food spotting.
 
@@ -121,9 +123,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final TextEditingController _searchCtl = TextEditingController();
   LatLng? _routeDestination; // Field to store the route destination
   List<Marker> _markers = [];
+  List<InteractiveAnnotation> _interactiveAnnotations = [];
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation;
+
+  bool _markerTapJustHandled = false;
+
+  bool _is3D = false;
+
+  final Map<String, Uint8List> _categoryImageCache = {};
+
+  mb.MapboxMap? _mapboxMap;
 
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
       ValueNotifier({});
@@ -152,6 +163,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _preloadCategoryImages();
     _loadBuildingMarkers();
     _searchCtl.addListener(_onSearchChanged);
     _goToCurrentLocation();
@@ -166,6 +178,34 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       }
     });
   }
+
+  Future<LatLng?> getCurrentLocation() async {
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    var perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return null;
+      }
+    }
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      _currentLocation = LatLng(pos.latitude, pos.longitude);
+      return LatLng(pos.latitude, pos.longitude);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _preloadCategoryImages() async {
+  final categories = ['mensa', 'cafe', 'library', 'default'];
+  for (final cat in categories) {
+    final assetPath = getPinAssetForCategory(cat);
+    final byteData = await rootBundle.load(assetPath);
+    _categoryImageCache[cat] = byteData.buffer.asUint8List();
+  }
+}
 
   @override
   void dispose() {
@@ -591,7 +631,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               _activeCategoryPointers = [];
             });
 
-            _filterMarkersByCategory(null, null);
+            _filterMarkersByCategory(null);
 
             // if the user *tapped* the close handle without dragging,
             // the bar is still up → dismiss it now
@@ -664,7 +704,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       },
                       onSuggestionSelected: (p) {
                         final dest = LatLng(p.lat, p.lng);
-                        _animatedMapMove(dest, 18);
+                        _animatedMapboxMove(dest, 18);
                         _onMapTap(dest);
                       },
                       focusNode: _searchFocusNode,
@@ -675,6 +715,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
+            Positioned(
+  top:  170, // adjust as needed to not overlap other buttons
+  right: 20,
+  child: FloatingActionButton.extended(
+    heroTag: 'toggle3d',
+    backgroundColor: Colors.white,
+    label: Text(_is3D ? '2D' : '3D', style: const TextStyle(color: Colors.blue)),
+    onPressed: () {
+      setState(() => _is3D = !_is3D);
+      if (_mapboxMap != null) {
+        _mapboxMap!.easeTo(
+          mb.CameraOptions(
+            pitch: _is3D ? 60.0 : 0.0,
+          ),
+          mb.MapAnimationOptions(duration: 600, startDelay: 0),
+        );
+      }
+    },
+  ),
+),
             if (!_panelActive) _buildCurrentLocationButton(),
             if (!_panelActive)
               Positioned(
@@ -708,7 +768,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         _activeCategoryColor = null;
                         _activeCategoryPointers = [];
                       });
-                      _filterMarkersByCategory(null, null);
+                      _filterMarkersByCategory(null);
                       _panelController.close();
                       _notifyNavBar(false);
                     },
@@ -731,7 +791,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ───────────────────────────────────────────────────────────
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
-  void _startRouteFlow(LatLng destination) {
+  Future<void> _startRouteFlow(LatLng destination) async {
     _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
 
@@ -747,6 +807,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
      *  – slides in + fades in (like the search bar),
      *  – slides out + fades out on cancel.
      * ─────────────────────────────────────────────────────────── */
+     final currentLocation = await getCurrentLocation();
     if (_plannerOverlay == null) {
       _plannerAnimCtr = AnimationController(
         vsync: this,
@@ -764,7 +825,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ).animate(curved);
 
       final fade = Tween<double>(begin: 0, end: 1).animate(curved);
-
+      
       _plannerOverlay = OverlayEntry(
         builder: (_) => SlideTransition(
           position: slide,
@@ -773,7 +834,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             child: Align(
               alignment: Alignment.topCenter,
               child: RoutePlanBar(
-                currentLocation: _currentLocation,
+                currentLocation: currentLocation,
                 initialDestination: destination,
                 allPointers: _allPointers,
                 onCancelled: () async {
@@ -796,7 +857,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   if (pts.isNotEmpty) {
                     final bounds = LatLngBounds.fromPoints(pts);
                     // you can tweak the padding/zoomThreshold here
-                    _animatedMapMove(bounds.center, 16.0);
+                    _animatedMapboxMove(bounds.center, 16.0);
                   }
                 },
               ),
@@ -810,7 +871,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
 
     // first time in → rebuildOnly=false (default)
-    _handleCreateRoute([_currentLocation!, _routeDestination!]);
+    _handleCreateRoute([currentLocation!, _routeDestination!]);
   }
 
   // ── search listener ──────────────────────────────────────────────
@@ -850,18 +911,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
     final scooterMarkers = buildScooterMarkers(segments);
 
-    return MapWidget(
-      mapController: _mapController,
-      markers: _markers,
+    return MapboxMapWidget(
+      markerAnnotations: _interactiveAnnotations,
       busStopMarkers: busMarkers,
       scooterMarkers: scooterMarkers,
       segments: segments,
-      currentLocation: _currentLocation,
       cachedTileProvider: _cachedTiles,
       onMapTap: _onMapTap,
+      onMapCreated: (map) {
+        _mapboxMap = map;
+      },
       parentContext: context,
     );
   }
+
+  Future<List<mb.PointAnnotationOptions>> convertMarkersToAnnotations(List<Marker> markers, Uint8List iconBytes) async {
+  return markers.map((marker) {
+    return mb.PointAnnotationOptions(
+      geometry: mb.Point(
+        coordinates: mb.Position(marker.point.longitude, marker.point.latitude),
+      ),
+      iconSize: 1.0,
+      // image: , // shared image asset for all markers
+    );
+  }).toList();
+}
 
   // ────────────────────────────────────────────────────────────────
   // Helpers to build overlay widgets
@@ -890,6 +964,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   );
 
   // ── markers, filter & search ─────────────────────────────────────
+  Uint8List _loadImageBytesForCategory(String category) {
+    final cat = category.trim().toLowerCase();
+    switch (cat) {
+      case 'café':
+      case 'cafe':
+        return _categoryImageCache['cafe']!;
+      case 'library':
+      case 'libraries':
+        return _categoryImageCache['library']!;
+      case 'canteen':
+      case 'mensa':
+        return _categoryImageCache['mensa']!;
+      default:
+        return _categoryImageCache['default']!;
+    }
+  }
+
   Future<void> _loadBuildingMarkers() async {
     var response = await sl<GetPointersUseCase>().call();
     response.fold(
@@ -897,24 +988,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         debugPrint('Error loading pointers: $error');
         return;
       },
-      (pointers) {
+      (pointers) async {
         _allPointers = pointers;
         final m = _allPointers.map((p) {
-          return Marker(
-            point: LatLng(p.lat, p.lng),
-            width: 40,
-            height: 40,
-            child: GestureDetector(
-              onTap: () => _onMarkerTap(p),
-              child: Image.asset(
-                getPinAssetForCategory(p.category),
-                width: 40,
-                height: 40,
-              ),
-            ),
-          );
+          return mapMarker(p);
         }).toList();
-        setState(() => _markers = m);
+
+        final List<InteractiveAnnotation> annotations = [];
+
+        for (final p in _allPointers) {
+          annotations.add(
+            mapBoxMarker(p)
+          );
+        }
+
+        setState(() {
+          _interactiveAnnotations = annotations;
+          _markers = m;
+        });
       },
     );
   }
@@ -938,52 +1029,48 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  void _filterMarkersByCategory(String? category, Color? markerColor) {
+  void _filterMarkersByCategory(String? category) {
+    List<Marker> newMarkers;
+    List<InteractiveAnnotation> newAnnotations;
+
+    if (category == null) {
+      newMarkers = _allPointers.map((pointer) => mapMarker(pointer)).toList();
+      newAnnotations = _allPointers.map((pointer) => mapBoxMarker(pointer)).toList();
+    } else {
+      newMarkers = _allPointers
+          .where((p) {
+            final cat = category.trim().toLowerCase();
+            final pCat = p.category.trim().toLowerCase();
+            if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+            if (cat.contains('librar')) return pCat.contains('librar');
+            if (cat.contains('canteen') || cat.contains('mensa'))
+              return pCat == 'canteen' || pCat == 'mensa';
+            if (cat.contains('study room')) return pCat == 'study room';
+            return false;
+          })
+          .map((pointer) => mapMarker(pointer))
+          .toList();
+
+      newAnnotations = _allPointers
+          .where((p) {
+            final cat = category.trim().toLowerCase();
+            final pCat = p.category.trim().toLowerCase();
+            if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+            if (cat.contains('librar')) return pCat.contains('librar');
+            if (cat.contains('canteen') || cat.contains('mensa'))
+              return pCat == 'canteen' || pCat == 'mensa';
+            if (cat.contains('study room')) return pCat == 'study room';
+            return false;
+          })
+          .map((pointer) => mapBoxMarker(pointer))
+          .toList();
+    }
+
     setState(() {
-      if (category == null) {
-        _markers = _allPointers.map((pointer) {
-          return Marker(
-            point: LatLng(pointer.lat, pointer.lng),
-            width: 40,
-            height: 40,
-            child: GestureDetector(
-              onTap: () => _onMarkerTap(pointer),
-              child: Image.asset(
-                getPinAssetForCategory(pointer.category),
-                width: 40,
-                height: 40,
-              ),
-            ),
-          );
-        }).toList();
-      } else {
-        _markers = _allPointers
-            .where((p) {
-              final cat = category.trim().toLowerCase();
-              final pCat = p.category.trim().toLowerCase();
-              if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-              if (cat.contains('librar')) return pCat.contains('librar');
-              if (cat.contains('canteen') || cat.contains('mensa'))
-                return pCat == 'canteen' || pCat == 'mensa';
-              if (cat.contains('study room')) return pCat == 'study room';
-              return false;
-            })
-            .map((pointer) {
-              return Marker(
-                point: LatLng(pointer.lat, pointer.lng),
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () => _onMarkerTap(pointer),
-                  child: Image.asset(
-                    getPinAssetForCategory(pointer.category),
-                    width: 40,
-                    height: 40,
-                  ),
-                ),
-              );
-            })
-            .toList();
+      _markers = newMarkers;
+      // Change only based on length to check this fast.
+      if (_interactiveAnnotations.length != newAnnotations.length) {
+        _interactiveAnnotations = newAnnotations;
       }
     });
 
@@ -991,17 +1078,50 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (category != null) {
       final cat = category.toLowerCase();
       if (cat.contains('café') || cat.contains('cafe')) {
-        _animatedMapMove(_cafesCenter, _cafesZoom);
+        _animatedMapboxMove(_cafesCenter, _cafesZoom);
       } else if (cat.contains('librar')) {
-        _animatedMapMove(_librariesCenter, _librariesZoom);
+        _animatedMapboxMove(_librariesCenter, _librariesZoom);
       } else if (cat.contains('mensa') || cat.contains('canteen')) {
-        _animatedMapMove(_canteensCenter, _canteensZoom);
+        _animatedMapboxMove(_canteensCenter, _canteensZoom);
       }
     }
   }
 
+  Marker mapMarker(Pointer pointer) {
+    return Marker(
+      point: LatLng(pointer.lat, pointer.lng),
+      width: 40,
+      height: 40,
+      child: GestureDetector(
+        onTap: () => _onMarkerTap(pointer),
+        child: Image.asset(
+          getPinAssetForCategory(pointer.category),
+          width: 40,
+          height: 40,
+        ),
+      ),
+    );
+  }
+
+  InteractiveAnnotation mapBoxMarker(Pointer pointer){
+    return InteractiveAnnotation(
+      options: mb.PointAnnotationOptions(
+        geometry: mb.Point(
+          coordinates: mb.Position(pointer.lng, pointer.lat),
+        ),
+        iconSize: 2.0,
+        image: _loadImageBytesForCategory(pointer.category),
+      ),
+      onTap: () => _onMarkerTap(pointer),
+    );
+  }
+
   // ── taps ─────────────────────────────────────────────────────────
   void _onMapTap(LatLng latlng) async {
+    if (_markerTapJustHandled) {
+      _markerTapJustHandled = false;
+      return;
+    }
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
     if (building != null) {
@@ -1014,7 +1134,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           category: 'Building',
         ),
       );
-      _animatedMapMove(LatLng(p.lat, p.lng), 18);
+      _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
       _showBuildingPanel(p);
     } else {
       setState(() => _coordinatePanelLatLng = latlng);
@@ -1025,30 +1145,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   void _onMarkerTap(Pointer p) {
     if (_plannerOverlay != null) return;
-    _animatedMapMove(LatLng(p.lat, p.lng), 18);
+    _markerTapJustHandled = true;
+    _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
     _showBuildingPanel(p);
   }
 
   // ── current location ─────────────────────────────────────────────
   Future<void> _goToCurrentLocation({bool moveMap = false}) async {
-    if (!await Geolocator.isLocationServiceEnabled()) return;
-    var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) {
-      perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever)
-        return;
-    }
-
-    final last = await Geolocator.getLastKnownPosition();
-    if (last != null) {
-      _currentLocation = LatLng(last.latitude, last.longitude);
-      if (moveMap) _animatedMapMove(_currentLocation!, 17);
-    }
-
-    final pos = await Geolocator.getCurrentPosition();
-    _currentLocation = LatLng(pos.latitude, pos.longitude);
-    if (moveMap) _animatedMapMove(_currentLocation!, 17);
+    final location = await getCurrentLocation();
+    if (moveMap) _animatedMapboxMove(location!, 17);
     setState(() {});
   }
 
@@ -1062,7 +1167,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       route: route,
       routesNotifier: _routesNotifier,
       setState: setState,
-      animatedMapMove: _animatedMapMove,
+      animatedMapMove: _animatedMapboxMove,
       mounted: mounted,
       currentMode: _currentMode,
       showRouteOptionsSheet: _showRouteOptionsSheet,
@@ -1128,10 +1233,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _mapAnimController!.forward();
   }
 
-  void _showPlannerBar() {
-    final dest = _currentLocation ?? LatLng(matheLat, matheLon);
-    _startRouteFlow(dest);
+  void _animatedMapboxMove(LatLng dest, double zoom){
+    if (_mapboxMap == null) return;
+    _mapboxMap!.easeTo(
+      mb.CameraOptions(
+        center: mb.Point(coordinates: mb.Position(dest.longitude, dest.latitude)),
+        zoom: zoom,
+      ),
+      mb.MapAnimationOptions(duration: 600, startDelay: 0),
+    );
   }
+
+  // void _showPlannerBar() {
+  //   final dest = _currentLocation ?? LatLng(matheLat, matheLon);
+  //   _startRouteFlow(dest);
+  // }
 
   /*───────────────────────────────────────────────────────────────
    * Route-Plan bar teardown animation (fade & slide out)
@@ -1155,19 +1271,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     switch (cat.trim().toLowerCase()) {
       case 'mensa':
       case 'canteen':
-        return 'assets/icons/pin_mensa.png';
+        return 'assets/icons/pin_mensa_64.png';
       case 'café':
       case 'cafe':
-        return 'assets/icons/pin_cafe.png';
+        return 'assets/icons/pin_cafe_64.png';
       case 'libraries':
       case 'library':
-        return 'assets/icons/pin_library.png';
+        return 'assets/icons/pin_library_64.png';
       default:
-        return 'assets/icons/pin_default.png';
+        return 'assets/icons/pin_default_64.png';
     }
   }
 
-  void _showCategoryListPopup(String category, Color color) {
+  Future<void> _showCategoryListPopup(String category, Color color)  async {
     print('ShowCategoryListPopup called for $category');
     final cat = category.trim().toLowerCase();
     final filtered = _allPointers.where((p) {
@@ -1189,34 +1305,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _activeCategory = category;
       _activeCategoryColor = color;
       _activeCategoryPointers = filtered;
-      // open sliding panel and hide navigation bar
-      _markers = filtered.map((pointer) {
-        return Marker(
-          point: LatLng(pointer.lat, pointer.lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _onMarkerTap(pointer),
-            child: Image.asset(
-              getPinAssetForCategory(pointer.category),
-              width: 40,
-              height: 40,
-            ),
-          ),
-        );
-      }).toList();
     });
 
-    _panelController.open();
+    _filterMarkersByCategory(category);
 
-    // animate map to the category center
-    if (cat.contains('café') || cat.contains('cafe')) {
-      _animatedMapMove(_cafesCenter, _cafesZoom);
-    } else if (cat.contains('librar')) {
-      _animatedMapMove(_librariesCenter, _librariesZoom);
-    } else if (cat.contains('mensa') || cat.contains('canteen')) {
-      _animatedMapMove(_canteensCenter, _canteensZoom);
-    }
+
+    _panelController.open();
 
     // Panel open
     _panelController.animatePanelToPosition(
@@ -1290,7 +1384,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryColor = null;
                       _activeCategoryPointers = [];
                     });
-                    _filterMarkersByCategory(null, null);
+                    _filterMarkersByCategory(null);
                     _panelController.close();
                     _notifyNavBar(false);
                   },
@@ -1356,7 +1450,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryColor = null;
                       _activeCategoryPointers = [];
                     });
-                    _filterMarkersByCategory(null, null);
+                    _filterMarkersByCategory(null);
                     _panelController.close();
                     _notifyNavBar(false);
                   },

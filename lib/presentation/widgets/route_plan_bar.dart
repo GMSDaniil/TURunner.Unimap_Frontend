@@ -313,15 +313,24 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   void _removeStop(int i) {
+    var updateRoute = true;
+    if(_stopCtls[i].text.isEmpty) {
+      updateRoute = false;
+    }
+    
     _stopCtls[i].dispose();
-
-    setState(() {
-      _stopCtls.removeAt(i);
-      _route.removeAt(i + 1); // +1 for start location
-      // print(_route.map((c) => c.label).toList());
-
+    _stopCtls.removeAt(i);
+   
+    _route.removeAt(i + 1); // +1 for start location
+    // print(_route.map((c) => c.label).toList());
+    
+    if(updateRoute){
+      setState(() {
+          
+      });
       widget.onChanged(_route.map((c) => c.pos).toList());
-    });
+    }
+    
   }
 
   /* ═══════════════════════━  build  ━═══════════════════════════ */

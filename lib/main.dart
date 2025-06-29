@@ -33,6 +33,8 @@ Future<void> main() async {
   await FMTC.FMTCStore('mapStore').manage.create();
 
   await dotenv.load(fileName: "config.env");
+  
+  MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN']!);
 
   // // 3) bulk–download your campus region (15–18) in the background
   // final region = FMTC.RectangleRegion(

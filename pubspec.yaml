@@ -47,6 +47,10 @@ flutter:
     - assets/icons/pin_cafe.png
     - assets/icons/pin_library.png
     - assets/icons/pin_default.png
+    - assets/icons/pin_mensa_64.png
+    - assets/icons/pin_cafe_64.png
+    - assets/icons/pin_library_64.png
+    - assets/icons/pin_default_64.png
 
 
   fonts:
