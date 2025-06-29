@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_segment.dart';
@@ -62,7 +63,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
 
     if(widget.segments != oldWidget.segments && polylineAnnotationManager != null) {
-      _updateAllPolylines();
+      drawStyledRouteSegments(widget.segments);
       print("Updated polylines");
     }
   }
@@ -83,6 +84,73 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         _markerTapCallbacks[created[i]!.id] = annotations[i].onTap;
       }
     }
+
+  Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
+    // Remove old layers/sources if they exist
+    for (var mode in TravelMode.values) {
+      try {
+        await mapboxMap.style.removeStyleLayer('route-layer-${mode.name}');
+        await mapboxMap.style.removeStyleSource('route-source-${mode.name}');
+      } catch (_) {}
+    }
+
+    for (final seg in segments) {
+      final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
+          ? smoothPolyline(seg.precisePolyline!)
+          : smoothPolyline(seg.path);
+
+      if (points.length < 2) continue;
+
+      final coordinates = points.map((p) => [p.longitude, p.latitude]).toList();
+
+      final geojson = {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": coordinates,
+            },
+            "properties": {}
+          }
+        ]
+      };
+
+      // Choose color and dash style based on mode
+      int color;
+      List<double>? dashArray;
+      if (seg.mode == TravelMode.bus) {
+        color = const Color(0xFF0000FF).value;
+        dashArray = null;
+      } else if (seg.mode == TravelMode.scooter) {
+        color = const Color(0xFFFFA500).value;
+        dashArray = null;
+      } else {
+        // Walk: dotted line, pretty color
+        color = Colors.greenAccent.shade700.value;
+        dashArray = [1.5, 2.5];
+      }
+
+      final sourceId = 'route-source-${seg.mode.name}';
+      final layerId = 'route-layer-${seg.mode.name}';
+
+      await mapboxMap.style.addSource(GeoJsonSource(
+        id: sourceId,
+        data: jsonEncode(geojson),
+      ));
+
+      await mapboxMap.style.addLayer(LineLayer(
+        id: layerId,
+        sourceId: sourceId,
+        lineColor: color,
+        lineWidth: 5.0,
+        lineDasharray: dashArray,
+        lineCap: LineCap.ROUND,
+        lineJoin: LineJoin.ROUND,
+      ));
+    }
+  }
     
   List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 2}) {
     List<LatLng> result = List.from(points);
@@ -109,9 +177,6 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   void _updateAllPolylines() async{
     await polylineAnnotationManager.deleteAll();
-
-    
-
     final segmentLines = widget.segments.expand((seg) {
         final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
             ? smoothPolyline(seg.precisePolyline!)
@@ -226,7 +291,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
     mapboxMap.style.setStyleImportConfigProperties("basemap",{
       "showPointOfInterestLabels" : false,
-      "lightPreset": "day"
+      "lightPreset": "day",
+      "buildingHighlightColor" : 'red',
     });
 
     mapboxMap.compass.updateSettings(
@@ -242,6 +308,16 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     );
 
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
+
+    // Highlight selected building
+    var tapInteractionBuildings =
+        TapInteraction(StandardBuildings(), (feature, pos) {
+      mapboxMap.setFeatureStateForFeaturesetFeature(
+          feature, StandardBuildingsState(highlight: true));
+      widget.onMapTap(LatLng(pos.point.coordinates.lat.toDouble(), pos.point.coordinates.lng.toDouble()));
+      
+    });
+    mapboxMap.addInteraction(tapInteractionBuildings);
 
     
 
