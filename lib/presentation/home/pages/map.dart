@@ -73,6 +73,7 @@ const _canteensZoom = 15.0;
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
+  final double navBarHeight;
 
   /// Emits `true` when the search bar gains focus and `false` when it
   /// loses focus.  Parent widgets can use this to hide/show UI elements.
@@ -81,6 +82,7 @@ class MapPage extends StatefulWidget {
   const MapPage({
     super.key,
     required this.scaffoldKeyForBottomSheet,
+    required this.navBarHeight,
     this.onSearchFocusChanged,
   });
 
@@ -90,7 +92,7 @@ class MapPage extends StatefulWidget {
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   static const _animDuration = Duration(milliseconds: 250);
-  static const double _navBarHeight = 88; // ← height from bottom-nav
+  late double _navBarHeight; // ← height from bottom-nav
 
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
@@ -163,6 +165,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _navBarHeight = widget.navBarHeight;
     _preloadCategoryImages();
     _loadBuildingMarkers();
     _searchCtl.addListener(_onSearchChanged);
@@ -474,13 +477,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         (menu) => showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
+                          
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.vertical(
                               top: Radius.circular(24),
                             ),
                           ),
-                          builder: (_) => WeeklyMensaPlan(menu: menu),
-                        ),
+                          builder: (_) => Container(
+                            height: MediaQuery.of(context).size.height * 0.9,
+                              child: WeeklyMensaPlan(menu: menu)
+                            ),
+                          
+                        ).then((_){
+                          setState(() => _buildingPanelPointer = null);
+                          _panelController.close();
+                          _notifyNavBar(false);
+                        }),
                       );
                     }
                   : null,
@@ -514,8 +526,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
               child: Material(
                 color: Colors.white,
-                child: SafeArea(
-                  bottom: true,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       20,
@@ -617,7 +627,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-              ),
             );
           }
           return const SizedBox.shrink();
@@ -913,6 +922,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     return MapboxMapWidget(
       markerAnnotations: _interactiveAnnotations,
+      navBarHeight: _navBarHeight,
       busStopMarkers: busMarkers,
       scooterMarkers: scooterMarkers,
       segments: segments,

@@ -25,17 +25,38 @@ class _HomePageState extends State<HomePage> {
   int _tabIndex = 0;
   bool _hideNav = false;
 
-  late final List<Widget> _pages;
+  double get effectiveNavBarHeight {
+    final mediaQuery = MediaQuery.of(context);
+    final safeAreaBottom = mediaQuery.padding.bottom;
+    
+    return 88 + safeAreaBottom;
+  }
+
+  double get safeAreaBottom {
+    final mediaQuery = MediaQuery.of(context);
+    return mediaQuery.padding.bottom;
+  }
+
+  List<Widget>? _pages;
 
   @override
   void initState() {
     super.initState();
-    _pages = [
+    
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Initialize pages only once
+    _pages ??= [
       MapPage(
         scaffoldKeyForBottomSheet: _scaffoldKey,
         onSearchFocusChanged: (active) {
           if (_hideNav != active) setState(() => _hideNav = active);
         },
+        navBarHeight: effectiveNavBarHeight,
       ),
       FavouritesPage(),
       ProfilePage(),
@@ -44,6 +65,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_pages == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       key: _scaffoldKey,
       // ── BODY ───────────────────────────────────────────────────────
@@ -65,33 +91,45 @@ class _HomePageState extends State<HomePage> {
                     );
                   }
                 },
-                child: IndexedStack(index: _tabIndex, children: _pages),
+                child: IndexedStack(index: _tabIndex, children: _pages!),
               ),
             ),
-
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: Colors.black, // allow taps to pass through
+                height: safeAreaBottom,
+                width: double.infinity,
+              ),
+            ),
             // ── Overlay bottom navigation bar ───────────────────────
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: IgnorePointer(
-                ignoring: _hideNav,
-                child: AnimatedSlide(
-                  offset: _hideNav ? const Offset(0, 1) : Offset.zero,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _hideNav ? 0 : 1,
+              child: SafeArea(
+                child: IgnorePointer(
+                  ignoring: _hideNav,
+                  child: AnimatedSlide(
+                    offset: _hideNav ? const Offset(0, 1) : Offset.zero,
                     duration: const Duration(milliseconds: 250),
-                    // NO SafeArea → bar sits flush to bottom, no blank space
-                    child: AnimatedBottomNavigationBar(
-                      currentIndex: _tabIndex,
-                      onTap: (i) => setState(() => _tabIndex = i),
+                    curve: Curves.easeInOut,
+                    child: AnimatedOpacity(
+                      opacity: _hideNav ? 0 : 1,
+                      duration: const Duration(milliseconds: 250),
+                      // NO SafeArea → bar sits flush to bottom, no blank space
+                      child: AnimatedBottomNavigationBar(
+                        currentIndex: _tabIndex,
+                        onTap: (i) => setState(() => _tabIndex = i),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+            
           ],
         ),
       ),

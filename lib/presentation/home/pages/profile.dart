@@ -48,19 +48,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocProvider(
-        create: (context) => UserDisplayCubit()..displayUser(),
-        child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-          builder: (context, state) {
-            if (state is UserLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is UserLoaded) {
-              return _buildUserView(context, state.userEntity);
-            }
-            return _buildGuestView(context);
-          },
+    return SafeArea(
+      child: Scaffold(
+        body: BlocProvider(
+          create: (context) => UserDisplayCubit()..displayUser(),
+          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+            builder: (context, state) {
+              if (state is UserLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is UserLoaded) {
+                return _buildUserView(context, state.userEntity);
+              }
+              return _buildGuestView(context);
+            },
+          ),
         ),
       ),
     );

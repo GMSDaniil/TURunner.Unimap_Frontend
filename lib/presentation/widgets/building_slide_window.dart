@@ -95,8 +95,8 @@ class BuildingSlideWindow extends StatelessWidget {
         color: Colors.white, // explicit white background
         child: SafeArea(
           top: false,
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
+          // child: SingleChildScrollView(
+            // physics: const ClampingScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
               child: Column(
@@ -197,7 +197,7 @@ class BuildingSlideWindow extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      // ),
     );
   }
 }

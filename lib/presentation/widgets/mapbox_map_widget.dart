@@ -13,6 +13,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MapboxMapWidget extends StatefulWidget {
   final List<InteractiveAnnotation> markerAnnotations;
+  final double navBarHeight;
   final List<Marker> busStopMarkers;
   final List<Marker> scooterMarkers;
   final List<RouteSegment> segments;
@@ -24,6 +25,7 @@ class MapboxMapWidget extends StatefulWidget {
   const MapboxMapWidget({
     Key? key,
     required this.markerAnnotations,
+    required this.navBarHeight,
     required this.busStopMarkers,
     required this.scooterMarkers,
     required this.segments,
@@ -302,10 +304,18 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         position: OrnamentPosition.BOTTOM_RIGHT,
         marginLeft: 16.0,
         marginTop: 32.0,
-        marginRight: 28.0,
-        marginBottom: 174.0,
+        marginRight: 26.0,
+        marginBottom: widget.navBarHeight + 90,
       )
     );
+
+    mapboxMap.setBounds(CameraBoundsOptions(
+      bounds: CoordinateBounds(
+        southwest: Point(coordinates: Position(13.316, 52.502)), 
+        northeast: Point(coordinates: Position(13.34, 52.523)), 
+        infiniteBounds: false,
+      ),
+    ));
 
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
@@ -350,6 +360,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
               52.5125,
           ),
         ),
+        
         // pitch: 45.0,
         zoom: 15.0,
       ),
