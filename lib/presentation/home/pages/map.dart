@@ -640,6 +640,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             });
 
             _filterMarkersByCategory(null);
+            _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
 
             // if the user *tapped* the close handle without dragging,
             // the bar is still up → dismiss it now
@@ -778,6 +779,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         _activeCategoryPointers = [];
                       });
                       _filterMarkersByCategory(null);
+                      _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+
                       _panelController.close();
                       _notifyNavBar(false);
                     },
@@ -1420,6 +1423,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryPointers = [];
                     });
                     _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
                     _panelController.close();
                     _notifyNavBar(false);
                   },
@@ -1486,8 +1490,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryPointers = [];
                     });
                     _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 18.0);
+                    //_animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
                     _panelController.close();
                     _notifyNavBar(false);
+
+                    _showBuildingPanel(p);
                   },
                 ),
               );
