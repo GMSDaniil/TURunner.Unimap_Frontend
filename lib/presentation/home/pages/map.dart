@@ -58,18 +58,6 @@ const double matheLat = 52.5135, matheLon = 13.3245;
 //   If you ever change marker inventories, just re-calculate the mean
 //   lat/lon per category and play with the zoom until it “looks right”.
 //   No more run-time maths needed :)
-//
-//   ─────────  category  ────────  center.lat   center.lon    zoom
-const _cafesCenter = LatLng(52.51271, 13.32517); // 10 cafés
-const _cafesZoom = 15.5;
-
-const _librariesCenter = LatLng(52.51250, 13.32619); //  4 libraries
-const _librariesZoom = 15.5;
-
-const _canteensCenter = LatLng(52.51351, 13.32496); //  4 main mensas¹
-const _canteensZoom = 15.0;
-// ¹ the Marchstraße (northern) mensa was left out on purpose; including it
-//   made the view less useful for day-to-day campus food spotting.
 
 class MapPage extends StatefulWidget {
   final GlobalKey<ScaffoldState> scaffoldKeyForBottomSheet;
@@ -459,7 +447,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               },
               onShowMenu: p.category.toLowerCase() == 'canteen'
                   ? () async {
-                      // Ladeindikator anzeigen
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -469,10 +456,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       final result = await sl<GetMensaMenuUseCase>().call(
                         param: GetMenuReqParams(mensaName: p.name),
                       );
-                      Navigator.of(context).pop(); // Ladeindikator schließen
+                      Navigator.of(context).pop();
                       result.fold(
                         (error) => ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Fehler: $error')),
+                          SnackBar(content: Text('error: $error')),
                         ),
                         (menu) =>
                             showModalBottomSheet(
@@ -497,14 +484,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       );
                     }
                   : null,
-              /*onShowMenu: p.category.toLowerCase() == 'canteen'
-                  ? () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => MensaPage(mensaName: p.name),
-                      ),
-                    )
-                  : null, */
-              // No custom handle or controller needed
             );
           }
           if (_panelRoutes != null) {
@@ -703,7 +682,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         setState(() => _suggestions = []);
                       },
                       onCategorySelected: (category, color) {
-                        //print('Category tapped: $category');
                         if (category != null) {
                           _showCategoryListPopup(
                             category,
@@ -780,7 +758,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       });
                       _filterMarkersByCategory(null);
                       _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
-
                       _panelController.close();
                       _notifyNavBar(false);
                     },
@@ -1047,57 +1024,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _filterMarkersByCategory(String? category) {
-    List<Marker> newMarkers;
-    List<InteractiveAnnotation> newAnnotations;
-
+    List<Pointer> filteredPointers;
     if (category == null) {
-      newMarkers = _allPointers.map((pointer) => mapMarker(pointer)).toList();
-      newAnnotations = _allPointers
-          .map((pointer) => mapBoxMarker(pointer))
-          .toList();
+      filteredPointers = _allPointers;
     } else {
-      // Filter category (same logic as in popup)
-      newMarkers = _allPointers
-          .where((p) {
-            final cat = category.trim().toLowerCase();
-            final pCat = p.category.trim().toLowerCase();
-            if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-            if (cat.contains('librar')) return pCat.contains('librar');
-            if (cat.contains('canteen') || cat.contains('mensa'))
-              return pCat == 'canteen' || pCat == 'mensa';
-            if (cat.contains('study room')) return pCat == 'study room';
-            return false;
-          })
-          .map((pointer) => mapMarker(pointer))
-          .toList();
-
-      newAnnotations = _allPointers
-          .where((p) {
-            final cat = category.trim().toLowerCase();
-            final pCat = p.category.trim().toLowerCase();
-            if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-            if (cat.contains('librar')) return pCat.contains('librar');
-            if (cat.contains('canteen') || cat.contains('mensa'))
-              return pCat == 'canteen' || pCat == 'mensa';
-            if (cat.contains('study room')) return pCat == 'study room';
-            return false;
-          })
-          .map((pointer) => mapBoxMarker(pointer))
-          .toList();
-    }
-
-    setState(() {
-      _markers = newMarkers;
-      // Change only based on length to check this fast.
-      if (_interactiveAnnotations.length != newAnnotations.length) {
-        _interactiveAnnotations = newAnnotations;
-      }
-    });
-
-    if (category != null) {
-      // get filtered pointers again
-      final filtered = _allPointers.where((p) {
-        final cat = category.trim().toLowerCase();
+      final cat = category.trim().toLowerCase();
+      filteredPointers = _allPointers.where((p) {
         final pCat = p.category.trim().toLowerCase();
         if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
         if (cat.contains('librar')) return pCat.contains('librar');
@@ -1106,23 +1038,37 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         if (cat.contains('study room')) return pCat == 'study room';
         return false;
       }).toList();
+    }
 
-      if (filtered.isNotEmpty) {
-        final avgLat =
-            filtered.map((p) => p.lat).reduce((a, b) => a + b) /
-            filtered.length;
-        final avgLng =
-            filtered.map((p) => p.lng).reduce((a, b) => a + b) /
-            filtered.length;
+    final newMarkers = filteredPointers
+        .map((pointer) => mapMarker(pointer))
+        .toList();
+    final newAnnotations = filteredPointers
+        .map((pointer) => mapBoxMarker(pointer))
+        .toList();
 
-        // Offsets: (0.001 = ca. 110m)
-        final offsetLng = avgLng + 0.0005; // nach Osten
-        final offsetLat = avgLat - 0.0045; // nach Süden
-
-        final zoom = 14.5; // adjust zoom level
-
-        _animatedMapboxMove(LatLng(offsetLat, offsetLng), zoom);
+    setState(() {
+      _markers = newMarkers;
+      if (_interactiveAnnotations.length != newAnnotations.length) {
+        _interactiveAnnotations = newAnnotations;
       }
+    });
+
+    if (category != null && filteredPointers.isNotEmpty) {
+      final avgLat =
+          filteredPointers.map((p) => p.lat).reduce((a, b) => a + b) /
+          filteredPointers.length;
+      final avgLng =
+          filteredPointers.map((p) => p.lng).reduce((a, b) => a + b) /
+          filteredPointers.length;
+
+      // Offsets: (0.001 = ca. 110m)
+      final offsetLng = avgLng + 0.0005; // nach Osten
+      final offsetLat = avgLat - 0.002; // nach Süden
+
+      final zoom = 14.5; // adjust zoom level
+
+      _animatedMapboxMove(LatLng(offsetLat, offsetLng), zoom);
     }
   }
 
@@ -1218,7 +1164,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           updateCurrentMode: (nm) => setState(() => _currentMode = nm),
         );
       },
-      rebuildOnly: rebuildOnly, // ← NEW
+      rebuildOnly: rebuildOnly,
     );
   }
 
@@ -1279,7 +1225,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ),
         zoom: zoom,
       ),
-      mb.MapAnimationOptions(duration: 600, startDelay: 0),
+      mb.MapAnimationOptions(duration: 500, startDelay: 0),
     );
   }
 
@@ -1323,7 +1269,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _showCategoryListPopup(String category, Color color) async {
-    //print('ShowCategoryListPopup called for $category');
     final cat = category.trim().toLowerCase();
     final filtered = _allPointers.where((p) {
       final pCat = p.category.trim().toLowerCase();
@@ -1335,15 +1280,31 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return false;
     }).toList();
 
-    /* print('Popup for: $category');
-    print('---');
-    print('Filtered pointers: ${filtered.length}');
-    print('ActiveCategory: $category');*/
+    final currentLocation = await getCurrentLocation();
+
+    if (currentLocation != null) {
+      filtered.sort((a, b) {
+        final distA = Distance().as(
+          LengthUnit.Meter,
+          currentLocation,
+          LatLng(a.lat, a.lng),
+        );
+        final distB = Distance().as(
+          LengthUnit.Meter,
+          currentLocation,
+          LatLng(b.lat, b.lng),
+        );
+        return distA.compareTo(distB);
+      });
+    } else {
+      filtered.sort((a, b) => a.name.compareTo(b.name));
+    }
 
     setState(() {
       _activeCategory = category;
       _activeCategoryColor = color;
       _activeCategoryPointers = filtered;
+      _currentLocation = currentLocation;
     });
 
     _filterMarkersByCategory(category);
@@ -1353,7 +1314,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // Panel open
     _panelController.animatePanelToPosition(
       0.6, //panel höhe
-      duration: Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 400),
       curve: Curves.easeInOut,
     );
     _notifyNavBar(true);
@@ -1470,7 +1431,27 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     p.name,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: Text(p.category),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Builder(
+                        builder: (_) {
+                          if (_currentLocation == null) {
+                            return const Text(
+                              'None of places can be loaded',
+                              style: TextStyle(color: Colors.red),
+                            );
+                          }
+                          final distInMeters = Distance().as(
+                            LengthUnit.Meter,
+                            _currentLocation!,
+                            LatLng(p.lat, p.lng),
+                          );
+                          return Text('${distInMeters.toStringAsFixed(0)} m');
+                        },
+                      ),
+                    ],
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.directions, color: Colors.blue),
                     onPressed: () {
@@ -1490,8 +1471,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryPointers = [];
                     });
                     _filterMarkersByCategory(null);
-                    _animatedMapboxMove(LatLng(p.lat, p.lng), 18.0);
-                    //_animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
                     _panelController.close();
                     _notifyNavBar(false);
 

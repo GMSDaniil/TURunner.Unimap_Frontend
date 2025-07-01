@@ -71,7 +71,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
             ),
             // Title
             const Text(
-              "Weekly Mensa Plan",
+              "Weekly Canteen Plan",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
             const SizedBox(height: 12),
@@ -171,33 +171,4 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
       ),
     );
   }
-}
-
-void showWeeklyMensaPlanBottomSheet(
-  BuildContext context,
-  MensaMenuResponse menu,
-) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => DraggableScrollableSheet(
-      expand: true,
-      initialChildSize: 0.80, // 80 %?
-      minChildSize: 0.80,
-      maxChildSize: 0.80,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: WeeklyMensaPlan(
-            menu: menu,
-            scrollController: scrollController,
-          ),
-        );
-      },
-    ),
-  );
 }
