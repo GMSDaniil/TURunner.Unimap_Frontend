@@ -42,6 +42,23 @@ class RouteLogic {
       points: route.map((p) => MapPoint(p.latitude, p.longitude)).toList(),
     );
 
+    if (!rebuildOnly) {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // close the building sheet
+      }
+
+      showRouteOptionsSheet(
+        routesNotifier: routesNotifier,
+        currentMode: TravelMode.walk, // Start with walking selected
+        onModeChanged: onModeChanged,
+        onClose: () {
+          setState(() => routesNotifier.value.clear());
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+        },
+      );
+    }
     // Fetch and display the walking route immediately
     final walkingResult = await sl<FindWalkingRouteUseCase>().call(param: params);
     walkingResult.fold(

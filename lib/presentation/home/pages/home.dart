@@ -27,14 +27,19 @@ class _HomePageState extends State<HomePage> {
 
   double get effectiveNavBarHeight {
     final mediaQuery = MediaQuery.of(context);
-    final safeAreaBottom = mediaQuery.padding.bottom;
+    final safeAreaBottom = mediaQuery.padding.bottom < 35
+        ? 0.0
+        : mediaQuery.padding.bottom; 
     
     return 88 + safeAreaBottom;
   }
 
   double get safeAreaBottom {
     final mediaQuery = MediaQuery.of(context);
-    return mediaQuery.padding.bottom;
+    final safeAreaBottom = mediaQuery.padding.bottom < 35
+        ? 0.0
+        : mediaQuery.padding.bottom;
+    return safeAreaBottom;
   }
 
   List<Widget>? _pages;
@@ -94,6 +99,7 @@ class _HomePageState extends State<HomePage> {
                 child: IndexedStack(index: _tabIndex, children: _pages!),
               ),
             ),
+            
             Positioned(
               bottom: 0,
               left: 0,
@@ -109,8 +115,21 @@ class _HomePageState extends State<HomePage> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: SafeArea(
-                child: IgnorePointer(
+              
+              child: safeAreaBottom > 0 ?
+               SafeArea(
+                child: navBar(),
+              ) : navBar()
+            ),
+            
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget navBar(){
+    return IgnorePointer(
                   ignoring: _hideNav,
                   child: AnimatedSlide(
                     offset: _hideNav ? const Offset(0, 1) : Offset.zero,
@@ -126,14 +145,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-            
-          ],
-        ),
-      ),
-    );
+                );
   }
 
   // helper for RouteOptionsSheet from children
