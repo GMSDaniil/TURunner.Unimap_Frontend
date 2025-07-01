@@ -202,13 +202,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _preloadCategoryImages() async {
-  final categories = ['mensa', 'cafe', 'library', 'default'];
-  for (final cat in categories) {
-    final assetPath = getPinAssetForCategory(cat);
-    final byteData = await rootBundle.load(assetPath);
-    _categoryImageCache[cat] = byteData.buffer.asUint8List();
+    final categories = ['mensa', 'cafe', 'library', 'default'];
+    for (final cat in categories) {
+      final assetPath = getPinAssetForCategory(cat);
+      final byteData = await rootBundle.load(assetPath);
+      _categoryImageCache[cat] = byteData.buffer.asUint8List();
+    }
   }
-}
 
   @override
   void dispose() {
@@ -474,25 +474,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         (error) => ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Fehler: $error')),
                         ),
-                        (menu) => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(24),
-                            ),
-                          ),
-                          builder: (_) => Container(
-                            height: MediaQuery.of(context).size.height * 0.9,
-                              child: WeeklyMensaPlan(menu: menu)
-                            ),
-                          
-                        ).then((_){
-                          setState(() => _buildingPanelPointer = null);
-                          _panelController.close();
-                          _notifyNavBar(false);
-                        }),
+                        (menu) =>
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
+                              ),
+                              builder: (_) => Container(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.9,
+                                child: WeeklyMensaPlan(menu: menu),
+                              ),
+                            ).then((_) {
+                              setState(() => _buildingPanelPointer = null);
+                              _panelController.close();
+                              _notifyNavBar(false);
+                            }),
                       );
                     }
                   : null,
@@ -526,107 +527,105 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
               child: Material(
                 color: Colors.white,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      12,
-                      20,
-                      MediaQuery.of(
-                        context,
-                      ).padding.bottom, // dynamic bottom padding
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    MediaQuery.of(
+                      context,
+                    ).padding.bottom, // dynamic bottom padding
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Coordinates',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Coordinates',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${latlng.latitude.toStringAsFixed(6)}, '
-                                    '${latlng.longitude.toStringAsFixed(6)}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${latlng.latitude.toStringAsFixed(6)}, '
+                                  '${latlng.longitude.toStringAsFixed(6)}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            Container(
-                              width: 24,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey.shade200,
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 16),
-                                splashRadius: 16,
-                                padding: const EdgeInsets.all(4),
+                          ),
+                          Container(
+                            width: 24,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey.shade200,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              splashRadius: 16,
+                              padding: const EdgeInsets.all(4),
+                              onPressed: () {
+                                setState(() => _coordinatePanelLatLng = null);
+                                _panelController.close();
+                                _notifyNavBar(false);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height:
+                                  56, // ← bump this to whatever Y-axis thickness you want
+                              child: GradientActionButton(
                                 onPressed: () {
                                   setState(() => _coordinatePanelLatLng = null);
                                   _panelController.close();
-                                  _notifyNavBar(false);
+                                  _startRouteFlow(latlng);
                                 },
+                                icon: Icons.directions,
+                                label: 'Create Route',
+                                colors: const [
+                                  Color(0xFF7B61FF),
+                                  Color(0xFFEA5CFF),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height:
-                                    56, // ← bump this to whatever Y-axis thickness you want
-                                child: GradientActionButton(
-                                  onPressed: () {
-                                    setState(
-                                      () => _coordinatePanelLatLng = null,
-                                    );
-                                    _panelController.close();
-                                    _startRouteFlow(latlng);
-                                  },
-                                  icon: Icons.directions,
-                                  label: 'Create Route',
-                                  colors: const [
-                                    Color(0xFF7B61FF),
-                                    Color(0xFFEA5CFF),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
+              ),
             );
           }
           return const SizedBox.shrink();
@@ -641,6 +640,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             });
 
             _filterMarkersByCategory(null);
+            _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
 
             // if the user *tapped* the close handle without dragging,
             // the bar is still up → dismiss it now
@@ -725,25 +725,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               ),
             ),
             Positioned(
-  top:  170, // adjust as needed to not overlap other buttons
-  right: 20,
-  child: FloatingActionButton.extended(
-    heroTag: 'toggle3d',
-    backgroundColor: Colors.white,
-    label: Text(_is3D ? '2D' : '3D', style: const TextStyle(color: Colors.blue)),
-    onPressed: () {
-      setState(() => _is3D = !_is3D);
-      if (_mapboxMap != null) {
-        _mapboxMap!.easeTo(
-          mb.CameraOptions(
-            pitch: _is3D ? 60.0 : 0.0,
-          ),
-          mb.MapAnimationOptions(duration: 600, startDelay: 0),
-        );
-      }
-    },
-  ),
-),
+              top: 170, // adjust as needed to not overlap other buttons
+              right: 20,
+              child: FloatingActionButton.extended(
+                heroTag: 'toggle3d',
+                backgroundColor: Colors.white,
+                label: Text(
+                  _is3D ? '2D' : '3D',
+                  style: const TextStyle(color: Colors.blue),
+                ),
+                onPressed: () {
+                  setState(() => _is3D = !_is3D);
+                  if (_mapboxMap != null) {
+                    _mapboxMap!.easeTo(
+                      mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
+                      mb.MapAnimationOptions(duration: 600, startDelay: 0),
+                    );
+                  }
+                },
+              ),
+            ),
             if (!_panelActive) _buildCurrentLocationButton(),
             if (!_panelActive)
               Positioned(
@@ -778,6 +779,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         _activeCategoryPointers = [];
                       });
                       _filterMarkersByCategory(null);
+                      _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+
                       _panelController.close();
                       _notifyNavBar(false);
                     },
@@ -816,7 +819,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
      *  – slides in + fades in (like the search bar),
      *  – slides out + fades out on cancel.
      * ─────────────────────────────────────────────────────────── */
-     final currentLocation = await getCurrentLocation();
+    final currentLocation = await getCurrentLocation();
     if (_plannerOverlay == null) {
       _plannerAnimCtr = AnimationController(
         vsync: this,
@@ -834,7 +837,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ).animate(curved);
 
       final fade = Tween<double>(begin: 0, end: 1).animate(curved);
-      
+
       _plannerOverlay = OverlayEntry(
         builder: (_) => SlideTransition(
           position: slide,
@@ -935,17 +938,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  Future<List<mb.PointAnnotationOptions>> convertMarkersToAnnotations(List<Marker> markers, Uint8List iconBytes) async {
-  return markers.map((marker) {
-    return mb.PointAnnotationOptions(
-      geometry: mb.Point(
-        coordinates: mb.Position(marker.point.longitude, marker.point.latitude),
-      ),
-      iconSize: 1.0,
-      // image: , // shared image asset for all markers
-    );
-  }).toList();
-}
+  Future<List<mb.PointAnnotationOptions>> convertMarkersToAnnotations(
+    List<Marker> markers,
+    Uint8List iconBytes,
+  ) async {
+    return markers.map((marker) {
+      return mb.PointAnnotationOptions(
+        geometry: mb.Point(
+          coordinates: mb.Position(
+            marker.point.longitude,
+            marker.point.latitude,
+          ),
+        ),
+        iconSize: 1.0,
+        // image: , // shared image asset for all markers
+      );
+    }).toList();
+  }
 
   // ────────────────────────────────────────────────────────────────
   // Helpers to build overlay widgets
@@ -1007,9 +1016,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         final List<InteractiveAnnotation> annotations = [];
 
         for (final p in _allPointers) {
-          annotations.add(
-            mapBoxMarker(p)
-          );
+          annotations.add(mapBoxMarker(p));
         }
 
         setState(() {
@@ -1045,8 +1052,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     if (category == null) {
       newMarkers = _allPointers.map((pointer) => mapMarker(pointer)).toList();
-      newAnnotations = _allPointers.map((pointer) => mapBoxMarker(pointer)).toList();
+      newAnnotations = _allPointers
+          .map((pointer) => mapBoxMarker(pointer))
+          .toList();
     } else {
+      // Filter category (same logic as in popup)
       newMarkers = _allPointers
           .where((p) {
             final cat = category.trim().toLowerCase();
@@ -1084,15 +1094,34 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       }
     });
 
-    // If a category is selected, zoom to the pre-defined campus view
     if (category != null) {
-      final cat = category.toLowerCase();
-      if (cat.contains('café') || cat.contains('cafe')) {
-        _animatedMapboxMove(_cafesCenter, _cafesZoom);
-      } else if (cat.contains('librar')) {
-        _animatedMapboxMove(_librariesCenter, _librariesZoom);
-      } else if (cat.contains('mensa') || cat.contains('canteen')) {
-        _animatedMapboxMove(_canteensCenter, _canteensZoom);
+      // get filtered pointers again
+      final filtered = _allPointers.where((p) {
+        final cat = category.trim().toLowerCase();
+        final pCat = p.category.trim().toLowerCase();
+        if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+        if (cat.contains('librar')) return pCat.contains('librar');
+        if (cat.contains('canteen') || cat.contains('mensa'))
+          return pCat == 'canteen' || pCat == 'mensa';
+        if (cat.contains('study room')) return pCat == 'study room';
+        return false;
+      }).toList();
+
+      if (filtered.isNotEmpty) {
+        final avgLat =
+            filtered.map((p) => p.lat).reduce((a, b) => a + b) /
+            filtered.length;
+        final avgLng =
+            filtered.map((p) => p.lng).reduce((a, b) => a + b) /
+            filtered.length;
+
+        // Offsets: (0.001 = ca. 110m)
+        final offsetLng = avgLng + 0.0005; // nach Osten
+        final offsetLat = avgLat - 0.0045; // nach Süden
+
+        final zoom = 14.5; // adjust zoom level
+
+        _animatedMapboxMove(LatLng(offsetLat, offsetLng), zoom);
       }
     }
   }
@@ -1113,12 +1142,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  InteractiveAnnotation mapBoxMarker(Pointer pointer){
+  InteractiveAnnotation mapBoxMarker(Pointer pointer) {
     return InteractiveAnnotation(
       options: mb.PointAnnotationOptions(
-        geometry: mb.Point(
-          coordinates: mb.Position(pointer.lng, pointer.lat),
-        ),
+        geometry: mb.Point(coordinates: mb.Position(pointer.lng, pointer.lat)),
         iconSize: 2.0,
         image: _loadImageBytesForCategory(pointer.category),
       ),
@@ -1243,11 +1270,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _mapAnimController!.forward();
   }
 
-  void _animatedMapboxMove(LatLng dest, double zoom){
+  void _animatedMapboxMove(LatLng dest, double zoom) {
     if (_mapboxMap == null) return;
     _mapboxMap!.easeTo(
       mb.CameraOptions(
-        center: mb.Point(coordinates: mb.Position(dest.longitude, dest.latitude)),
+        center: mb.Point(
+          coordinates: mb.Position(dest.longitude, dest.latitude),
+        ),
         zoom: zoom,
       ),
       mb.MapAnimationOptions(duration: 600, startDelay: 0),
@@ -1293,8 +1322,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _showCategoryListPopup(String category, Color color)  async {
-    print('ShowCategoryListPopup called for $category');
+  Future<void> _showCategoryListPopup(String category, Color color) async {
+    //print('ShowCategoryListPopup called for $category');
     final cat = category.trim().toLowerCase();
     final filtered = _allPointers.where((p) {
       final pCat = p.category.trim().toLowerCase();
@@ -1318,7 +1347,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     });
 
     _filterMarkersByCategory(category);
-
 
     _panelController.open();
 
@@ -1395,6 +1423,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryPointers = [];
                     });
                     _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
                     _panelController.close();
                     _notifyNavBar(false);
                   },
@@ -1461,8 +1490,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       _activeCategoryPointers = [];
                     });
                     _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 18.0);
+                    //_animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
                     _panelController.close();
                     _notifyNavBar(false);
+
+                    _showBuildingPanel(p);
                   },
                 ),
               );
