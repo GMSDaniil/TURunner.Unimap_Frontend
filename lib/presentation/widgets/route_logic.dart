@@ -68,8 +68,8 @@ class RouteLogic {
       },
       (routeResponse) {
         setState(() {
-          routesNotifier.value[TravelMode.walk] = RouteData(
-            segments: routeResponse.segments.map((route) =>
+          final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+          newMap[TravelMode.walk] = RouteData(segments: routeResponse.segments.map((route) =>
             
               RouteSegment(
                 mode: TravelMode.walk,
@@ -78,8 +78,8 @@ class RouteLogic {
                 durrationSeconds: route.durationSeconds,
               ),
             
-            ).toList(),
-          );
+            ).toList());
+          routesNotifier.value = newMap;
         });
 
         // only pop the “Create Route” sheet & open the bottom sheet on first call
@@ -94,20 +94,20 @@ class RouteLogic {
           }
           if (walkPath.isNotEmpty) {
             final bounds = LatLngBounds.fromPoints(walkPath);
-            animatedMapMove(bounds.center, 16.5);
+            animatedMapMove(bounds.center, 15);
           }
 
-          showRouteOptionsSheet(
-            routesNotifier: routesNotifier,
-            currentMode: TravelMode.walk,
-            onModeChanged: onModeChanged,
-            onClose: () {
-              setState(() => routesNotifier.value.clear());
-              if (mounted && Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-            },
-          );
+          // showRouteOptionsSheet(
+          //   routesNotifier: routesNotifier,
+          //   currentMode: TravelMode.walk,
+          //   onModeChanged: onModeChanged,
+          //   onClose: () {
+          //     setState(() => routesNotifier.value.clear());
+          //     if (mounted && Navigator.of(context).canPop()) {
+          //       Navigator.of(context).pop();
+          //     }
+          //   },
+          // );
         }
       },
     );

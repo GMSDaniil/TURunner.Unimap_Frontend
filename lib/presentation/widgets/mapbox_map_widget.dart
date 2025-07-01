@@ -309,13 +309,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       )
     );
 
-    mapboxMap.setBounds(CameraBoundsOptions(
-      bounds: CoordinateBounds(
-        southwest: Point(coordinates: Position(13.316, 52.502)), 
-        northeast: Point(coordinates: Position(13.34, 52.523)), 
-        infiniteBounds: false,
-      ),
-    ));
+    // mapboxMap.setBounds(CameraBoundsOptions(
+    //   bounds: CoordinateBounds(
+    //     southwest: Point(coordinates: Position(13.316, 52.502)), 
+    //     northeast: Point(coordinates: Position(13.34, 52.523)), 
+    //     infiniteBounds: false,
+    //   ),
+    // ));
 
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
