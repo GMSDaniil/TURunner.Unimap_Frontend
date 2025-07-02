@@ -14,9 +14,7 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
   Future<Either<String, List<FavouriteEntity>>> getFavourites(
     GetFavouritesReqParams params,
   ) async {
-    final result = await sl<FavouritesApiService>().getFavourites(
-      params.userId,
-    );
+    final result = await sl<FavouritesApiService>().getFavourites();
 
     return result.fold((errorMessage) => Left(errorMessage), (response) {
       try {
@@ -28,9 +26,9 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
               (json) => FavouriteEntity(
                 id: json['id'],
                 name: json['name'],
-                lat: (json['lat'] as num).toDouble(),
-                lng: (json['lng'] as num).toDouble(),
-                category: json['category'],
+                lat: (json['latitude'] as num).toDouble(),
+                lng: (json['longitude'] as num).toDouble(),
+                // category: json['category'], // if it's not needed, you can remove this line
               ),
             )
             .toList();
@@ -45,10 +43,7 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
   Future<Either<String, FavouriteStatusResponse>> addFavourite(
     AddFavouriteReqParams params,
   ) async {
-    final result = await sl<FavouritesApiService>().addFavourite(
-      params.userId,
-      params.pointerId,
-    );
+    final result = await sl<FavouritesApiService>().addFavourite(params);
 
     return result.fold((errorMessage) => Left(errorMessage), (response) {
       try {
@@ -67,10 +62,7 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
   Future<Either<String, FavouriteStatusResponse>> deleteFavourite(
     DeleteFavouriteReqParams params,
   ) async {
-    final result = await sl<FavouritesApiService>().deleteFavourite(
-      params.userId,
-      params.pointerId,
-    );
+    final result = await sl<FavouritesApiService>().deleteFavourite(params);
 
     return result.fold((errorMessage) => Left(errorMessage), (response) {
       try {

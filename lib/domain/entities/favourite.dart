@@ -3,13 +3,13 @@ class FavouriteEntity {
   final String name;
   final double lat;
   final double lng;
-  final String category;
+  //final String category;
 
   FavouriteEntity({
     required this.id,
     required this.name,
     required this.lat,
     required this.lng,
-    required this.category,
+    //required this.category,
   });
 }
