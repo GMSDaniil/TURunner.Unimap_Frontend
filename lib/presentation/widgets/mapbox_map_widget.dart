@@ -10,9 +10,13 @@ import 'package:geolocator/geolocator.dart'as gl;
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide LocationSettings;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
 class MapboxMapWidget extends StatefulWidget {
+  /// Annotations to show on the map
   final List<InteractiveAnnotation> markerAnnotations;
+  /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
+  final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
   final List<Marker> busStopMarkers;
   final List<Marker> scooterMarkers;
@@ -32,6 +36,7 @@ class MapboxMapWidget extends StatefulWidget {
     required this.cachedTileProvider,
     required this.onMapTap,
     required this.onMapCreated,
+    this.onClearHighlightController,
     required this.parentContext,
     List<RouteSegment> routePoints = const [],
   }) : super(key: key);
@@ -41,6 +46,15 @@ class MapboxMapWidget extends StatefulWidget {
 }
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
+  @override
+  void initState() {
+    super.initState();
+    _setupPositionTracking();
+    // Expose the canonical clear highlight function to the parent if requested
+    if (widget.onClearHighlightController != null) {
+      widget.onClearHighlightController!(unhighlightCurrentBuilding);
+    }
+  }
   final Map<String, VoidCallback> _markerTapCallbacks = {};
   late MapboxMap mapboxMap;
   late PointAnnotationManager pointAnnotationManager;
@@ -48,7 +62,10 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   StreamSubscription? userPositionStream;
   dynamic _highlightedBuilding;
-  void clearBuildingHighlight() async {
+
+  /* single canonical “clear” helper – both tap-handler and
+   * parent UI will use this via the exposed callback above               */
+  Future<void> unhighlightCurrentBuilding() async {
     if (_highlightedBuilding != null) {
       await mapboxMap.setFeatureStateForFeaturesetFeature(
         _highlightedBuilding, StandardBuildingsState(highlight: false),
@@ -57,22 +74,22 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _setupPositionTracking();
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _setupPositionTracking();
+  // }
 
   @override
   void didUpdateWidget(covariant MapboxMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If the annotations list changed, update the map
-    if (widget.markerAnnotations != oldWidget.markerAnnotations && pointAnnotationManager != null) {
+    if (widget.markerAnnotations != oldWidget.markerAnnotations) {
       _updateAllMarkers();
       print("Updated markers");
     }
 
-    if(widget.segments != oldWidget.segments && polylineAnnotationManager != null) {
+    if(widget.segments != oldWidget.segments) {
       drawStyledRouteSegments(widget.segments);
       print("Updated polylines");
     }
@@ -309,6 +326,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     mapboxMap.style.setStyleImportConfigProperties("basemap",{
       "showPointOfInterestLabels" : false,
       "lightPreset": "day",
+      "colorBuildingHighlight": "#B39DDB", // light purple
     });
 
     mapboxMap.compass.updateSettings(
@@ -351,7 +369,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       showAccuracyRing: true,
     ));
 
-    // mapboxMap.style.setStyleImportConfigProperty("basemap", "showPointOfInterestLabels", false);
+    // mapboxMap.style.setStyleImportProperty("basemap", "showPointOfInterestLabels", false);
     pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
     polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
 
@@ -362,26 +380,26 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   void _addBuildingTapInteraction() {
-  // Highlight buildings on tap
-  var buildingTap = TapInteraction(
-    StandardBuildings(),
-    (feature, event) async {
-      // Clear previous highlight
-      clearBuildingHighlight();
-      // Highlight new building
-      await mapboxMap.setFeatureStateForFeaturesetFeature(
-        feature, StandardBuildingsState(highlight: true),
-      );
-      _highlightedBuilding = feature;
-      // forward tap
-      widget.onMapTap(LatLng(
-        event.point.coordinates.lat.toDouble(),
-        event.point.coordinates.lng.toDouble(),
-      ));
-    },
-  );
-  mapboxMap.addInteraction(buildingTap);
-}
+    // Highlight buildings on tap
+    var buildingTap = TapInteraction(
+      StandardBuildings(),
+      (feature, event) async {
+        // de-highlight the previously selected footprint (if any)
+        await unhighlightCurrentBuilding();
+        // Highlight new building
+        await mapboxMap.setFeatureStateForFeaturesetFeature(
+          feature, StandardBuildingsState(highlight: true),
+        );
+        _highlightedBuilding = feature;
+        // forward tap
+        widget.onMapTap(LatLng(
+          event.point.coordinates.lat.toDouble(),
+          event.point.coordinates.lng.toDouble(),
+        ));
+      },
+    );
+    mapboxMap.addInteraction(buildingTap);
+  }
 
   @override
   Widget build(BuildContext context) {

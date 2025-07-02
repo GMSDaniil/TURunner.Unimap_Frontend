@@ -125,6 +125,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   final Map<String, Uint8List> _categoryImageCache = {};
 
   mb.MapboxMap? _mapboxMap;
+  VoidCallback? _clearBuildingHighlight;
 
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
       ValueNotifier({});
@@ -611,6 +612,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         },
         onPanelClosed: () async {
           if (_panelController.panelPosition == 0.0) {
+            // Always clear building highlight when panel closes
+            if (_clearBuildingHighlight != null) {
+              _clearBuildingHighlight!();
+            }
             setState(() {
               _buildingPanelPointer = null;
               _coordinatePanelLatLng = null;
@@ -855,7 +860,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ),
       );
 
-      Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+      if (_plannerOverlay != null) {
+        Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+      }
       _plannerAnimCtr!.forward(); // animate it in
     }
 
@@ -912,6 +919,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         _mapboxMap = map;
       },
       parentContext: context,
+      onClearHighlightController: (clearFn) {
+        _clearBuildingHighlight = clearFn;
+      },
     );
   }
 
