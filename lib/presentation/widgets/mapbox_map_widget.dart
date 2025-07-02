@@ -292,6 +292,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   void _onMapCreated(MapboxMap map) async {
     mapboxMap = map;
 
+    await mapboxMap.setBounds(CameraBoundsOptions(
+    minPitch: 0,    // Minimum tilt angle (degrees)
+    maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
+     maxZoom: 18.0,
+  ));
+
     mapboxMap.style.setStyleImportConfigProperties("basemap",{
       "showPointOfInterestLabels" : false,
       "lightPreset": "day",
