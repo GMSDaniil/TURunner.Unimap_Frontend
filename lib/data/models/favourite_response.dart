@@ -14,7 +14,7 @@ class FavouriteResponse {
               name: e['name'],
               lat: (e['lat'] as num).toDouble(),
               lng: (e['lng'] as num).toDouble(),
-              category: e['category'],
+              //category: e['category'],
             ),
           )
           .toList(),

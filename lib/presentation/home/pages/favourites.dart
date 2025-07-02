@@ -10,7 +10,6 @@ class FavouritesPage extends StatefulWidget {
 }
 
 class _FavouritesPageState extends State<FavouritesPage> {
-
   @override
   Widget build(BuildContext context) {
     final gradient = Theme.of(context).primaryGradient;
@@ -47,10 +46,19 @@ class _FavouritesPageState extends State<FavouritesPage> {
                       final pointer = FavouritesManager().favourites[index];
                       return Card(
                         elevation: 2,
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: ListTile(
-                          leading: const Icon(Icons.favorite, color: Colors.pink),
-                          title: Text(pointer.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          leading: const Icon(
+                            Icons.favorite,
+                            color: Colors.pink,
+                          ),
+                          title: Text(
+                            pointer.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                           subtitle: Text(pointer.category),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline),

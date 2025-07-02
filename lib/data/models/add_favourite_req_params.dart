@@ -1,8 +1,17 @@
 class AddFavouriteReqParams {
-  final String userId;
-  final String pointerId;
+  final String name;
+  final double latitude;
+  final double longitude;
 
-  AddFavouriteReqParams({required this.userId, required this.pointerId});
+  AddFavouriteReqParams({
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+  });
 
-  Map<String, dynamic> toJson() => {'userId': userId, 'pointerId': pointerId};
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 }

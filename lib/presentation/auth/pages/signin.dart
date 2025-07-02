@@ -14,6 +14,13 @@ import '../../../common/bloc/button/button_state.dart';
 import '../../home/pages/home.dart';
 import 'signup.dart';
 
+import 'package:auth_app/data/models/get_favourites_req_params.dart';
+import 'package:auth_app/domain/repository/favourites.dart';
+
+import 'package:auth_app/data/models/get_favourites_req_params.dart';
+import 'package:auth_app/domain/repository/favourites.dart';
+import 'package:auth_app/domain/entities/favourite.dart';
+
 class SigninPage extends StatelessWidget {
   SigninPage({super.key});
 
@@ -28,17 +35,47 @@ class SigninPage extends StatelessWidget {
       body: BlocProvider(
         create: (context) => ButtonStateCubit(),
         child: BlocListener<ButtonStateCubit, ButtonState>(
-          listener: (context, state) {
+          listener: (context, state) async {
             if (state is ButtonSuccessState) {
               SignInResponse response = state.data;
-              var userProvider = Provider.of<UserProvider>(context, listen: false);
+              var userProvider = Provider.of<UserProvider>(
+                context,
+                listen: false,
+              );
               userProvider.setUser(response.user);
+
+              // --- FAVOURITES LOADING (token not ready) ---
+              /*
+              final favouritesResult = await sl<FavouritesRepository>()
+                  .getFavourites(
+                    GetFavouritesReqParams(userId: response.user.id),
+                  );
+              favouritesResult.fold(
+                (error) {
+                  // Error handling, set a snackBar.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error occured during favourites loading: $error'),
+                    ),
+                  );
+                  userProvider.setFavourites(
+                    [],
+                  ); // if error occurs, then set an empty list.
+                },
+                (favourites) {
+                  userProvider.setFavourites(favourites);
+                },
+              );
+              */
+              // TODO: Enable favourites loading after token handling is finalized.
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const HomePage()),
               );
             }
             if (state is ButtonFailureState) {
+              // Show error message on login failure
               var snackBar = SnackBar(content: Text(state.errorMessage));
               ScaffoldMessenger.of(context).showSnackBar(snackBar);
             }
@@ -95,9 +132,7 @@ class SigninPage extends StatelessWidget {
           borderSide: BorderSide.none,
         ),
       ),
-      style: const TextStyle(
-        color: Colors.black, 
-      ),
+      style: const TextStyle(color: Colors.black),
       onChanged: (value) {
         _validateForm();
       },
@@ -121,15 +156,12 @@ class SigninPage extends StatelessWidget {
           borderSide: BorderSide.none,
         ),
       ),
-      style: const TextStyle(
-        color: Colors.black, 
-      ),
+      style: const TextStyle(color: Colors.black),
       onChanged: (value) {
         _validateForm();
       },
     );
   }
-
 
   void _validateForm() {
     final isUsernameValid = _usernameCon.text.isNotEmpty;
@@ -137,7 +169,7 @@ class SigninPage extends StatelessWidget {
     _isFormValid.value = isUsernameValid && isPasswordValid;
   }
 
-  Widget _loginButton(BuildContext context) {  
+  Widget _loginButton(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: _isFormValid,
       builder: (context, isFormValid, child) {
@@ -176,17 +208,16 @@ class SigninPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-            recognizer:
-                TapGestureRecognizer()
-                  ..onTap = () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SignupPage()),
-                    );
-                  },
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignupPage()),
+                );
+              },
           ),
         ],
       ),
     );
   }
-}   
+}

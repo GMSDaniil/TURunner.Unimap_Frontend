@@ -1,8 +1,5 @@
 class DeleteFavouriteReqParams {
-  final String userId;
-  final String pointerId;
+  final String favouriteId;
 
-  DeleteFavouriteReqParams({required this.userId, required this.pointerId});
-
-  Map<String, dynamic> toJson() => {'userId': userId, 'pointerId': pointerId};
+  DeleteFavouriteReqParams({required this.favouriteId});
 }
