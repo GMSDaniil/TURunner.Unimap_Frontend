@@ -79,6 +79,9 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  // Camera state for building highlight/zoom restoration
+  mb.CameraOptions? _previousCameraOptions;
+  bool _isBuildingZoomed = false;
   static const _animDuration = Duration(milliseconds: 250);
   late double _navBarHeight; // ← height from bottom-nav
 
@@ -624,7 +627,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             });
 
             _filterMarkersByCategory(null);
-            _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+            // Restore previous camera if we zoomed to a building
+            if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
+              _mapboxMap!.easeTo(
+                _previousCameraOptions!,
+                mb.MapAnimationOptions(duration: 500, startDelay: 0),
+              );
+              _isBuildingZoomed = false;
+              _previousCameraOptions = null;
+            } else {
+              _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+            }
 
             // if the user *tapped* the close handle without dragging,
             // the bar is still up → dismiss it now
@@ -1127,6 +1140,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           category: 'Building',
         ),
       );
+      // Save camera state before zooming to building
+      if (_mapboxMap != null && !_isBuildingZoomed) {
+        final camState = await _mapboxMap!.getCameraState();
+        _previousCameraOptions = mb.CameraOptions(
+          center: camState.center,
+          zoom: camState.zoom,
+          bearing: camState.bearing,
+          pitch: camState.pitch,
+          padding: camState.padding,
+        );
+        _isBuildingZoomed = true;
+      }
       _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
       _showBuildingPanel(p);
     } else {
@@ -1136,9 +1161,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  void _onMarkerTap(Pointer p) {
+  void _onMarkerTap(Pointer p) async {
     if (_plannerOverlay != null) return;
     _markerTapJustHandled = true;
+    // Save camera state before zooming to building
+    if (_mapboxMap != null && !_isBuildingZoomed) {
+      final camState = await _mapboxMap!.getCameraState();
+      _previousCameraOptions = mb.CameraOptions(
+        center: camState.center,
+        zoom: camState.zoom,
+        bearing: camState.bearing,
+        pitch: camState.pitch,
+        padding: camState.padding,
+      );
+      _isBuildingZoomed = true;
+    }
     _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
     _showBuildingPanel(p);
   }
