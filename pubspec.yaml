@@ -26,6 +26,7 @@ dependencies:
   sliding_up_panel: ^2.0.0
   flutter_dotenv: 
   mapbox_maps_flutter: 
+  path_provider:
 
 dev_dependencies:
   flutter_test:
