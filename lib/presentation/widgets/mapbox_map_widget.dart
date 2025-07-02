@@ -5,7 +5,7 @@ import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' hide MapOptions;
+//import 'package:flutter_map/flutter_map.dart' hide MapOptions;
 import 'package:geolocator/geolocator.dart'as gl;
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide LocationSettings;
@@ -18,10 +18,10 @@ class MapboxMapWidget extends StatefulWidget {
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
-  final List<Marker> busStopMarkers;
-  final List<Marker> scooterMarkers;
+  //final List<Marker> busStopMarkers;
+ // final List<Marker> scooterMarkers;
   final List<RouteSegment> segments;
-  final TileProvider cachedTileProvider;
+  //final TileProvider cachedTileProvider;
   final Function(LatLng) onMapTap;
   final void Function(MapboxMap)? onMapCreated;
   final BuildContext parentContext;
@@ -30,10 +30,10 @@ class MapboxMapWidget extends StatefulWidget {
     Key? key,
     required this.markerAnnotations,
     required this.navBarHeight,
-    required this.busStopMarkers,
-    required this.scooterMarkers,
+   // required this.busStopMarkers,
+   // required this.scooterMarkers,
     required this.segments,
-    required this.cachedTileProvider,
+    //required this.cachedTileProvider,
     required this.onMapTap,
     required this.onMapCreated,
     this.onClearHighlightController,
