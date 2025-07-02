@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart'as gl;
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide LocationSettings;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 
 class MapboxMapWidget extends StatefulWidget {
@@ -46,15 +45,18 @@ class MapboxMapWidget extends StatefulWidget {
 }
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
-  // Track buildings that have been hidden due to zooming out
-  final Set<String> _hiddenBuildingsOnZoomOut = {};
+  /*────────────  zoom-direction “memory”  ────────────*/
+  /// pins hidden during the **current zoom-out** gesture
+  final Set<String> _hiddenThisZoomOut = {};
+  /// pins that have appeared during the **current zoom-in** gesture
+  /// (must never disappear until we zoom-out again)
+  final Set<String> _visibleThisZoomIn = {};
   double? _lastMarkerVisibilityZoom;
   DateTime _lastUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   //Timer? _cameraPollTimer;
   double? _lastZoom;
   // ── dynamic-marker visibility ───────────────────────────────────
   //static const double _markerZoomThreshold = 14.0;   // tune as you like
-  bool _annotationsVisible = true;                   // current state
   // Centralized method for selecting and highlighting a building, with zoom logic
   Future<void> selectBuilding(dynamic feature, dynamic event) async {
     final cameraState = await mapboxMap.getCameraState();
@@ -100,6 +102,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   StreamSubscription? userPositionStream;
   dynamic _highlightedBuilding;
 
+  final Map<String, PointAnnotation> _liveAnnotations = {};
+
   /* single canonical “clear” helper – both tap-handler and
    * parent UI will use this via the exposed callback above               */
   Future<void> unhighlightCurrentBuilding() async {
@@ -140,18 +144,20 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       super.dispose();
     }
 
-
-  void _addInteractiveMarkers(List<InteractiveAnnotation> annotations) async {
-      // if we’re temporarily hidden → bail early
-      if (!_annotationsVisible) return;
-
-      final options = annotations.map((a) => a.options).toList();
-      final created = await pointAnnotationManager.createMulti(options);
-
-      for (int i = 0; i < created.length; i++) {
-        _markerTapCallbacks[created[i]!.id] = annotations[i].onTap;
-      }
-    }
+  Future<void> _addInteractiveMarkers(
+    Iterable<InteractiveAnnotation> annotations) async {
+  if (annotations.isEmpty) return;
+  final opts = annotations.map((a) => a.options).toList();
+  final created = await pointAnnotationManager.createMulti(opts);
+  int i = 0;
+  for (final pa in created) {
+    if (pa == null) continue;
+    final key = _markerKeyFromPoint(pa.geometry.coordinates);
+    _liveAnnotations[key] = pa;
+    _markerTapCallbacks[pa.id] = annotations.elementAt(i).onTap;
+    i++;
+  }
+}
 
   Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
     // Remove old layers/sources if they exist
@@ -244,89 +250,115 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     return result;
   }
 
-  void _updateAllPolylines() async{
-    await polylineAnnotationManager.deleteAll();
-    final segmentLines = widget.segments.expand((seg) {
-        final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
-            ? smoothPolyline(seg.precisePolyline!)
-            : smoothPolyline(seg.path);
-
-        
-        return [
-          PolylineAnnotationOptions(
-            geometry: LineString(coordinates: points
-                .map((p) => Position(p.longitude, p.latitude))
-                .toList()
-            ),
-            
-            
-            lineColor: seg.mode == TravelMode.bus
-                ? const Color.fromARGB(255, 162, 0, 255).value
-                : seg.mode == TravelMode.scooter
-                    ? const Color(0xFFFFA500).value
-                    : Theme.of(context).primaryColor.value,
-            lineWidth: 5.0,
-            lineJoin: LineJoin.ROUND,
-            // linePattern: "circle"
-            
-          )
-        ];
-      }).toList();
-
-    await polylineAnnotationManager.createMulti(segmentLines);
-    
+  Future<void> _updateAllMarkers() async {
+    // recreate full initial set (will be trimmed by first camera-event)
+    await pointAnnotationManager.deleteAll();
+    _liveAnnotations.clear();
+    await _addInteractiveMarkers(widget.markerAnnotations);
+    pointAnnotationManager.addOnPointAnnotationClickListener(MarkerClickListener(_markerTapCallbacks));
   }
 
-  void _updateAllMarkers() async {
-      await pointAnnotationManager.deleteAll();
-      
-      // await _lineMgr?.createMulti(segmentLines);
-
-      // All markers: bus stops, scooters, current location...
-      // final allMarkerOptions = [
-      //   ...widget.markers,
-      //   ...widget.busStopMarkers,
-      //   ...widget.scooterMarkers,
-      //   if (widget.currentLocation != null)
-      //     PointAnnotationOptions(
-      //       geometry: Point(
-      //         coordinates: Position(
-      //           widget.currentLocation!.longitude,
-      //           widget.currentLocation!.latitude,
-      //         ),
-      //       ),
-      //       // Customize icon etc.
-      //     ),
-      // ];
-      // await pointAnnotationManager.createMulti(allMarkerOptions);
-
-      _addInteractiveMarkers(widget.markerAnnotations);
-
-      var markerClickListener = MarkerClickListener(_markerTapCallbacks);
-
-      pointAnnotationManager.addOnPointAnnotationClickListener(markerClickListener);
-
-
-    }
   /*────────────────────────  ZOOM-AWARE VISIBILITY  ────────────────────────*/
   /// Show only a subset of markers so that no two are too close (simple declutter)
+  // Future<void> _updateMarkerVisibility(double zoom) async {
+  //   // Debounce: only update every 200ms
+  //   final now = DateTime.now();
+  //   if (now.difference(_lastUpdate).inMilliseconds < 500) return;
+  //   _lastUpdate = now;
+
+  //   const minScreenDist = 10.0;
+
+  //   final List<InteractiveAnnotation> all = List.from(widget.markerAnnotations);
+  //   final List<InteractiveAnnotation> visible = [];
+  //   final List<Offset> visibleScreenPoints = [];
+
+  //   // Helper to get unique key for a marker
+  //   String markerKey(InteractiveAnnotation a) {
+  //     final c = a.options.geometry.coordinates;
+  //     return '${c.lat},${c.lng}';
+  //   }
+
+  //   // Helper to get priority: lower value = lower priority (hidden first)
+  //   int markerPriority(InteractiveAnnotation a) {
+  //     final category = a.category.toLowerCase();
+  //     if (category.contains('canteen') || category.contains('mensa')) return 0;
+  //     if (category.contains('library')) return 1;
+  //     if (category.contains('cafe')) return 2;
+  //     return 3; // buildings or default
+  //   }
+
+  //   // Sort all markers by priority descending (higher priority last, so they are kept if crowded)
+  //   all.sort((a, b) => markerPriority(a).compareTo(markerPriority(b)));
+
+  //   // Detect zoom direction
+  //   bool zoomingIn = _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
+  //   _lastMarkerVisibilityZoom = zoom;
+
+  //   // Reset hidden buildings set when zooming in
+  //   if (zoomingIn) {
+  //     _hiddenBuildingsOnZoomOut.clear();
+  //   }
+
+  //   for (final ann in all) {
+  //     final isBuilding = markerPriority(ann) == 3;
+  //     final key = markerKey(ann);
+  //     // If zoom <= 14 and this is a building, skip it and mark as hidden
+  //     if (zoom <= 14 && isBuilding) {
+  //       _hiddenBuildingsOnZoomOut.add(key);
+  //       continue;
+  //     }
+  //     // If zooming out and this building was hidden, keep it hidden
+  //     if (!zoomingIn && isBuilding && _hiddenBuildingsOnZoomOut.contains(key)) {
+  //       continue;
+  //     }
+  //     final screenPos = await mapboxMap.pixelForCoordinate(
+  //       Point(coordinates: Position(
+  //         ann.options.geometry.coordinates.lng,
+  //         ann.options.geometry.coordinates.lat,
+  //       )),
+  //     );
+  //     final pt = Offset(screenPos.x, screenPos.y);
+  //     bool tooClose = false;
+  //     for (final other in visibleScreenPoints) {
+  //       if ((pt - other).distance < minScreenDist) {
+  //         tooClose = true;
+  //         break;
+  //       }
+  //     }
+  //     if (!tooClose) {
+  //       visible.add(ann);
+  //       visibleScreenPoints.add(pt);
+  //     }
+  //   }
+
+  //   // Only update if visible set actually changed
+  //   final newIds = visible.map(markerKey).toSet();
+  //   bool setsEqual(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
+  //   if (newIds.isEmpty || setsEqual(newIds, _currentVisibleMarkerKeys)) return;
+  //   await pointAnnotationManager.deleteAll();
+  //   _addInteractiveMarkers(visible);
+  //   var listener = MarkerClickListener(_markerTapCallbacks);
+  //   pointAnnotationManager.addOnPointAnnotationClickListener(listener);
+  //   _annotationsVisible = true;
+  //   _currentVisibleMarkerKeys = newIds;
+  // }
+
+  // ── smart, diff-aware declutter ────────────────────────────────
   Future<void> _updateMarkerVisibility(double zoom) async {
-    // Debounce: only update every 200ms
+    // Debounce: only every ~300 ms
     final now = DateTime.now();
-    if (now.difference(_lastUpdate).inMilliseconds < 500) return;
+    if (now.difference(_lastUpdate).inMilliseconds < 300) return;
     _lastUpdate = now;
 
-    const minScreenDist = 10.0;
+    const minScreenDist = 200.0;
 
     final List<InteractiveAnnotation> all = List.from(widget.markerAnnotations);
-    final List<InteractiveAnnotation> visible = [];
-    final List<Offset> visibleScreenPoints = [];
+    final List<InteractiveAnnotation> visible   = [];
+    final List<Offset>                screens   = [];
 
-    // Helper to get unique key for a marker
-    String markerKey(InteractiveAnnotation a) {
-      final c = a.options.geometry.coordinates;
-      return '${c.lat},${c.lng}';
-    }
+    /* helpers */
+    String markerKey(InteractiveAnnotation a) =>
+        _markerKeyFromPoint(a.options.geometry.coordinates);
 
     // Helper to get priority: lower value = lower priority (hidden first)
     int markerPriority(InteractiveAnnotation a) {
@@ -337,59 +369,94 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       return 3; // buildings or default
     }
 
-    // Sort all markers by priority descending (higher priority last, so they are kept if crowded)
+    // Sort markers by priority (lower number = higher priority)
     all.sort((a, b) => markerPriority(a).compareTo(markerPriority(b)));
 
-    // Detect zoom direction
-    bool zoomingIn = _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
+    /*──────── detect direction … ────────*/
+    final bool zoomingIn =
+        _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
     _lastMarkerVisibilityZoom = zoom;
 
-    // Reset hidden buildings set when zooming in
+    /*──────── reset caches when direction flips ──────*/
     if (zoomingIn) {
-      _hiddenBuildingsOnZoomOut.clear();
+      _hiddenThisZoomOut.clear();          // we’re done zooming-out
+    } else {
+      _visibleThisZoomIn.clear();          // we’re done zooming-in
     }
 
-    for (final ann in all) {
-      final isBuilding = markerPriority(ann) == 3;
-      final key = markerKey(ann);
-      // If zoom <= 14 and this is a building, skip it and mark as hidden
-      if (zoom <= 14 && isBuilding) {
-        _hiddenBuildingsOnZoomOut.add(key);
-        continue;
+    /*────────────────────────
+     *  ZOOM-IN  →  only ADD
+     *───────────────────────*/
+    if (zoomingIn) {
+      // build a list of candidates that are NOT yet visible
+      for (final ann in all) {
+        final key = markerKey(ann);
+        if (_liveAnnotations.containsKey(key)) continue; // already there
+        if (_hiddenThisZoomOut.contains(key)) continue;  // still banned
+
+        // keep simple spacing rule against *currently* visible pins
+        final screenPos = await mapboxMap.pixelForCoordinate(
+          Point(coordinates: Position(
+            ann.options.geometry.coordinates.lng,
+            ann.options.geometry.coordinates.lat,
+          )),
+        );
+        final pt = Offset(screenPos.x, screenPos.y);
+        bool tooClose = false;
+        for (final other in screens) {
+          if ((pt - other).distance < minScreenDist) {
+            tooClose = true;
+            break;
+          }
+        }
+        if (tooClose) continue;
+
+        visible.add(ann);
+        screens.add(pt);
       }
-      // If zooming out and this building was hidden, keep it hidden
-      if (!zoomingIn && isBuilding && _hiddenBuildingsOnZoomOut.contains(key)) {
-        continue;
-      }
-      final screenPos = await mapboxMap.pixelForCoordinate(
-        Point(coordinates: Position(
-          ann.options.geometry.coordinates.lng,
-          ann.options.geometry.coordinates.lat,
-        )),
-      );
-      final pt = Offset(screenPos.x, screenPos.y);
-      bool tooClose = false;
-      for (final other in visibleScreenPoints) {
-        if ((pt - other).distance < minScreenDist) {
-          tooClose = true;
-          break;
+
+      // **add** the new ones
+      await _addInteractiveMarkers(visible);
+      _visibleThisZoomIn.addAll(
+          visible.map((a) => markerKey(a)));         // remember for session
+    }
+
+    /*────────────────────────
+     *  ZOOM-OUT → only REMOVE
+     *───────────────────────*/
+    else {
+      // decide which **currently visible** pins must go
+      final toRemove = <String>[];
+      for (final entry in _liveAnnotations.entries) {
+        final key = entry.key;
+        // once hidden in *this* zoom-out → skip
+        if (_hiddenThisZoomOut.contains(key)) continue;
+
+        // simple example rule: buildings below z14
+        final parts = key.split(',');
+        final isBuilding = parts.length == 2
+            ? true
+            : false; // your own logic if needed
+
+        if (zoom <= 14 && isBuilding) {
+          toRemove.add(key);
+          _hiddenThisZoomOut.add(key); // remember ban until next zoom-in
         }
       }
-      if (!tooClose) {
-        visible.add(ann);
-        visibleScreenPoints.add(pt);
+      for (final k in toRemove) {
+        final ann = _liveAnnotations[k];
+        if (ann != null) await pointAnnotationManager.delete(ann);
+        _liveAnnotations.remove(k);
       }
     }
 
-    // Only update if visible set actually changed
-    final newIds = visible.map(markerKey).toSet();
-    if (newIds.isEmpty) return;
-    await pointAnnotationManager.deleteAll();
-    _addInteractiveMarkers(visible);
-    var listener = MarkerClickListener(_markerTapCallbacks);
-    pointAnnotationManager.addOnPointAnnotationClickListener(listener);
-    _annotationsVisible = true;
+    // 3) keep Tap-listener once (safe to re-add)
+    pointAnnotationManager.addOnPointAnnotationClickListener(
+      MarkerClickListener(_markerTapCallbacks),
+    );
   }
+/* utility: coordinates → key */
+String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
   void _bindInteractions() {
     mapboxMap.setOnMapTapListener(
@@ -539,8 +606,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         _onMapCreated(map);
       },
       onCameraChangeListener: (CameraChangedEventData data) async {
-        final zoom = data.cameraState?.zoom;
-        if (zoom != null && _lastZoom != zoom) {
+        final zoom = data.cameraState.zoom;
+        if (_lastZoom != zoom) {
           _lastZoom = zoom;
           await _updateMarkerVisibility(zoom);
         }
