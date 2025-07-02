@@ -51,6 +51,7 @@ flutter:
     - assets/icons/pin_cafe_64.png
     - assets/icons/pin_library_64.png
     - assets/icons/pin_default_64.png
+    - assets/icons/pin_destination_64.png
 
 
   fonts:

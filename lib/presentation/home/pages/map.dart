@@ -194,7 +194,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _preloadCategoryImages() async {
-    final categories = ['mensa', 'cafe', 'library', 'default'];
+    final categories = ['mensa', 'cafe', 'library', 'default', 'destination'];
     for (final cat in categories) {
       final assetPath = getPinAssetForCategory(cat);
       final byteData = await rootBundle.load(assetPath);
@@ -929,6 +929,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return MapboxMapWidget(
       markerAnnotations: _interactiveAnnotations,
       navBarHeight: _navBarHeight,
+      markerImageCache: _categoryImageCache,
       //busStopMarkers: busMarkers,
      // scooterMarkers: scooterMarkers,
       segments: segments,
@@ -1336,6 +1337,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'libraries':
       case 'library':
         return 'assets/icons/pin_library_64.png';
+      case 'destination':
+        return 'assets/icons/pin_destination_64.png';
       default:
         return 'assets/icons/pin_default_64.png';
     }

@@ -11,9 +11,18 @@ import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide LocationSettings;
 import 'package:flutter/foundation.dart';
 
+final List<String> markers = [
+  'mensa',
+  'library',
+  'cafe',
+  'default',
+  'destination', 
+];
+
 class MapboxMapWidget extends StatefulWidget {
   /// Annotations to show on the map
   final List<InteractiveAnnotation> markerAnnotations;
+  final Map<String, Uint8List> markerImageCache;
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
@@ -29,6 +38,7 @@ class MapboxMapWidget extends StatefulWidget {
     Key? key,
     required this.markerAnnotations,
     required this.navBarHeight,
+    required this.markerImageCache,
    // required this.busStopMarkers,
    // required this.scooterMarkers,
     required this.segments,
@@ -43,6 +53,7 @@ class MapboxMapWidget extends StatefulWidget {
   @override
   State<MapboxMapWidget> createState() => _MapBoxWidgetState();
 }
+
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
   /*────────────  zoom-direction “memory”  ────────────*/
@@ -160,55 +171,74 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 }
 
   Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
-    // Remove old layers/sources if they exist
-    for (var mode in TravelMode.values) {
-      try {
-        await mapboxMap.style.removeStyleLayer('route-layer-${mode.name}');
-        await mapboxMap.style.removeStyleSource('route-source-${mode.name}');
-      } catch (_) {}
+  // Remove old layers/sources if they exist - remove ALL route layers/sources
+  try {
+    final allLayerIds = await mapboxMap.style.getStyleLayers();
+    final allSourceIds = await mapboxMap.style.getStyleSources();
+    
+    for (final layerId in allLayerIds) {
+      if (layerId!.id.startsWith('route-layer-')) {
+        try {
+          await mapboxMap.style.removeStyleLayer(layerId.id);
+        } catch (_) {}
+      }
+    }
+    
+    for (final sourceId in allSourceIds) {
+      if (sourceId!.id.startsWith('route-source-')) {
+        try {
+          await mapboxMap.style.removeStyleSource(sourceId.id);
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    print('Error cleaning up old routes: $e');
+  }
+
+  // Add each segment with unique ID
+  for (int i = 0; i < segments.length; i++) {
+    final seg = segments[i];
+    final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
+        ? smoothPolyline(seg.precisePolyline!)
+        : smoothPolyline(seg.path);
+
+    if (points.length < 2) continue;
+
+    final coordinates = points.map((p) => [p.longitude, p.latitude]).toList();
+
+    final geojson = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": coordinates,
+          },
+          "properties": {}
+        }
+      ]
+    };
+
+    // Choose color and dash style based on mode
+    int color;
+    List<double>? dashArray;
+    if (seg.mode == TravelMode.bus) {
+      color = const Color(0xFF0000FF).value;
+      dashArray = null;
+    } else if (seg.mode == TravelMode.scooter) {
+      color = const Color(0xFFFFA500).value;
+      dashArray = null;
+    } else {
+      color = const Color.fromARGB(255, 2, 121, 201).value;
+      dashArray = [0.5, 2.0]; // Better dots for walking
     }
 
-    for (final seg in segments) {
-      final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
-          ? smoothPolyline(seg.precisePolyline!)
-          : smoothPolyline(seg.path);
+    // Use unique IDs for each segment (mode + index)
+    final sourceId = 'route-source-${seg.mode.name}-$i';
+    final layerId = 'route-layer-${seg.mode.name}-$i';
 
-      if (points.length < 2) continue;
-
-      final coordinates = points.map((p) => [p.longitude, p.latitude]).toList();
-
-      final geojson = {
-        "type": "FeatureCollection",
-        "features": [
-          {
-            "type": "Feature",
-            "geometry": {
-              "type": "LineString",
-              "coordinates": coordinates,
-            },
-            "properties": {}
-          }
-        ]
-      };
-
-      // Choose color and dash style based on mode
-      int color;
-      List<double>? dashArray;
-      if (seg.mode == TravelMode.bus) {
-        color = const Color(0xFF0000FF).value;
-        dashArray = null;
-      } else if (seg.mode == TravelMode.scooter) {
-        color = const Color(0xFFFFA500).value;
-        dashArray = null;
-      } else {
-        // Walk: dotted line, pretty color
-        color = Colors.greenAccent.shade700.value;
-        dashArray = [1.5, 2.5];
-      }
-
-      final sourceId = 'route-source-${seg.mode.name}';
-      final layerId = 'route-layer-${seg.mode.name}';
-
+    try {
       await mapboxMap.style.addSource(GeoJsonSource(
         id: sourceId,
         data: jsonEncode(geojson),
@@ -219,13 +249,21 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         sourceId: sourceId,
         lineColor: color,
         lineEmissiveStrength: 1.0,
-        lineWidth: 5.0,
+        lineWidth: seg.mode == TravelMode.walk ? 4.0 : 5.0,
         lineDasharray: dashArray,
         lineCap: LineCap.ROUND,
         lineJoin: LineJoin.ROUND,
       ));
+    } catch (e) {
+      print('Error adding route segment $i (${seg.mode.name}): $e');
     }
   }
+
+  await deleteDestinationMarker();
+  if (segments.isNotEmpty && segments.last.path.isNotEmpty) {
+    await addDestinationMarker(segments.last.path.last);
+  }
+}
     
   List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 2}) {
     List<LatLng> result = List.from(points);
@@ -248,6 +286,53 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       result = newPoints;
     }
     return result;
+  }
+
+  Future<void> deleteDestinationMarker() async {
+    try {
+      await mapboxMap.style.removeStyleLayer('destination-layer');
+      await mapboxMap.style.removeStyleSource('destination-source');
+    } catch (_) {}
+  }
+  Future<void> addDestinationMarker(LatLng destination) async {
+
+    final destinationGeoJson = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [destination.longitude, destination.latitude],
+          },
+          "properties": {}
+        }
+      ]
+    };
+
+    await mapboxMap.style.addSource(GeoJsonSource(
+      id: 'destination-source',
+      data: jsonEncode(destinationGeoJson),
+    ));
+
+    // Option 1: Circle marker
+    // await mapboxMap.style.addLayer(CircleLayer(
+    //   id: 'destination-layer',
+    //   sourceId: 'destination-source',
+    //   circleRadius: 15.0,
+    //   circleColor: Colors.red.value,
+    //   circleStrokeColor: Colors.white.value,
+    //   circleStrokeWidth: 4.0,
+    // ));
+
+    // Option 2: Symbol marker (if you have an icon)
+    await mapboxMap.style.addLayer(SymbolLayer(
+      id: 'destination-layer',
+      sourceId: 'destination-source',
+      iconImage: 'destination-marker', // You'd need to load this icon first
+      iconSize: 1.5,
+      iconAnchor: IconAnchor.BOTTOM,
+    ));
   }
 
   Future<void> _updateAllMarkers() async {
@@ -514,6 +599,13 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
      maxZoom: 18.0,
   ));
+
+  mapboxMap.style.addStyleImage(
+    'destination-marker', 
+    1.0, 
+    MbxImage(width: 64, height: 64, data: widget.markerImageCache['destination']!),
+    false, [], [], null);
+
 
     mapboxMap.style.setStyleImportConfigProperties("basemap",{
       "showPointOfInterestLabels" : false,
