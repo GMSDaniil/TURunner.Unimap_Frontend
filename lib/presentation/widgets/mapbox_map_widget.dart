@@ -57,10 +57,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   double? _lastZoom;
   // ── dynamic-marker visibility ───────────────────────────────────
   //static const double _markerZoomThreshold = 14.0;   // tune as you like
-  // Centralized method for selecting and highlighting a building, with zoom logic
+  /*──────────── Highlight Logic ────────────*/
+
+  /// Centralized method for selecting and highlighting a building, with zoom logic
   Future<void> selectBuilding(dynamic feature, dynamic event) async {
     final cameraState = await mapboxMap.getCameraState();
     const minZoom = 15.2;
+
     // If zoom is too low, animate to minZoom and center on the building
     if (cameraState.zoom < minZoom) {
       await mapboxMap.easeTo(
@@ -71,19 +74,35 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         MapAnimationOptions(duration: 500, startDelay: 0),
       );
     }
-    // Always de-highlight previous
+
+    // Always de-highlight previous building
     await unhighlightCurrentBuilding();
+
     // Highlight new building
     await mapboxMap.setFeatureStateForFeaturesetFeature(
-      feature, StandardBuildingsState(highlight: true),
+      feature,
+      StandardBuildingsState(highlight: true),
     );
     _highlightedBuilding = feature;
+
     // Forward tap to parent
     widget.onMapTap(LatLng(
       event.point.coordinates.lat.toDouble(),
       event.point.coordinates.lng.toDouble(),
     ));
   }
+
+  /// Helper method to unhighlight the currently highlighted building
+  Future<void> unhighlightCurrentBuilding() async {
+    if (_highlightedBuilding != null) {
+      await mapboxMap.setFeatureStateForFeaturesetFeature(
+        _highlightedBuilding,
+        StandardBuildingsState(highlight: false),
+      );
+      _highlightedBuilding = null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -106,14 +125,14 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   /* single canonical “clear” helper – both tap-handler and
    * parent UI will use this via the exposed callback above               */
-  Future<void> unhighlightCurrentBuilding() async {
-    if (_highlightedBuilding != null) {
-      await mapboxMap.setFeatureStateForFeaturesetFeature(
-        _highlightedBuilding, StandardBuildingsState(highlight: false),
-      );
-      _highlightedBuilding = null;
-    }
-  }
+  // Future<void> unhighlightCurrentBuilding() async {
+  //   if (_highlightedBuilding != null) {
+  //     await mapboxMap.setFeatureStateForFeaturesetFeature(
+  //       _highlightedBuilding, StandardBuildingsState(highlight: false),
+  //     );
+  //     _highlightedBuilding = null;
+  //   }
+  // }
 
   // @override
   // void initState() {
@@ -533,9 +552,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
     polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
 
-    // Declutter markers before adding them
-    final declutteredMarkers = await _declutterMarkers(mapboxMap, widget.markerAnnotations, 200.0); // Await the result
-    await _addInteractiveMarkers(declutteredMarkers);
+    _addBuildingTapInteraction(); // Add building tap interaction
 
     final initZoom = (await mapboxMap.getCameraState()).zoom;
     await _updateMarkerVisibility(initZoom);
