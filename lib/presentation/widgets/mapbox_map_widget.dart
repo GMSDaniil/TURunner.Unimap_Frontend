@@ -344,117 +344,128 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   // }
 
   // ── smart, diff-aware declutter ────────────────────────────────
-  Future<void> _updateMarkerVisibility(double zoom) async {
-    // Debounce: only every ~300 ms
-    final now = DateTime.now();
-    if (now.difference(_lastUpdate).inMilliseconds < 300) return;
-    _lastUpdate = now;
+  /*──────────────── helper – buffer grows smoothly with zoom ─────────────*/
+double _minScreenDist(double zoom) {
+  const zMax = 19.0, zMin = 11.0;
+  const dMax = 350.0, dMin = 30.0;
+  final t = ((zMax - zoom) / (zMax - zMin)).clamp(0.0, 1.0);
+  return dMin + (dMax - dMin) * t;
+}
 
-    const minScreenDist = 200.0;
+/*──────────────── smart, one-way declutter ─────────────────────────────*/
+Future<void> _updateMarkerVisibility(double zoom) async {
+  final now = DateTime.now();
+  if (now.difference(_lastUpdate).inMilliseconds < 250) return;
+  _lastUpdate = now;
 
-    final List<InteractiveAnnotation> all = List.from(widget.markerAnnotations);
-    final List<InteractiveAnnotation> visible   = [];
-    final List<Offset>                screens   = [];
+  final bool zoomingIn =
+      _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
+  _lastMarkerVisibilityZoom = zoom;
 
-    /* helpers */
-    String markerKey(InteractiveAnnotation a) =>
-        _markerKeyFromPoint(a.options.geometry.coordinates);
-
-    // Helper to get priority: lower value = lower priority (hidden first)
-    int markerPriority(InteractiveAnnotation a) {
-      final category = a.category.toLowerCase();
-      if (category.contains('canteen') || category.contains('mensa')) return 0;
-      if (category.contains('library')) return 1;
-      if (category.contains('cafe')) return 2;
-      return 3; // buildings or default
-    }
-
-    // Sort markers by priority (lower number = higher priority)
-    all.sort((a, b) => markerPriority(a).compareTo(markerPriority(b)));
-
-    /*──────── detect direction … ────────*/
-    final bool zoomingIn =
-        _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
-    _lastMarkerVisibilityZoom = zoom;
-
-    /*──────── reset caches when direction flips ──────*/
-    if (zoomingIn) {
-      _hiddenThisZoomOut.clear();          // we’re done zooming-out
-    } else {
-      _visibleThisZoomIn.clear();          // we’re done zooming-in
-    }
-
-    /*────────────────────────
-     *  ZOOM-IN  →  only ADD
-     *───────────────────────*/
-    if (zoomingIn) {
-      // build a list of candidates that are NOT yet visible
-      for (final ann in all) {
-        final key = markerKey(ann);
-        if (_liveAnnotations.containsKey(key)) continue; // already there
-        if (_hiddenThisZoomOut.contains(key)) continue;  // still banned
-
-        // keep simple spacing rule against *currently* visible pins
-        final screenPos = await mapboxMap.pixelForCoordinate(
-          Point(coordinates: Position(
-            ann.options.geometry.coordinates.lng,
-            ann.options.geometry.coordinates.lat,
-          )),
-        );
-        final pt = Offset(screenPos.x, screenPos.y);
-        bool tooClose = false;
-        for (final other in screens) {
-          if ((pt - other).distance < minScreenDist) {
-            tooClose = true;
-            break;
-          }
-        }
-        if (tooClose) continue;
-
-        visible.add(ann);
-        screens.add(pt);
-      }
-
-      // **add** the new ones
-      await _addInteractiveMarkers(visible);
-      _visibleThisZoomIn.addAll(
-          visible.map((a) => markerKey(a)));         // remember for session
-    }
-
-    /*────────────────────────
-     *  ZOOM-OUT → only REMOVE
-     *───────────────────────*/
-    else {
-      // decide which **currently visible** pins must go
-      final toRemove = <String>[];
-      for (final entry in _liveAnnotations.entries) {
-        final key = entry.key;
-        // once hidden in *this* zoom-out → skip
-        if (_hiddenThisZoomOut.contains(key)) continue;
-
-        // simple example rule: buildings below z14
-        final parts = key.split(',');
-        final isBuilding = parts.length == 2
-            ? true
-            : false; // your own logic if needed
-
-        if (zoom <= 14 && isBuilding) {
-          toRemove.add(key);
-          _hiddenThisZoomOut.add(key); // remember ban until next zoom-in
-        }
-      }
-      for (final k in toRemove) {
-        final ann = _liveAnnotations[k];
-        if (ann != null) await pointAnnotationManager.delete(ann);
-        _liveAnnotations.remove(k);
-      }
-    }
-
-    // 3) keep Tap-listener once (safe to re-add)
-    pointAnnotationManager.addOnPointAnnotationClickListener(
-      MarkerClickListener(_markerTapCallbacks),
-    );
+  if (zoomingIn) {
+    _hiddenThisZoomOut.clear();
+  } else {
+    _visibleThisZoomIn.clear();
   }
+
+  final buffer = _minScreenDist(zoom);
+
+  String keyOf(Position p) => '${p.lat},${p.lng}';
+  int priorityOf(String cat) {
+    final c = cat.toLowerCase();
+    if (c.contains('canteen') || c.contains('mensa')) return 0;
+    if (c.contains('library')) return 1;
+    if (c.contains('cafe')) return 2;
+    return 3;
+  }
+
+  if (zoomingIn) {
+    final candidates = widget.markerAnnotations
+        .where((a) =>
+            !_liveAnnotations.containsKey(keyOf(a.options.geometry.coordinates)) &&
+            !_hiddenThisZoomOut.contains(keyOf(a.options.geometry.coordinates)))
+        .toList()
+      ..sort((a, b) =>
+          priorityOf(a.category).compareTo(priorityOf(b.category)));
+
+    final List<InteractiveAnnotation> toAdd = [];
+    final List<Offset> onScreen = [];
+
+    for (final pa in _liveAnnotations.values) {
+      final pt = await mapboxMap.pixelForCoordinate(pa.geometry);
+      onScreen.add(Offset(pt.x, pt.y));
+    }
+
+    for (final ann in candidates) {
+      final pt = await mapboxMap.pixelForCoordinate(
+        Point(coordinates: Position(
+          ann.options.geometry.coordinates.lng,
+          ann.options.geometry.coordinates.lat,
+        )),
+      );
+      final screenPt = Offset(pt.x, pt.y);
+
+      bool crowded = false;
+      for (final other in onScreen) {
+        if ((screenPt - other).distance < buffer) {
+          crowded = true;
+          break;
+        }
+      }
+      if (!crowded) {
+        toAdd.add(ann);
+        onScreen.add(screenPt);
+      }
+    }
+
+    await _addInteractiveMarkers(toAdd);
+    _visibleThisZoomIn.addAll(
+        toAdd.map((a) => keyOf(a.options.geometry.coordinates)));
+  } else {
+    final work = _liveAnnotations.entries.toList()
+      ..sort((a, b) {
+        final catA = widget.markerAnnotations
+            .firstWhere((x) => keyOf(x.options.geometry.coordinates) == a.key)
+            .category;
+        final catB = widget.markerAnnotations
+            .firstWhere((x) => keyOf(x.options.geometry.coordinates) == b.key)
+            .category;
+        return priorityOf(catA).compareTo(priorityOf(catB));
+      });
+
+    final keep = <String>{};
+    final keepScreen = <Offset>[];
+
+    for (final entry in work) {
+      final k = entry.key;
+      if (_hiddenThisZoomOut.contains(k)) continue;
+      final pt = await mapboxMap.pixelForCoordinate(entry.value.geometry);
+      final screenPt = Offset(pt.x, pt.y);
+
+      bool crowded = false;
+      for (final other in keepScreen) {
+        if ((screenPt - other).distance < buffer) {
+          crowded = true;
+          break;
+        }
+      }
+
+      if (crowded) {
+        await pointAnnotationManager.delete(entry.value);
+        _liveAnnotations.remove(k);
+        _hiddenThisZoomOut.add(k);
+      } else {
+        keep.add(k);
+        keepScreen.add(screenPt);
+      }
+    }
+  }
+
+  pointAnnotationManager.addOnPointAnnotationClickListener(
+    MarkerClickListener(_markerTapCallbacks),
+  );
+}
+
 /* utility: coordinates → key */
 String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
@@ -507,73 +518,30 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
   void _onMapCreated(MapboxMap map) async {
     mapboxMap = map;
 
-    // Camera event listener moved to MapWidget's build method (onCameraChanged)
-
     await mapboxMap.setBounds(CameraBoundsOptions(
-    minPitch: 0,    // Minimum tilt angle (degrees)
-    maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
-     maxZoom: 18.0,
-  ));
-
-    mapboxMap.style.setStyleImportConfigProperties("basemap",{
-      "showPointOfInterestLabels" : false,
-      "lightPreset": "day",
-      "colorBuildingHighlight": "#B39DDB", // light purple
-    });
-
-    mapboxMap.compass.updateSettings(
-      CompassSettings(
-        enabled: true,
-        clickable: true,
-        position: OrnamentPosition.BOTTOM_RIGHT,
-        marginLeft: 16.0,
-        marginTop: 32.0,
-        marginRight: 26.0,
-        marginBottom: widget.navBarHeight + 90,
-      )
-    );
-
-    // mapboxMap.setBounds(CameraBoundsOptions(
-    //   bounds: CoordinateBounds(
-    //     southwest: Point(coordinates: Position(13.316, 52.502)), 
-    //     northeast: Point(coordinates: Position(13.34, 52.523)), 
-    //     infiniteBounds: false,
-    //   ),
-    // ));
-
-    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
-
-    // Highlight selected building
-    // var tapInteractionBuildings =
-    //     TapInteraction(StandardBuildings(), (feature, pos) {
-    //   mapboxMap.setFeatureStateForFeaturesetFeature(
-    //       feature, StandardBuildingsState(highlight: true));
-    //   widget.onMapTap(LatLng(pos.point.coordinates.lat.toDouble(), pos.point.coordinates.lng.toDouble()));
-      
-    // });
-    // mapboxMap.addInteraction(tapInteractionBuildings);
-
-    _addBuildingTapInteraction();
-
-    mapboxMap.location.updateSettings(LocationComponentSettings(
-      enabled: true,
-      pulsingEnabled: true,
-      showAccuracyRing: true,
+      minPitch: 0,
+      maxPitch: 70,
+      maxZoom: 18.0,
     ));
 
-    /*─────────── initial-visibility + live listener ────────────*/
-    final initZoom = (await mapboxMap.getCameraState()).zoom;
-    _updateMarkerVisibility(initZoom);
-    // Camera idle listener now handled via MapWidget's onCameraIdle property in build()
+    mapboxMap.style.setStyleImportConfigProperties("basemap", {
+      "showPointOfInterestLabels": false,
+      "lightPreset": "day",
+      "colorBuildingHighlight": "#B39DDB",
+    });
 
-    // mapboxMap.style.setStyleImportProperty("basemap", "showPointOfInterestLabels", false);
     pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
     polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
 
-    widget.onMapCreated?.call(mapboxMap);
+    // Declutter markers before adding them
+    final declutteredMarkers = await _declutterMarkers(mapboxMap, widget.markerAnnotations, 200.0); // Await the result
+    await _addInteractiveMarkers(declutteredMarkers);
 
+    final initZoom = (await mapboxMap.getCameraState()).zoom;
+    await _updateMarkerVisibility(initZoom);
+
+    widget.onMapCreated?.call(mapboxMap);
     _bindInteractions();
-    _updateAllMarkers();
   }
 
   void _addBuildingTapInteraction() {
@@ -679,4 +647,36 @@ class MarkerClickListener implements OnPointAnnotationClickListener{
       callback();
     }
   }
+}
+
+Future<List<InteractiveAnnotation>> _declutterMarkers(
+    MapboxMap mapboxMap, List<InteractiveAnnotation> markers, double buffer) async {
+  final List<InteractiveAnnotation> result = [];
+  final List<Offset> screenPoints = [];
+
+  for (final marker in markers) {
+    final screenCoordinate = await mapboxMap.pixelForCoordinate(
+      Point(coordinates: Position(
+        marker.options.geometry.coordinates.lng,
+        marker.options.geometry.coordinates.lat,
+      )),
+    );
+
+    final screenPt = Offset(screenCoordinate.x, screenCoordinate.y);
+
+    bool tooClose = false;
+    for (final other in screenPoints) {
+      if ((screenPt - other).distance < buffer) {
+        tooClose = true;
+        break;
+      }
+    }
+
+    if (!tooClose) {
+      result.add(marker);
+      screenPoints.add(screenPt);
+    }
+  }
+
+  return result;
 }
