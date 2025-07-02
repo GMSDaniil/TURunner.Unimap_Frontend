@@ -46,6 +46,33 @@ class MapboxMapWidget extends StatefulWidget {
 }
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
+  // Centralized method for selecting and highlighting a building, with zoom logic
+  Future<void> selectBuilding(dynamic feature, dynamic event) async {
+    final cameraState = await mapboxMap.getCameraState();
+    const minZoom = 15.2;
+    // If zoom is too low, animate to minZoom and center on the building
+    if (cameraState.zoom < minZoom) {
+      await mapboxMap.easeTo(
+        CameraOptions(
+          center: event.point,
+          zoom: minZoom,
+        ),
+        MapAnimationOptions(duration: 500, startDelay: 0),
+      );
+    }
+    // Always de-highlight previous
+    await unhighlightCurrentBuilding();
+    // Highlight new building
+    await mapboxMap.setFeatureStateForFeaturesetFeature(
+      feature, StandardBuildingsState(highlight: true),
+    );
+    _highlightedBuilding = feature;
+    // Forward tap to parent
+    widget.onMapTap(LatLng(
+      event.point.coordinates.lat.toDouble(),
+      event.point.coordinates.lng.toDouble(),
+    ));
+  }
   @override
   void initState() {
     super.initState();
@@ -380,22 +407,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   void _addBuildingTapInteraction() {
-    // Highlight buildings on tap
+    // Centralized highlight and zoom logic on building tap
     var buildingTap = TapInteraction(
       StandardBuildings(),
       (feature, event) async {
-        // de-highlight the previously selected footprint (if any)
-        await unhighlightCurrentBuilding();
-        // Highlight new building
-        await mapboxMap.setFeatureStateForFeaturesetFeature(
-          feature, StandardBuildingsState(highlight: true),
-        );
-        _highlightedBuilding = feature;
-        // forward tap
-        widget.onMapTap(LatLng(
-          event.point.coordinates.lat.toDouble(),
-          event.point.coordinates.lng.toDouble(),
-        ));
+        await selectBuilding(feature, event);
       },
     );
     mapboxMap.addInteraction(buildingTap);

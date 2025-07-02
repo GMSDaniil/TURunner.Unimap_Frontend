@@ -635,8 +635,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               );
               _isBuildingZoomed = false;
               _previousCameraOptions = null;
-            } else {
-              _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
             }
 
             // if the user *tapped* the close handle without dragging,
@@ -789,7 +787,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // Opens building info panel
-  void _showBuildingPanel(Pointer p) {
+  void _showBuildingPanel(Pointer p) async {
+    // Only allow highlight if zoom is high enough
+    if (_mapboxMap != null) {
+      final zoom = (await _mapboxMap!.getCameraState()).zoom;
+      if (zoom < _buildingSelectMinZoom) {
+        // Do not show panel or highlight if zoomed out too far
+        return;
+      }
+    }
     setState(() => _buildingPanelPointer = p);
     _panelController.open();
     _notifyNavBar(true); // Hide nav bar when opening
@@ -935,6 +941,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       onClearHighlightController: (clearFn) {
         _clearBuildingHighlight = clearFn;
       },
+      routePoints: const [],
     );
   }
 
@@ -1123,12 +1130,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // ── taps ─────────────────────────────────────────────────────────
+  static const double _buildingSelectMinZoom = 15.2;
+
   void _onMapTap(LatLng latlng) async {
     if (_markerTapJustHandled) {
       _markerTapJustHandled = false;
       return;
     }
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
+    // Only allow building selection if zoom is high enough
+    if (_mapboxMap != null) {
+      final zoom = (await _mapboxMap!.getCameraState()).zoom;
+      if (zoom < _buildingSelectMinZoom) {
+        // Optionally show a message: ScaffoldMessenger.of(context).showSnackBar(...)
+        return;
+      }
+    }
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
     if (building != null) {
       final p = _allPointers.firstWhere(
@@ -1164,6 +1181,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _onMarkerTap(Pointer p) async {
     if (_plannerOverlay != null) return;
     _markerTapJustHandled = true;
+    // Only allow building selection if zoom is high enough
+    if (_mapboxMap != null) {
+      final zoom = (await _mapboxMap!.getCameraState()).zoom;
+      if (zoom < _buildingSelectMinZoom) {
+        // Optionally show a message: ScaffoldMessenger.of(context).showSnackBar(...)
+        return;
+      }
+    }
     // Save camera state before zooming to building
     if (_mapboxMap != null && !_isBuildingZoomed) {
       final camState = await _mapboxMap!.getCameraState();
