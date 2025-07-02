@@ -15,6 +15,8 @@ import 'presentation/auth/pages/signin.dart';
 import 'service_locator.dart';
 import 'package:provider/src/change_notifier_provider.dart';
 
+import 'package:path_provider/path_provider.dart';
+
 import 'package:flutter/material.dart';
 //import 'package:flutter_map/flutter_map.dart';      // ← for TileLayer
 import 'package:latlong2/latlong.dart';             // ← for LatLng & LatLngBounds
@@ -24,37 +26,60 @@ import 'dart:async'; // for unawaited
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 1) init the default ObjectBox backend
-  //await FMTC.FMTCObjectBoxBackend().initialise();
-
-  // 2) create a tile‐cache store called 'mapStore'
- // await FMTC.FMTCStore('mapStore').manage.create();
-
   await dotenv.load(fileName: "config.env");
-  
   MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN']!);
 
-  // // 3) bulk–download your campus region (15–18) in the background
-  // final region = FMTC.RectangleRegion(
-  //   // two opposite corners of your campus bounding box
-  //   LatLngBounds(
-  //     LatLng(52.50, 13.31), // southWest
-  //     LatLng(52.52, 13.34), // northEast
-  //   ),
-  // );
-  // final downloadable = region.toDownloadable(
-  //   minZoom: 15,
-  //   maxZoom: 18,
-  //   options: TileLayer(
-  //     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  //     userAgentPackageName: 'com.example.app',
-  //   ),
-  // );
-  // // fire‐and‐forget the bulk download (streams ignored)
-  // FMTC.FMTCStore('mapStore').download.startForeground(
-  //   region: downloadable,
-  // );
+  // --- Mapbox Offline Caching using TileStore/OfflineManager ---
+  // This will prefetch the style and tiles for the campus region for offline use.
+  // Requires mapbox_maps_flutter >= 0.4.0 and native SDK support.
+  try {
+    final offlineManager = await OfflineManager.create();
+    final tileStore = await TileStore.createDefault();
+    // Optionally reset disk quota to default (null = default)
+    tileStore.setDiskQuota(null);
+
+    // Download style pack (adjust style as needed)
+    final styleUri = MapboxStyles.MAPBOX_STREETS;
+    final stylePackLoadOptions = StylePackLoadOptions(
+      glyphsRasterizationMode: GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY,
+      metadata: {"tag": "campus"},
+      acceptExpired: false,
+    );
+    await offlineManager.loadStylePack(styleUri, stylePackLoadOptions, (progress) {
+      // Optionally handle progress
+    });
+
+    // Download tile region for campus (adjust coordinates/zoom as needed)
+    final tileRegionId = "campus-tile-region";
+    final tileRegionLoadOptions = TileRegionLoadOptions(
+      geometry: {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.31, 52.50], // SW
+            [13.34, 52.50], // SE
+            [13.34, 52.52], // NE
+            [13.31, 52.52], // NW
+            [13.31, 52.50]  // Close polygon
+          ]
+        ]
+      },
+      descriptorsOptions: [
+        TilesetDescriptorOptions(
+          styleURI: styleUri,
+          minZoom: 15,
+          maxZoom: 18,
+        )
+      ],
+      acceptExpired: true,
+      networkRestriction: NetworkRestriction.NONE,
+    );
+    await tileStore.loadTileRegion(tileRegionId, tileRegionLoadOptions, (progress) {
+      // Optionally handle progress
+    });
+  } catch (e) {
+    debugPrint('Mapbox offline caching error: $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -63,7 +88,6 @@ Future<void> main() async {
     ),
   );
   setupServiceLocator();
-  
   runApp(const MyApp());
 }
 
