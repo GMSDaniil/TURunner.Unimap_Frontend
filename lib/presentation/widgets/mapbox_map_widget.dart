@@ -77,13 +77,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
     // If zoom is too low, animate to minZoom and center on the building
     if (cameraState.zoom < minZoom) {
-      await mapboxMap.easeTo(
-        CameraOptions(
-          center: event.point,
-          zoom: minZoom,
-        ),
-        MapAnimationOptions(duration: 500, startDelay: 0),
-      );
+      
     }
 
     // Always de-highlight previous building
@@ -628,6 +622,27 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
      maxZoom: 18.0,
   ));
 
+  mapboxMap.compass.updateSettings(
+      CompassSettings(
+        enabled: true,
+        clickable: true,
+        position: OrnamentPosition.BOTTOM_RIGHT,
+        marginLeft: 16.0,
+        marginTop: 32.0,
+        marginRight: 26.0,
+        marginBottom: widget.navBarHeight + 90,
+      )
+    );
+
+    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
+
+
+    mapboxMap.location.updateSettings(LocationComponentSettings(
+      enabled: true,
+      pulsingEnabled: true,
+      showAccuracyRing: true,
+    ));    
+
   mapboxMap.style.addStyleImage(
     'destination-marker', 
     1.0, 
@@ -646,8 +661,8 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
     _addBuildingTapInteraction(); // Add building tap interaction
 
-    final initZoom = (await mapboxMap.getCameraState()).zoom;
-    await _updateMarkerVisibility(initZoom);
+    // final initZoom = (await mapboxMap.getCameraState()).zoom;
+    // await _updateMarkerVisibility(initZoom);
 
     widget.onMapCreated?.call(mapboxMap);
     _bindInteractions();
@@ -682,65 +697,17 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
       onMapCreated: (map) {
         _onMapCreated(map);
       },
-      onCameraChangeListener: (CameraChangedEventData data) async {
-        final zoom = data.cameraState.zoom;
-        if (_lastZoom != zoom) {
-          _lastZoom = zoom;
-          await _updateMarkerVisibility(zoom);
-        }
-      },
+      // onCameraChangeListener: (CameraChangedEventData data) async {
+      //   final zoom = data.cameraState.zoom;
+      //   if (_lastZoom != zoom) {
+      //     _lastZoom = zoom;
+      //     await _updateMarkerVisibility(zoom);
+      //   }
+      // },
     );
 
     
   }
-
-  
-
-  // void _onMapCreated(MapboxMapController controller) async {
-  //   _controller = controller;
-
-  //   // Add route polyline
-  //   if (widget.routePoints.length > 1) {
-  //     await _controller.addPolyline(
-  //       PolylineAnnotationOptions(
-  //         geometry: widget.routePoints
-  //             .map((p) => Position(p.longitude, p.latitude))
-  //             .toList(),
-  //         lineColor: "#007AFF",
-  //         lineWidth: 5.0,
-  //       ),
-  //     );
-  //   }
-
-  //   // Add bus stop markers
-  //   for (final stop in widget.busStops) {
-  //     await _controller.addCircle(
-  //       CircleAnnotationOptions(
-  //         geometry: Position(stop.longitude, stop.latitude),
-  //         circleRadius: 9.0,
-  //         circleColor: "#ffffff",
-  //         circleStrokeColor: "#1976d2",
-  //         circleStrokeWidth: 3.0,
-  //       ),
-  //     );
-  //   }
-
-  //   // Add current location marker
-  //   if (widget.currentLocation != null) {
-  //     await _controller.addCircle(
-  //       CircleAnnotationOptions(
-  //         geometry: Position(
-  //           widget.currentLocation!.longitude,
-  //           widget.currentLocation!.latitude,
-  //         ),
-  //         circleRadius: 16.0,
-  //         circleColor: "#007AFF",
-  //         circleStrokeColor: "#ffffff",
-  //         circleStrokeWidth: 2.0,
-  //       ),
-  //     );
-  //   }
-  // }
 }
 
 
