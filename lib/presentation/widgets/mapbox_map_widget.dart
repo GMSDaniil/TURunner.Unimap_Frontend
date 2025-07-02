@@ -243,8 +243,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       color = const Color(0xFFFFA500).value;
       dashArray = null;
     } else {
-      color = const Color.fromARGB(255, 2, 121, 201).value;
-      dashArray = [0.5, 2.0]; // Better dots for walking
+      color = const Color(0xFF1A73E8).value;
+      dashArray = [0.1, 2.0]; // Better dots for walking
     }
 
     // Use unique IDs for each segment (mode + index)
@@ -262,7 +262,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         sourceId: sourceId,
         lineColor: color,
         lineEmissiveStrength: 1.0,
-        lineWidth: seg.mode == TravelMode.walk ? 4.0 : 5.0,
+        lineWidth: seg.mode == TravelMode.walk ? 5.0 : 6.0,
         lineDasharray: dashArray,
         lineCap: LineCap.ROUND,
         lineJoin: LineJoin.ROUND,
