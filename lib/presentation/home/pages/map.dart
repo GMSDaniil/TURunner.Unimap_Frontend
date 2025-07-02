@@ -1126,6 +1126,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         image: _loadImageBytesForCategory(pointer.category),
       ),
       onTap: () => _onMarkerTap(pointer),
+      category: pointer.category,
     );
   }
 
