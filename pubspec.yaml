@@ -62,6 +62,8 @@ flutter:
 
 flutter_icons:
   android: true
-  ios: false # Leave iOS unchanged
-  image_path: "assets/images/android_app_icon.png" # Path to your app icon
+  ios: false
+  image_path: "assets/images/android_app_icon.png"            # fallback for older devices
+  adaptive_icon_background: "assets/images/tubify_logo_background.png"
+  adaptive_icon_foreground: "assets/images/tubify_logo_white_overlay_slick.png"
 

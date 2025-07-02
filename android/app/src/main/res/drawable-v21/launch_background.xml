@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Modify this file to customize your launch splash screen -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
+    <!-- Background layer -->
+    <item android:drawable="@drawable/tubify_logo_background" />
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+    <!-- White overlay layer -->
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/tubify_logo_white_overlay_slick" />
+    </item>
 </layer-list>
