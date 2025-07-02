@@ -47,7 +47,15 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   late PolylineAnnotationManager polylineAnnotationManager;
 
   StreamSubscription? userPositionStream;
-
+  dynamic _highlightedBuilding;
+  void clearBuildingHighlight() async {
+    if (_highlightedBuilding != null) {
+      await mapboxMap.setFeatureStateForFeaturesetFeature(
+        _highlightedBuilding, StandardBuildingsState(highlight: false),
+      );
+      _highlightedBuilding = null;
+    }
+  }
 
   @override
   void initState() {
@@ -335,7 +343,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     // });
     // mapboxMap.addInteraction(tapInteractionBuildings);
 
-    
+    _addBuildingTapInteraction();
 
     mapboxMap.location.updateSettings(LocationComponentSettings(
       enabled: true,
@@ -352,6 +360,28 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     _bindInteractions();
     _updateAllMarkers();
   }
+
+  void _addBuildingTapInteraction() {
+  // Highlight buildings on tap
+  var buildingTap = TapInteraction(
+    StandardBuildings(),
+    (feature, event) async {
+      // Clear previous highlight
+      clearBuildingHighlight();
+      // Highlight new building
+      await mapboxMap.setFeatureStateForFeaturesetFeature(
+        feature, StandardBuildingsState(highlight: true),
+      );
+      _highlightedBuilding = feature;
+      // forward tap
+      widget.onMapTap(LatLng(
+        event.point.coordinates.lat.toDouble(),
+        event.point.coordinates.lng.toDouble(),
+      ));
+    },
+  );
+  mapboxMap.addInteraction(buildingTap);
+}
 
   @override
   Widget build(BuildContext context) {
