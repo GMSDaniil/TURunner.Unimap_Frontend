@@ -259,17 +259,31 @@ class RouteLogic {
       //   },
       // );
 
-      //KOSITL N1
-      while(!routesNotifier.value.containsKey(mode)) {
+
+      //KOSITL N1 with timeout (max 15 seconds)
+      final startTime = DateTime.now();
+      bool timedOut = false;
+      while (!routesNotifier.value.containsKey(mode)) {
+        if (DateTime.now().difference(startTime).inSeconds >= 30) {
+          timedOut = true;
+          break;
+        }
         print("delaying bus route creation");
         await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      if (timedOut) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No route can be found at the moment (timeout)')),
+        );
+        return;
       }
 
       //KOSTIL N2
       if (!routesNotifier.value.containsKey(TravelMode.walk)) {
         return;
       }
-      
+
       setState(() {
         updateCurrentMode(mode);
       });
