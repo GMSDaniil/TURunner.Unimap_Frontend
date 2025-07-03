@@ -27,6 +27,7 @@ dependencies:
   flutter_dotenv: 
   mapbox_maps_flutter: 
   path_provider:
+  drag_and_drop_lists: ^0.4.2
 
 dev_dependencies:
   flutter_test:

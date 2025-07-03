@@ -1,26 +1,33 @@
 // lib/presentation/widgets/route_plan_bar.dart
 //
-// Inline-search route planner (start | ≤3 stops | destination)
-// ------------------------------------------------------------
-import 'dart:async';                     // ← NEW
+// Compact inline route-planner  (Start | ≤3 Stops | Destination)
+// -------------------------------------------------------------
+
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
-import 'package:auth_app/presentation/widgets/search_bar.dart';
-import 'route_search_bar.dart';  // ← new import
+import 'route_search_bar.dart';
 
 typedef OnCancelled = void Function();
 
-class RoutePlanBar extends StatefulWidget {
-  static final GlobalKey _barKey = GlobalKey();
-  //static final GlobalKey _barKey = GlobalKey();
-  final LatLng? currentLocation;
-  final LatLng? initialDestination;
-  final List<Pointer> allPointers; // supply from MapPage
-  final OnCancelled onCancelled;
-  /// Called whenever both Start and Destination have been (re-)selected.
-  final void Function(List<LatLng>) onChanged;
+/*──────────────────────── helpers ───────────────────────*/
+class _Cand {
+  const _Cand(this.label, this.pos);
+  final String label;
+  final LatLng pos;
 
+  @override
+  bool operator ==(Object o) =>
+      o is _Cand &&
+      o.pos.latitude == pos.latitude &&
+      o.pos.longitude == pos.longitude;
+  @override
+  int get hashCode => Object.hash(pos.latitude, pos.longitude);
+}
+
+/*──────────────────────── widget ───────────────────────*/
+class RoutePlanBar extends StatefulWidget {
   const RoutePlanBar({
     super.key,
     required this.currentLocation,
@@ -30,376 +37,320 @@ class RoutePlanBar extends StatefulWidget {
     required this.onChanged,
   });
 
+  final LatLng? currentLocation;
+  final LatLng? initialDestination;
+  final List<Pointer> allPointers;
+  final OnCancelled onCancelled;
+  final void Function(List<LatLng>) onChanged;
+
   @override
   State<RoutePlanBar> createState() => _RoutePlanBarState();
 }
 
-/* ------------------------------------------------------------------------- */
-/* internal helper – wraps a label + precise position (for duplicate rules)  */
-class _Cand {
-  final String label;
-  final LatLng pos;
-  const _Cand(this.label, this.pos);
-
-  @override
-  bool operator ==(Object other) =>
-      other is _Cand &&
-      pos.latitude == other.pos.latitude &&
-      pos.longitude == other.pos.longitude;
-  @override
-  int get hashCode => Object.hash(pos.latitude, pos.longitude);
-}
-/* ------------------------------------------------------------------------- */
-
+/*──────────────────────── state ───────────────────────*/
 class _RoutePlanBarState extends State<RoutePlanBar> {
-  late final TextEditingController _startCtl;
-  late final TextEditingController _destCtl;
-  final List<TextEditingController> _stopCtls = [];
+  final Set<_Cand> _chosen = {};
+  final List<_Cand> _route = [];
+  late final List<_Cand> _pool;
 
-  final Set<_Cand> _chosen = {}; // what’s already used?
+  late final List<TextEditingController> _ctls   = [];
+  late final List<String>                _types  = []; // start|stop|dest
 
-  final List<_Cand> _route = []; // all stops (up to 3)
-
-  late final List<_Cand> _pool; // all searchable locations
-
-  // tiny helper – best-effort match of LatLng → building name
-  String _prettyLabel(LatLng pos) {
-    const d = Distance();
-    for (final p in widget.allPointers) {
-      if (d(pos, LatLng(p.lat, p.lng)) < 5) return p.name;
-    }
-    return '${pos.latitude.toStringAsFixed(5)}, '
-        '${pos.longitude.toStringAsFixed(5)}';
-  }
-
-  _Cand? _startCand, _destCand;
-
-  /*═══════════════════════════════════════════════════════════════
-   * FULL-SCREEN SEARCH  ➜ runs as an OverlayEntry (no new route)
-   *══════════════════════════════════════════════════════════════*/
-  OverlayEntry? _searchEntry;
-  Future<_Cand?> _openSearchOverlay(
-    BuildContext ctx,
-    String       initial,
-    String       hint,
-  ) {
-    final completer = Completer<_Cand?>();
-
-    _searchEntry = OverlayEntry(
-      builder: (_) => _RouteSearchOverlay(
-        initialText : initial,
-        hint        : hint,
-        pool        : _pool,
-        isTaken     : (c) => _chosen.contains(c),
-        onPicked    : (c) {
-          _searchEntry?.remove();
-          _searchEntry = null;
-          completer.complete(c);
-        },
-        onCancel    : () {
-          _searchEntry?.remove();
-          _searchEntry = null;
-          completer.complete(null);
-        },
-      ),
-    );
-
-    Overlay.of(ctx, rootOverlay: true)!.insert(_searchEntry!);
-    return completer.future;
-  }
+  _Cand? _start, _dest;
+  OverlayEntry? _overlay;
 
   @override
   void initState() {
     super.initState();
 
-    // build search pool once
     _pool = [
       if (widget.currentLocation != null)
         _Cand('Current location', widget.currentLocation!),
       ...widget.allPointers.map((p) => _Cand(p.name, LatLng(p.lat, p.lng))),
     ];
 
-    _startCtl = TextEditingController(
-      text: widget.currentLocation != null ? 'Current location' : '',
-    );
-    _destCtl = TextEditingController(
-      text: widget.initialDestination != null
-          ? _prettyLabel(widget.initialDestination!)
-          : '',
-    );
+    /* start row */
+    _ctls.add(TextEditingController(
+        text: widget.currentLocation != null ? 'Current location' : ''));
+    _types.add('start');
+    _route.add(_ctls.first.text.isEmpty
+        ? const _Cand('', LatLng(0, 0))
+        : _pool.first);
 
-    // mark pre-selected items as “taken”
-    if (widget.currentLocation != null) {
-      _startCand = _pool.first;
-      _chosen.add(_startCand!);
-      _route.add(_startCand!);
-    }
-    if (widget.initialDestination != null) {
-      final lab = _prettyLabel(widget.initialDestination!);
-      final cand = _pool.firstWhere(
-        (c) => c.label == lab,
-        orElse: () => _Cand(lab, widget.initialDestination!),
-      );
-      _destCand = cand;
-      _chosen.add(_destCand!);
-      _route.add(_destCand!);
-    }
+    /* destination row */
+    _ctls.add(TextEditingController(
+        text: widget.initialDestination != null
+            ? _pretty(widget.initialDestination!)
+            : ''));
+    _types.add('dest');
+    _route.add(_ctls.last.text.isEmpty
+        ? const _Cand('', LatLng(0, 0))
+        : _pool.firstWhere(
+            (c) => c.label == _ctls.last.text,
+            orElse: () => _Cand(
+                _ctls.last.text, widget.initialDestination ?? const LatLng(0, 0)),
+          ));
 
-    // print(_route);
+    _start = _types.first == 'start' && _ctls.first.text.isNotEmpty ? _route.first : null;
+    _dest  = _types.last  == 'dest'  && _ctls.last.text.isNotEmpty  ? _route.last  : null;
+    if (_start != null) _chosen.add(_start!);
+    if (_dest  != null) _chosen.add(_dest!);
   }
 
-  @override
-  void dispose() {
-    _startCtl.dispose();
-    _destCtl.dispose();
-    for (final c in _stopCtls) c.dispose();
-    super.dispose();
+  /*──────── UI helpers ────────*/
+  String _pretty(LatLng pos) {
+    const d = Distance();
+    for (final p in widget.allPointers) {
+      if (d(pos, LatLng(p.lat, p.lng)) < 5) return p.name;
+    }
+    return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
   }
 
-  /* ═══════════════════════━  UI helpers  ━═══════════════════════ */
-  Widget _divider() => Padding(
-    padding: const EdgeInsets.only(left: 4, right: 20),
-    child: Container(height: 1, color: const Color(0x33000000)),
-  );
+  Widget _divider() =>
+      const Divider(height: 1, indent: 50, endIndent: 20, color: Color(0x33000000));
 
-  Widget _sideBtn({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-    bool enabled = true,
-  }) => GestureDetector(
-    onTap: enabled ? onTap : null,
-    behavior: HitTestBehavior.opaque,
-    child: Tooltip(
-      message: tooltip,
-      child: Icon(
-        icon,
-        size: 20,
-        color: enabled ? Colors.black : Colors.black26,
-      ),
-    ),
-  );
+  /*──────── single pill row ────────*/
+  Widget _pill(int i) {
+    final icon = _types[i] == 'start'
+        ? Icons.my_location
+        : (_types[i] == 'dest' ? Icons.place_outlined : Icons.flag_outlined);
+    final hint = _types[i] == 'start'
+        ? 'Start'
+        : (_types[i] == 'dest' ? 'Destination' : 'Stop');
 
- Widget _searchRow({
-  required IconData icon,
-  required TextEditingController ctl,
-  required String hint,
-  VoidCallback? onDelete,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-    child: Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 20, color: Colors.grey.shade800),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: () async {
-              // always start with a clear search bar, but keep ctl.text if canceled
-              final picked = await _openSearchOverlay(context, '', hint);
-              if (picked != null) {
-                setState(() {
-                  final old = _pool
-                      .where((c) => c.label == ctl.text)
-                      .cast<_Cand?>()
-                      .firstWhere((_) => true, orElse: () => null);
-                  if (old != null) _chosen.remove(old);
-                  _chosen.add(picked);
-
-                  
-
-                  ctl.text = picked.label;
-                  // if (hint == 'Start')     _startCand = picked;
-                  // else if (hint == 'Destination') _destCand = picked;
-                  switch (hint) {
-                    case 'Start':
-                      _startCand = picked;
-                      break;
-                    case 'Destination':
-                      _destCand = picked;
-                      break;
-                    default:
-                      // for stops, we just update the text
-                      final index = _stopCtls.indexOf(ctl);
-                      _route.insert(index+1, picked); // +1 for start location
-                  }
-                  // print(_route.map((c) => c.pos).toList());
-                  // fire onChanged if both endpoints are set
-                  if (_startCand != null && _destCand != null) {
-                    widget.onChanged(_route.map((c) => c.pos).toList());
-                  }
-                });
-              }
-            },
-            child: AbsorbPointer(
-              child: TextField(
-                controller: ctl,
-                readOnly: true,
-                decoration: InputDecoration(
-                  hintText: hint,
-                  border: InputBorder.none,
-                  filled: true,
-                  fillColor: Colors.white,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+        if (i != 0) _divider(),
+        SizedBox(
+          height: 40,
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: Colors.grey.shade800),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _pick(i, hint),
+                  child: AbsorbPointer(
+                    child: Container(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+                      color: Colors.transparent,
+                      child: Text(
+                        _ctls[i].text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontSize: 15),
+                      ),
+                    ),
+                  ),
                 ),
-                style: Theme.of(context).textTheme.bodyMedium,
               ),
-            ),
+              if (_ctls.length > 2)
+                GestureDetector(
+                  onTap: () => _removeStop(i),
+                  child: const Icon(Icons.remove_circle_outline,
+                      size: 20, color: Colors.black54),
+                ),
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Icon(Icons.drag_handle, size: 20),
+              ),
+            ],
           ),
         ),
-        if (onDelete != null)
-          GestureDetector(
-            onTap: onDelete,
-            behavior: HitTestBehavior.opaque,
-            child: const SizedBox(
-              width: 24,
-              height: 24,
-              child: Center(
-                child: Icon(
-                  Icons.remove_circle_outline,
-                  size: 20,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
-          ),
       ],
-    ),
-  );
-}
+    );
+  }
 
-  /* ═══════════════════════━  actions  ━═════════════════════════ */
+  /*──────── side icon button ────────*/
+  Widget _iconBtn(IconData ic, String tip, VoidCallback tap,
+          {bool enabled = true}) =>
+      GestureDetector(
+        onTap: enabled ? tap : null,
+        child: Tooltip(
+          message: tip,
+          child: Icon(ic,
+              size: 22, color: enabled ? Colors.black : Colors.black26),
+        ),
+      );
+
+  /*──────── actions ────────*/
   void _swap() {
-    /* 1️⃣ swap start ⟷ destination text */
-    final tmp = _startCtl.text;
-    _startCtl.text = _destCtl.text;
-    _destCtl.text  = tmp;
+    if (_ctls.length < 2) return;
+    setState(() {
+      _swapIdx(0, _ctls.length - 1);
+      _fire();
+    });
+  }
 
-    // swap underlying _Cand references
-    final tmpCand = _startCand;
-    _startCand = _destCand;
-    _destCand  = tmpCand;
-
-    /* 2️⃣ rotate every intermediate stop:  S1 S2 S3  →  S3 S2 S1  */
-    if (_stopCtls.length > 1) {
-      final reversedTexts =
-          _stopCtls.map((c) => c.text).toList().reversed.toList();
-      for (var i = 0; i < _stopCtls.length; i++) {
-        _stopCtls[i].text = reversedTexts[i];
-      }
-    }
-
-    List<_Cand> newRoute = [];
-    for(int i = _route.length - 1; i >= 0; i--) {
-      newRoute.add(_route[i]);
-    }
-
-    _route.clear();
-    _route.addAll(newRoute);
-
-    // print(_route.map((c) => c.label).toList());
-
-     // 3️⃣ notify map if we now have both endpoints
-    if (_startCand != null && _destCand != null) {
-      widget.onChanged(_route.map((c) => c.pos).toList());
-    }
+  void _swapIdx(int a, int b) {
+    final tCtl = _ctls[a];
+    _ctls[a] = _ctls[b];
+    _ctls[b] = tCtl;
+    final tTy = _types[a];
+    _types[a] = _types[b];
+    _types[b] = tTy;
+    final tCd = _route[a];
+    _route[a] = _route[b];
+    _route[b] = tCd;
+    final tStart = _start;
+    _start = _dest;
+    _dest = tStart;
   }
 
   void _addStop() {
-    if (_stopCtls.length == 3) return;
-    if (_stopCtls.length != _route.length - 2) return; //user must choose stop before creating a new one
-    setState(() => _stopCtls.add(TextEditingController()));
+    if (_ctls.length >= 5) return; // 1+3+1
+    setState(() {
+      _ctls.insert(_ctls.length - 1, TextEditingController());
+      _types.insert(_types.length - 1, 'stop');
+      _route.insert(_route.length - 1, const _Cand('', LatLng(0, 0)));
+    });
   }
 
   void _removeStop(int i) {
-    var updateRoute = true;
-    if(_stopCtls[i].text.isEmpty) {
-      updateRoute = false;
-    }
-    
-    _stopCtls[i].dispose();
-    _stopCtls.removeAt(i);
-   
-    _route.removeAt(i + 1); // +1 for start location
-    // print(_route.map((c) => c.label).toList());
-    
-    if(updateRoute){
-      setState(() {
-          
-      });
-      widget.onChanged(_route.map((c) => c.pos).toList());
-    }
-    
+    setState(() {
+      _chosen.remove(_route[i]);
+      _ctls[i].dispose();
+      _ctls.removeAt(i);
+      _types.removeAt(i);
+      _route.removeAt(i);
+      // Ensure first and last always have correct type
+      if (_types.isNotEmpty) {
+        _types[0] = 'start';
+        _types[_types.length - 1] = 'dest';
+        for (int j = 1; j < _types.length - 1; j++) {
+          _types[j] = 'stop';
+        }
+      }
+      _fire();
+    });
   }
 
-  /* ═══════════════════════━  build  ━═══════════════════════════ */
+  void _reorder(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    // Allow swapping any field with any other field
+    setState(() {
+      final c1 = _ctls.removeAt(oldIndex);
+      final c2 = _types.removeAt(oldIndex);
+      final c3 = _route.removeAt(oldIndex);
+      _ctls.insert(newIndex, c1);
+      _types.insert(newIndex, c2);
+      _route.insert(newIndex, c3);
+      // After reordering, always set types: first=start, last=dest, others=stop
+      if (_types.isNotEmpty) {
+        _types[0] = 'start';
+        _types[_types.length - 1] = 'dest';
+        for (int j = 1; j < _types.length - 1; j++) {
+          _types[j] = 'stop';
+        }
+      }
+      _fire();
+    });
+  }
+
+  /*──────── overlay search ────────*/
+  Future<_Cand?> _search(String hint) {
+    final completer = Completer<_Cand?>();
+    _overlay = OverlayEntry(
+      builder: (_) => _RouteSearchOverlay(
+        initialText: '',
+        hint: hint,
+        pool: _pool,
+        isTaken: (c) => _chosen.contains(c),
+        onPicked: (c) {
+          _overlay?.remove();
+          _overlay = null;
+          completer.complete(c);
+        },
+        onCancel: () {
+          _overlay?.remove();
+          _overlay = null;
+          completer.complete(null);
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true)!.insert(_overlay!);
+    return completer.future;
+  }
+
+  Future<void> _pick(int idx, String hint) async {
+    final p = await _search(hint);
+    if (p == null) return;
+    setState(() {
+      _chosen.remove(_route[idx]);
+      _chosen.add(p);
+      _route[idx] = p;
+      _ctls[idx].text = p.label;
+      if (_types[idx] == 'start')
+        _start = p;
+      else if (_types[idx] == 'dest') _dest = p;
+      _fire();
+    });
+  }
+
+  void _fire() {
+    if (_start != null && _dest != null) {
+      widget.onChanged(_route.map((e) => e.pos).toList());
+    }
+  }
+
+  /*──────── build ────────*/
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Wrap(
+      child: Stack(
         children: [
-          Align(
-            key: RoutePlanBar._barKey,
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          Positioned(
+          // keep the bar clear of any notch / status bar
+          top: MediaQuery.of(context).padding.top + 8,
+            left: 0,
+            right: 0,
+            child: Center(
               child: Material(
+                elevation: 10,
                 color: Colors.white,
-                elevation: 8,
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 424),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ◀ way-points
+                      /* pills */
                       Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _searchRow(
-                              icon: Icons.my_location,
-                              ctl: _startCtl,
-                              hint: 'Start',
+                        child: ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: false,
+                          onReorder: _reorder,
+                          proxyDecorator: (c, i, a) => Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            elevation: 8,
+                            child: c,
+                          ),
+                          children: List.generate(
+                            _ctls.length,
+                            (i) => ReorderableDragStartListener(
+                              key: ValueKey('row$i'),
+                              index: i,
+                              child: _pill(i),
                             ),
-                            for (var i = 0; i < _stopCtls.length; i++) ...[
-                              _divider(),
-                              _searchRow(
-                                icon: Icons.flag_outlined,
-                                ctl: _stopCtls[i],
-                                hint: 'Stop ${i + 1}',
-                                onDelete: () => _removeStop(i),
-                              ),
-                            ],
-                            _divider(),
-                            _searchRow(
-                              icon: Icons.place_outlined,
-                              ctl: _destCtl,
-                              hint: 'Destination',
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      // ▶ side-buttons
-                      Transform.translate(
-                        offset: const Offset(-8, 8),
-                        child: Column(
-                          children: [
-                            _sideBtn(
-                              icon: Icons.swap_vert,
-                              tooltip: 'Swap',
-                              onTap: _swap,
-                            ),
-                            const SizedBox(height: 8),
-                            _sideBtn(
-                              icon: Icons.add,
-                              tooltip: 'Add stop',
-                              onTap: _addStop,
-                              enabled: _stopCtls.length < 3,
-                            ),
-                          ],
-                        ),
+                      /* side buttons */
+                      Column(
+                        children: [
+                          _iconBtn(Icons.swap_vert, 'Swap', _swap),
+                          const SizedBox(height: 8),
+                          _iconBtn(Icons.add, 'Add stop', _addStop,
+                              enabled: _ctls.length < 5),
+                        ],
                       ),
                     ],
                   ),
@@ -411,19 +362,16 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    for (final c in _ctls) c.dispose();
+    super.dispose();
+  }
 }
 
-/*───────────────────────────────────────────────────────────────
- * Overlay-based search UI (pill + suggestions)
- *──────────────────────────────────────────────────────────────*/
+/*──────────────────────── search overlay (unchanged) ──────────*/
 class _RouteSearchOverlay extends StatefulWidget {
-  final String initialText;
-  final List<_Cand> pool;
-  final bool Function(_Cand) isTaken;
-  final void Function(_Cand) onPicked;
-  final VoidCallback onCancel;
-  final String hint;
-
   const _RouteSearchOverlay({
     required this.initialText,
     required this.pool,
@@ -433,71 +381,50 @@ class _RouteSearchOverlay extends StatefulWidget {
     required this.hint,
   });
 
+  final String initialText;
+  final List<_Cand> pool;
+  final bool Function(_Cand) isTaken;
+  final void Function(_Cand) onPicked;
+  final VoidCallback onCancel;
+  final String hint;
+
   @override
   State<_RouteSearchOverlay> createState() => _RouteSearchOverlayState();
 }
 
 class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
     with SingleTickerProviderStateMixin {
-  static const _animDuration = Duration(milliseconds: 300);
-  static const _fadeIn = Duration(milliseconds: 250);
+  static const _fadeIn = Duration(milliseconds: 200);
   static const _fadeOut = Duration(milliseconds: 150);
-  late final AnimationController _fadeCtr;
-  late final Animation<double> _fadeAnim;
 
-  late TextEditingController _searchCtl;
-  late List<_Cand> _suggestions;
-  late final FocusNode _pillFocus;
+  late final AnimationController _fadeCtr =
+      AnimationController(vsync: this, duration: _fadeIn, reverseDuration: _fadeOut)
+        ..forward();
+  late final Animation<double> _fadeAnim =
+      CurvedAnimation(parent: _fadeCtr, curve: Curves.easeInOut);
 
-  @override
-  void initState() {
-    super.initState();
-    _searchCtl = TextEditingController(text: widget.initialText);
-    _suggestions = _getSuggestions(widget.initialText);
-    _searchCtl.addListener(_onSearchChanged);
-
-    // keep the pill focused
-    _pillFocus = FocusNode();
-    _pillFocus.addListener(() {
-      if (!_pillFocus.hasFocus) _pillFocus.requestFocus();
-    });
-
-    // set up fade controller & start fade-in
-    _fadeCtr = AnimationController(
-      vsync: this,
-      duration: _fadeIn,
-      reverseDuration: _fadeOut,
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtr, curve: Curves.easeInOut);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fadeCtr.forward();
-      _pillFocus.requestFocus();
-    });
-  }
-
-  void _onSearchChanged() {
-    setState(() {
-      _suggestions = _getSuggestions(_searchCtl.text);
-    });
-  }
+  late final TextEditingController _searchCtl =
+      TextEditingController(text: widget.initialText);
+  late List<_Cand> _suggestions = _getSuggestions('');
 
   List<_Cand> _getSuggestions(String q) {
-    final lower = q.toLowerCase();
+    final l = q.toLowerCase();
     return widget.pool
-        .where((c) => !widget.isTaken(c) && (lower.isEmpty || c.label.toLowerCase().contains(lower)))
+        .where((c) =>
+            !widget.isTaken(c) && (l.isEmpty || c.label.toLowerCase().contains(l)))
         .take(40)
         .toList();
   }
 
-  // helper to fade‐out then fire success callback
-  void _fadeOutThenPick(_Cand cand) {
-    _fadeCtr.reverse().then((_) => widget.onPicked(cand));
+  @override
+  void initState() {
+    super.initState();
+    _searchCtl.addListener(() {
+      setState(() => _suggestions = _getSuggestions(_searchCtl.text));
+    });
   }
 
-  void _closeOverlay() {
-    // reverse fade and then remove
-    _fadeCtr.reverse().then((_) => widget.onCancel());
-  }
+  void _close() => _fadeCtr.reverse().then((_) => widget.onCancel());
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +433,6 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
       child: Material(
         color: Colors.white,
         child: SafeArea(
-          bottom: true,
           child: Column(
             children: [
               RouteSearchBar(
@@ -519,28 +445,31 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                           category: '',
                         ))
                     .toList(),
-                onClear: () {
-                  _searchCtl.clear();
-                  setState(() {});
-                },
-                onSuggestionSelected: (Pointer p) {
+                onClear: () => _searchCtl.clear(),
+                onSuggestionSelected: (p) {
                   final cand = widget.pool.firstWhere(
-                    (c) =>
-                      c.label == p.name &&
-                      c.pos.latitude == p.lat &&
-                      c.pos.longitude == p.lng,
-                    orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)),
-                  );
-                  _fadeOutThenPick(cand);
+                      (c) =>
+                          c.label == p.name &&
+                          c.pos.latitude == p.lat &&
+                          c.pos.longitude == p.lng,
+                      orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)));
+                  _fadeCtr.reverse().then((_) => widget.onPicked(cand));
                 },
-                focusNode: _pillFocus,
-                onBack: _closeOverlay,
+                focusNode: FocusNode(),
+                onBack: _close,
               ),
-              Expanded(child: GestureDetector(onTap: _closeOverlay)),
+              Expanded(child: GestureDetector(onTap: _close)),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _fadeCtr.dispose();
+    _searchCtl.dispose();
+    super.dispose();
   }
 }
