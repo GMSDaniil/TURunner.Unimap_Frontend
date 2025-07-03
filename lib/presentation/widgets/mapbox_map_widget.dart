@@ -245,18 +245,20 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 }
 
   Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
-  // ── 1) Clean up old route & changeover layers/sources ─────────────
+  // ── 1) Clean up old route, changeover, and bus label layers/sources ─────────────
   final layers = await mapboxMap.style.getStyleLayers();
   final sources = await mapboxMap.style.getStyleSources();
   for (final layer in [...?layers]) {
     if (layer!.id.startsWith('route-layer-') ||
-        layer.id.startsWith('change-layer-')) {
+        layer.id.startsWith('change-layer-') ||
+        layer.id.startsWith('bus-label-layer-')) {
       await mapboxMap.style.removeStyleLayer(layer.id);
     }
   }
   for (final src in [...?sources]) {
     if (src!.id.startsWith('route-source-') ||
-        src.id.startsWith('change-source-')) {
+        src.id.startsWith('change-source-') ||
+        src.id.startsWith('bus-label-source-')) {
       await mapboxMap.style.removeStyleSource(src.id);
     }
   }
@@ -290,13 +292,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     int color;
     List<double>? dashArray;
     if (seg.mode == TravelMode.bus) {
-      color = const Color(0xFF0000FF).value;
+      color = const Color(0xFF9C27B0).toARGB32();
       dashArray = null;
     } else if (seg.mode == TravelMode.scooter) {
-      color = const Color(0xFFFFA500).value;
+      color = const Color(0xFFFFA500).toARGB32();
       dashArray = null;
     } else {
-      color = const Color(0xFF1A73E8).value;
+      color = const Color(0xFF1A73E8).toARGB32();
       dashArray = [0.1, 2.0]; // Better dots for walking
     }
 
@@ -320,6 +322,48 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         lineCap: LineCap.ROUND,
         lineJoin: LineJoin.ROUND,
       ));
+
+      // ── Add bus line label as a horizontal rectangle ──
+      if (seg.mode == TravelMode.bus && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
+        // Find a good label point (midpoint of the polyline)
+        final labelPoint = points[points.length ~/ 2];
+        final labelSourceId = 'bus-label-source-$i';
+        final labelLayerId = 'bus-label-layer-$i';
+        await mapboxMap.style.addSource(GeoJsonSource(
+          id: labelSourceId,
+          data: jsonEncode({
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [labelPoint.longitude, labelPoint.latitude]
+                },
+                "properties": {
+                  "lineName": seg.transportLine
+                }
+              }
+            ]
+          }),
+        ));
+        await mapboxMap.style.addLayer(SymbolLayer(
+          id: labelLayerId,
+          sourceId: labelSourceId,
+          textField: '{lineName}',
+          textSize: 15.0,
+          textColor: Colors.white.value,
+          textHaloColor: const Color(0xFF9C27B0).value, // purple halo for contrast
+          textHaloWidth: 6.0,
+          textHaloBlur: 1.0,
+          textRotationAlignment: TextRotationAlignment.VIEWPORT,
+          textPitchAlignment: TextPitchAlignment.VIEWPORT,
+          textKeepUpright: true,
+          textAnchor: TextAnchor.CENTER,
+          textJustify: TextJustify.CENTER,
+          textFont: ["Open Sans Bold", "Arial Unicode MS Bold"],
+        ));
+      }
     } catch (e) {
       print('Error adding route segment $i (${seg.mode.name}): $e');
     }

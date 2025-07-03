@@ -260,7 +260,7 @@ class RouteLogic {
       // );
 
 
-      //KOSITL N1 with timeout (max 15 seconds)
+      //KOSITL N1 with timeout (max 30 seconds)
       final startTime = DateTime.now();
       bool timedOut = false;
       while (!routesNotifier.value.containsKey(mode)) {
