@@ -318,8 +318,37 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     await addDestinationMarker(segments.last.path.last);
   }
 }
-    
-  List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 2}) {
+
+  // Option 1: Catmull-Rom spline interpolation for smooth polylines
+  // List<LatLng> smoothPolyline(List<LatLng> points, {int samplesPerSegment = 8}) {
+  //   if (points.length < 2) return points;
+  //   List<LatLng> result = [];
+  //   for (int i = 0; i < points.length - 1; i++) {
+  //     LatLng p0 = i == 0 ? points[i] : points[i - 1];
+  //     LatLng p1 = points[i];
+  //     LatLng p2 = points[i + 1];
+  //     LatLng p3 = (i + 2 < points.length) ? points[i + 2] : points[i + 1];
+  //     for (int j = 0; j < samplesPerSegment; j++) {
+  //       double t = j / samplesPerSegment;
+  //       double t2 = t * t;
+  //       double t3 = t2 * t;
+  //       double lat = 0.5 * ((2 * p1.latitude) +
+  //           (-p0.latitude + p2.latitude) * t +
+  //           (2 * p0.latitude - 5 * p1.latitude + 4 * p2.latitude - p3.latitude) * t2 +
+  //           (-p0.latitude + 3 * p1.latitude - 3 * p2.latitude + p3.latitude) * t3);
+  //       double lng = 0.5 * ((2 * p1.longitude) +
+  //           (-p0.longitude + p2.longitude) * t +
+  //           (2 * p0.longitude - 5 * p1.longitude + 4 * p2.longitude - p3.longitude) * t2 +
+  //           (-p0.longitude + 3 * p1.longitude - 3 * p2.longitude + p3.longitude) * t3);
+  //       result.add(LatLng(lat, lng));
+  //     }
+  //   }
+  //   result.add(points.last);
+  //   return result;
+  // }
+  
+  // Option 2: Chaikin spline smoothing
+  List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 3}) {
     List<LatLng> result = List.from(points);
     for (int it = 0; it < iterations; it++) {
       List<LatLng> newPoints = [];
