@@ -616,6 +616,9 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
   void _onMapCreated(MapboxMap map) async {
     mapboxMap = map;
 
+    pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+    polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
+
     await mapboxMap.setBounds(CameraBoundsOptions(
     minPitch: 0,    // Minimum tilt angle (degrees)
     maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
@@ -656,8 +659,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
       "colorBuildingHighlight": "#B39DDB",
     });
 
-    pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-    polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
+    
 
     _addBuildingTapInteraction(); // Add building tap interaction
 

@@ -13,7 +13,7 @@ class AuthLocalServiceImpl extends AuthLocalService {
   @override
   Future<bool> isLoggedIn() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    var token = sharedPreferences.getString('token');
+    var token = sharedPreferences.getString('accessToken');
     if (token  == null ){
       return false;
     } else {

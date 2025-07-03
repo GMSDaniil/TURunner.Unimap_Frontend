@@ -75,56 +75,56 @@ class _HomePageState extends State<HomePage> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return Scaffold(
-      key: _scaffoldKey,
-      // ── BODY ───────────────────────────────────────────────────────
-      body: Scaffold(
-        body: Stack(
-          children: [
-            // ── Pages & blocs in an IndexedStack ────────────────────
-            MultiBlocProvider(
-              providers: [
-                BlocProvider(create: (_) => UserDisplayCubit()..displayUser()),
-                BlocProvider(create: (_) => ButtonStateCubit()),
-              ],
-              child: BlocListener<ButtonStateCubit, ButtonState>(
-                listener: (context, state) {
-                  if (state is ButtonSuccessState) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WelcomePage()),
-                    );
-                  }
-                },
-                child: IndexedStack(index: _tabIndex, children: _pages!),
+    return  Scaffold(
+        key: _scaffoldKey,
+        // ── BODY ───────────────────────────────────────────────────────
+        body: Scaffold(
+          body: Stack(
+            children: [
+              // ── Pages & blocs in an IndexedStack ────────────────────
+              MultiBlocProvider(
+                providers: [
+                  BlocProvider(create: (_) => UserDisplayCubit()..displayUser()),
+                  BlocProvider(create: (_) => ButtonStateCubit()),
+                ],
+                child: BlocListener<ButtonStateCubit, ButtonState>(
+                  listener: (context, state) {
+                    if (state is ButtonSuccessState) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WelcomePage()),
+                      );
+                    }
+                  },
+                  child: IndexedStack(index: _tabIndex, children: _pages!),
+                ),
               ),
-            ),
-            
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                color: Colors.black, // allow taps to pass through
-                height: safeAreaBottom,
-                width: double.infinity,
-              ),
-            ),
-            // ── Overlay bottom navigation bar ───────────────────────
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
               
-              child: safeAreaBottom > 0 ?
-               SafeArea(
-                child: navBar(),
-              ) : navBar()
-            ),
-            
-          ],
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color: Colors.black, // allow taps to pass through
+                  height: safeAreaBottom,
+                  width: double.infinity,
+                ),
+              ),
+              // ── Overlay bottom navigation bar ───────────────────────
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                
+                child: safeAreaBottom > 0 ?
+                 SafeArea(
+                  child: navBar(),
+                ) : navBar()
+              ),
+              
+            ],
+          ),
         ),
-      ),
     );
   }
 

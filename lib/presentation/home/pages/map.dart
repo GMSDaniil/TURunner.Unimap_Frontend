@@ -149,6 +149,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     location: const LatLng(matheLat, matheLon),
   );
 
+
   String? _activeCategory;
   Color? _activeCategoryColor;
   List<Pointer> _activeCategoryPointers = [];
@@ -396,391 +397,464 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // ─────────────────────────────────────────────────────────────────
     // Now build the Scaffold with our SlidingUpPanel, using the computed height
     // ─────────────────────────────────────────────────────────────────
-    return Scaffold(
-      body: SlidingUpPanel(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        controller: _panelController, // the PanelController instance
-        minHeight: 0,
-        maxHeight: maxHeight, // our dynamic max height
-        snapPoint: 0.29, // when you drag up, snaps at 29% if release early
-        isDraggable: true, // allow dragging
-        onPanelSlide: (pos) {
-          // start top-bar fade-out only when
-          //  • it is fully shown           (animation finished),
-          //  • the user is dragging down   (pos < _lastPanelPos),
-          //  • and we haven’t started yet.
-          if (!_panelClosingStarted &&
-              _plannerAnimCtr?.isCompleted == true &&
-              pos < _lastPanelPos && // downward motion
-              pos < 0.95) {
-            // allow a small nudge first
-            _panelClosingStarted = true;
-            _dismissPlannerOverlay(); // kicks off reverse anim
-          }
-          _lastPanelPos = pos; // update tracker
-        },
-        panelBuilder: (sc) {
-          // Category list has highest priority
-          if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
-            return _buildCategoryListPanel(sc);
-          }
-
-          // Building info panel
-          if (_buildingPanelPointer != null) {
-            final p = _buildingPanelPointer!;
-            return BuildingSlideWindow(
-              title: p.name,
-              category: p.category,
-              onCreateRoute: () {
-                setState(() => _buildingPanelPointer = null);
-                _panelController.close();
-                _startRouteFlow(LatLng(p.lat, p.lng));
-              },
-              onAddToFavourites: () {
-                FavouritesManager().add(p);
-                setState(() => _buildingPanelPointer = null);
-                _panelController.close();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${p.name} added to favourites!')),
-                );
-              },
-              onClose: () {
-                setState(() => _buildingPanelPointer = null);
-                _panelController.close();
-                _notifyNavBar(false);
-              },
-              onShowMenu: p.category.toLowerCase() == 'canteen'
-                  ? () async {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) =>
-                            const Center(child: CircularProgressIndicator()),
-                      );
-                      final result = await sl<GetMensaMenuUseCase>().call(
-                        param: GetMenuReqParams(mensaName: p.name),
-                      );
-                      Navigator.of(context).pop();
-                      result.fold(
-                        (error) => ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('error: $error')),
-                        ),
-                        (menu) =>
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(24),
-                                ),
-                              ),
-                              builder: (_) => Container(
-                                height:
-                                    MediaQuery.of(context).size.height * 0.9,
-                                child: WeeklyMensaPlan(menu: menu),
-                              ),
-                            ).then((_) {
-                              setState(() => _buildingPanelPointer = null);
-                              _panelController.close();
-                              _notifyNavBar(false);
-                            }),
-                      );
-                    }
-                  : null,
-            );
-          }
-          if (_panelRoutes != null) {
-            return RouteOptionsSheet(
-              routesNotifier: _panelRoutes!,
-              currentMode: _panelMode ?? TravelMode.walk,
-              scrollController: sc,
-              onModeChanged: _changeTravelMode,
-              onClose: () {
-                _panelController.close();
-                _notifyNavBar(false); // Hide nav bar when closing
-              },
-            );
-          }
-          if (_coordinatePanelLatLng != null) {
-            final latlng = _coordinatePanelLatLng!;
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: Material(
-                color: Colors.white,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    12,
-                    20,
-                    MediaQuery.of(
-                      context,
-                    ).padding.bottom, // dynamic bottom padding
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
+    return PopScope(
+      canPop: false, // Always intercept the back button
+    onPopInvoked: (bool didPop) async {
+      if (didPop) return; // Already handled
+      
+      // Handle back button press based on current state - priority order:
+      
+      // 1. If search is active, close search first
+      if (_searchActive) {
+        _searchFocusNode.unfocus();
+        setState(() => _searchActive = false);
+        _notifyNavBar(false);
+        return;
+      }
+      
+      // 2. If route planning is active, close route planner
+      if (_creatingRoute || _plannerOverlay != null) {
+        await _dismissPlannerOverlay();
+        setState(() => _creatingRoute = false);
+        _routesNotifier.value = {};
+        _currentMode = TravelMode.walk;
+        _clearPanelData();
+        _notifyNavBar(false);
+        if (_panelController.isPanelOpen) {
+          _panelController.close();
+        }
+        return;
+      }
+      
+      // 3. If any panel is open, close it
+      if (_panelActive) {
+        // Clear building highlight if active
+        if (_clearBuildingHighlight != null) {
+          _clearBuildingHighlight!();
+        }
+        
+        // Restore camera if zoomed to building
+        if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
+          _mapboxMap!.easeTo(
+            _previousCameraOptions!,
+            mb.MapAnimationOptions(duration: 500, startDelay: 0),
+          );
+          _isBuildingZoomed = false;
+          _previousCameraOptions = null;
+        }
+        
+        // Clear all panel states
+        setState(() {
+          _buildingPanelPointer = null;
+          _coordinatePanelLatLng = null;
+          _activeCategory = null;
+          _activeCategoryColor = null;
+          _activeCategoryPointers = [];
+        });
+        
+        // Reset markers to show all
+        _filterMarkersByCategory(null);
+        
+        // Close the panel
+        _panelController.close();
+        _notifyNavBar(false);
+        
+        return;
+      }
+      
+      // 4. Nothing is active, exit app
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        SystemNavigator.pop(); // Close app
+      }
+    },
+      child: Scaffold(
+        body: SlidingUpPanel(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          controller: _panelController, // the PanelController instance
+          minHeight: 0,
+          maxHeight: maxHeight, // our dynamic max height
+          snapPoint: 0.29, // when you drag up, snaps at 29% if release early
+          isDraggable: true, // allow dragging
+          onPanelSlide: (pos) {
+            // start top-bar fade-out only when
+            //  • it is fully shown           (animation finished),
+            //  • the user is dragging down   (pos < _lastPanelPos),
+            //  • and we haven’t started yet.
+            if (!_panelClosingStarted &&
+                _plannerAnimCtr?.isCompleted == true &&
+                pos < _lastPanelPos && // downward motion
+                pos < 0.95) {
+              // allow a small nudge first
+              _panelClosingStarted = true;
+              _dismissPlannerOverlay(); // kicks off reverse anim
+            }
+            _lastPanelPos = pos; // update tracker
+          },
+          panelBuilder: (sc) {
+            // Category list has highest priority
+            if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
+              return _buildCategoryListPanel(sc);
+            }
+      
+            // Building info panel
+            if (_buildingPanelPointer != null) {
+              final p = _buildingPanelPointer!;
+              return BuildingSlideWindow(
+                title: p.name,
+                category: p.category,
+                onCreateRoute: () {
+                  setState(() => _buildingPanelPointer = null);
+                  _panelController.close();
+                  _startRouteFlow(LatLng(p.lat, p.lng));
+                },
+                onAddToFavourites: () {
+                  FavouritesManager().add(p);
+                  setState(() => _buildingPanelPointer = null);
+                  _panelController.close();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${p.name} added to favourites!')),
+                  );
+                },
+                onClose: () {
+                  setState(() => _buildingPanelPointer = null);
+                  _panelController.close();
+                  _notifyNavBar(false);
+                },
+                onShowMenu: p.category.toLowerCase() == 'canteen'
+                    ? () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) =>
+                              const Center(child: CircularProgressIndicator()),
+                        );
+                        final result = await sl<GetMensaMenuUseCase>().call(
+                          param: GetMenuReqParams(mensaName: p.name),
+                        );
+                        Navigator.of(context).pop();
+                        result.fold(
+                          (error) => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('error: $error')),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Coordinates',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                          (menu) =>
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+      
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(24),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${latlng.latitude.toStringAsFixed(6)}, '
-                                  '${latlng.longitude.toStringAsFixed(6)}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                  ),
+                                builder: (_) => Container(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.9,
+                                  child: WeeklyMensaPlan(menu: menu),
                                 ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            width: 24,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.grey.shade200,
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.close, size: 16),
-                              splashRadius: 16,
-                              padding: const EdgeInsets.all(4),
-                              onPressed: () {
-                                setState(() => _coordinatePanelLatLng = null);
+                              ).then((_) {
+                                setState(() => _buildingPanelPointer = null);
                                 _panelController.close();
                                 _notifyNavBar(false);
-                              },
+                              }),
+                        );
+                      }
+                    : null,
+              );
+            }
+            if (_panelRoutes != null) {
+              return RouteOptionsSheet(
+                routesNotifier: _panelRoutes!,
+                currentMode: _panelMode ?? TravelMode.walk,
+                scrollController: sc,
+                onModeChanged: _changeTravelMode,
+                onClose: () {
+                  _panelController.close();
+                  _notifyNavBar(false); // Hide nav bar when closing
+                },
+              );
+            }
+            if (_coordinatePanelLatLng != null) {
+              final latlng = _coordinatePanelLatLng!;
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: Material(
+                  color: Colors.white,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      12,
+                      20,
+                      MediaQuery.of(
+                        context,
+                      ).padding.bottom, // dynamic bottom padding
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height:
-                                  56, // ← bump this to whatever Y-axis thickness you want
-                              child: GradientActionButton(
-                                onPressed: () {
-                                  setState(() => _coordinatePanelLatLng = null);
-                                  _panelController.close();
-                                  _startRouteFlow(latlng);
-                                },
-                                icon: Icons.directions,
-                                label: 'Create Route',
-                                colors: const [
-                                  Color(0xFF7B61FF),
-                                  Color(0xFFEA5CFF),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Coordinates',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${latlng.latitude.toStringAsFixed(6)}, '
+                                    '${latlng.longitude.toStringAsFixed(6)}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
+                            Container(
+                              width: 24,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey.shade200,
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                splashRadius: 16,
+                                padding: const EdgeInsets.all(4),
+                                onPressed: () {
+                                  setState(() => _coordinatePanelLatLng = null);
+                                  _panelController.close();
+                                  _notifyNavBar(false);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height:
+                                    56, // ← bump this to whatever Y-axis thickness you want
+                                child: GradientActionButton(
+                                  onPressed: () {
+                                    setState(() => _coordinatePanelLatLng = null);
+                                    _panelController.close();
+                                    _startRouteFlow(latlng);
+                                  },
+                                  icon: Icons.directions,
+                                  label: 'Create Route',
+                                  colors: const [
+                                    Color(0xFF7B61FF),
+                                    Color(0xFFEA5CFF),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+          onPanelClosed: () async {
+            if (_panelController.panelPosition == 0.0) {
+              // Always clear building highlight when panel closes
+              if (_clearBuildingHighlight != null) {
+                _clearBuildingHighlight!();
+              }
+              setState(() {
+                _buildingPanelPointer = null;
+                _coordinatePanelLatLng = null;
+                _activeCategory = null;
+                _activeCategoryPointers = [];
+              });
+      
+              _filterMarkersByCategory(null);
+              // Restore previous camera if we zoomed to a building
+              if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
+                _mapboxMap!.easeTo(
+                  _previousCameraOptions!,
+                  mb.MapAnimationOptions(duration: 500, startDelay: 0),
+                );
+                _isBuildingZoomed = false;
+                _previousCameraOptions = null;
+              }
+      
+              // if the user *tapped* the close handle without dragging,
+              // the bar is still up → dismiss it now
+              await _dismissPlannerOverlay();
+              _routesNotifier.value = {};
+              _currentMode = TravelMode.walk;
+              _clearPanelData();
+              setState(() => _creatingRoute = false);
+              _notifyNavBar(false);
+            }
+          },
+          body: Stack(
+            children: [
+              _buildFlutterMap(),
+              // MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
+      
+              // ── animated white sheet over the map ──────────────────────
+              AnimatedSlide(
+                offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
+                duration: _animDuration,
+                curve: Curves.easeInOut,
+                child: AnimatedOpacity(
+                  opacity: _searchActive ? 1.0 : 0.0,
+                  duration: _animDuration,
+                  child: IgnorePointer(
+                    ignoring: !_searchActive,
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        color: Colors.white,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
-                      const SizedBox(height: 8),
+                    ),
+                  ),
+                ),
+              ),
+              // --- Animated Search Bar and Category Navigation ---
+              AnimatedSlide(
+                offset: (_panelActive || _creatingRoute)
+                    ? const Offset(0, -0.06)
+                    : Offset.zero,
+                duration: _animDuration,
+                curve: Curves.easeInOut,
+                child: AnimatedOpacity(
+                  opacity: (_panelActive || _creatingRoute) ? 0.0 : 1.0,
+                  duration: _animDuration,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      MapSearchBar(
+                        searchController: _searchCtl,
+                        suggestions: _suggestions,
+                        onSearch: (q) {
+                          _searchMarkers(q);
+                          setState(() => _suggestions = []);
+                        },
+                        onClear: () {
+                          _searchCtl.clear();
+                          setState(() => _suggestions = []);
+                        },
+                        onCategorySelected: (category, color) {
+                          if (category != null) {
+                            _showCategoryListPopup(
+                              category,
+                              color ?? Colors.blue,
+                            );
+                          }
+                        },
+                        onSuggestionSelected: (p) {
+                          final dest = LatLng(p.lat, p.lng);
+                          _animatedMapboxMove(dest, 18);
+                          _onMapTap(dest);
+                        },
+                        focusNode: _searchFocusNode,
+                      ),
+                      // If you want to show the CategoryNavigationBar here, add it below:
+                      // CategoryNavigationBar(...),
                     ],
                   ),
                 ),
               ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
-        onPanelClosed: () async {
-          if (_panelController.panelPosition == 0.0) {
-            // Always clear building highlight when panel closes
-            if (_clearBuildingHighlight != null) {
-              _clearBuildingHighlight!();
-            }
-            setState(() {
-              _buildingPanelPointer = null;
-              _coordinatePanelLatLng = null;
-              _activeCategory = null;
-              _activeCategoryPointers = [];
-            });
-
-            _filterMarkersByCategory(null);
-            // Restore previous camera if we zoomed to a building
-            if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
-              _mapboxMap!.easeTo(
-                _previousCameraOptions!,
-                mb.MapAnimationOptions(duration: 500, startDelay: 0),
-              );
-              _isBuildingZoomed = false;
-              _previousCameraOptions = null;
-            }
-
-            // if the user *tapped* the close handle without dragging,
-            // the bar is still up → dismiss it now
-            await _dismissPlannerOverlay();
-            _routesNotifier.value = {};
-            _currentMode = TravelMode.walk;
-            _clearPanelData();
-            setState(() => _creatingRoute = false);
-            _notifyNavBar(false);
-          }
-        },
-        body: Stack(
-          children: [
-            _buildFlutterMap(),
-            // MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
-
-            // ── animated white sheet over the map ──────────────────────
-            AnimatedSlide(
-              offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
-              duration: _animDuration,
-              curve: Curves.easeInOut,
-              child: AnimatedOpacity(
-                opacity: _searchActive ? 1.0 : 0.0,
-                duration: _animDuration,
-                child: IgnorePointer(
-                  ignoring: !_searchActive,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      color: Colors.white,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // --- Animated Search Bar and Category Navigation ---
-            AnimatedSlide(
-              offset: (_panelActive || _creatingRoute)
-                  ? const Offset(0, -0.06)
-                  : Offset.zero,
-              duration: _animDuration,
-              curve: Curves.easeInOut,
-              child: AnimatedOpacity(
-                opacity: (_panelActive || _creatingRoute) ? 0.0 : 1.0,
-                duration: _animDuration,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    MapSearchBar(
-                      searchController: _searchCtl,
-                      suggestions: _suggestions,
-                      onSearch: (q) {
-                        _searchMarkers(q);
-                        setState(() => _suggestions = []);
-                      },
-                      onClear: () {
-                        _searchCtl.clear();
-                        setState(() => _suggestions = []);
-                      },
-                      onCategorySelected: (category, color) {
-                        if (category != null) {
-                          _showCategoryListPopup(
-                            category,
-                            color ?? Colors.blue,
-                          );
-                        }
-                      },
-                      onSuggestionSelected: (p) {
-                        final dest = LatLng(p.lat, p.lng);
-                        _animatedMapboxMove(dest, 18);
-                        _onMapTap(dest);
-                      },
-                      focusNode: _searchFocusNode,
-                    ),
-                    // If you want to show the CategoryNavigationBar here, add it below:
-                    // CategoryNavigationBar(...),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 170, // adjust as needed to not overlap other buttons
-              right: 20,
-              child: FloatingActionButton.extended(
-                heroTag: 'toggle3d',
-                backgroundColor: Colors.white,
-                label: Text(
-                  _is3D ? '2D' : '3D',
-                  style: const TextStyle(color: Colors.blue),
-                ),
-                onPressed: () {
-                  setState(() => _is3D = !_is3D);
-                  if (_mapboxMap != null) {
-                    _mapboxMap!.easeTo(
-                      mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
-                      mb.MapAnimationOptions(duration: 600, startDelay: 0),
-                    );
-                  }
-                },
-              ),
-            ),
-            if (!_panelActive) _buildCurrentLocationButton(),
-            if (!_panelActive)
               Positioned(
-                left: 16,
-                bottom: _bottomOffset,
-                child: AnimatedSlide(
-                  offset: (_searchActive || _creatingRoute)
-                      ? const Offset(0, 1)
-                      : Offset.zero,
-                  duration: _animDuration,
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+                top: 170, // adjust as needed to not overlap other buttons
+                right: 20,
+                child: FloatingActionButton.extended(
+                  heroTag: 'toggle3d',
+                  backgroundColor: Colors.white,
+                  label: Text(
+                    _is3D ? '2D' : '3D',
+                    style: const TextStyle(color: Colors.blue),
+                  ),
+                  onPressed: () {
+                    setState(() => _is3D = !_is3D);
+                    if (_mapboxMap != null) {
+                      _mapboxMap!.easeTo(
+                        mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
+                        mb.MapAnimationOptions(duration: 600, startDelay: 0),
+                      );
+                    }
+                  },
+                ),
+              ),
+              if (!_panelActive) _buildCurrentLocationButton(),
+              if (!_panelActive)
+                Positioned(
+                  left: 16,
+                  bottom: _bottomOffset,
+                  child: AnimatedSlide(
+                    offset: (_searchActive || _creatingRoute)
+                        ? const Offset(0, 1)
+                        : Offset.zero,
                     duration: _animDuration,
-                    child: _persistentWeather,
+                    curve: Curves.easeInOut,
+                    child: AnimatedOpacity(
+                      opacity: (_searchActive || _creatingRoute) ? 0 : 1,
+                      duration: _animDuration,
+                      child: _persistentWeather,
+                    ),
                   ),
                 ),
-              ),
-            if (_activeCategory != null)
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  child: CategoryTopBar(
-                    title: _activeCategory!,
-                    onClose: () {
-                      setState(() {
-                        _activeCategory = null;
-                        _activeCategoryColor = null;
-                        _activeCategoryPointers = [];
-                      });
-                      _filterMarkersByCategory(null);
-                      _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
-                      _panelController.close();
-                      _notifyNavBar(false);
-                    },
+              if (_activeCategory != null)
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    child: CategoryTopBar(
+                      title: _activeCategory!,
+                      onClose: () {
+                        setState(() {
+                          _activeCategory = null;
+                          _activeCategoryColor = null;
+                          _activeCategoryPointers = [];
+                        });
+                        _filterMarkersByCategory(null);
+                        _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+                        _panelController.close();
+                        _notifyNavBar(false);
+                      },
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
