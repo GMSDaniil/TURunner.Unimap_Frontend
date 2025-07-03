@@ -194,31 +194,23 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 }
 
   Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
-  // Remove old layers/sources if they exist - remove ALL route layers/sources
-  try {
-    final allLayerIds = await mapboxMap.style.getStyleLayers();
-    final allSourceIds = await mapboxMap.style.getStyleSources();
-    
-    for (final layerId in allLayerIds) {
-      if (layerId!.id.startsWith('route-layer-')) {
-        try {
-          await mapboxMap.style.removeStyleLayer(layerId.id);
-        } catch (_) {}
-      }
+  // ── 1) Clean up old route & changeover layers/sources ─────────────
+  final layers = await mapboxMap.style.getStyleLayers();
+  final sources = await mapboxMap.style.getStyleSources();
+  for (final layer in [...?layers]) {
+    if (layer!.id.startsWith('route-layer-') ||
+        layer.id.startsWith('change-layer-')) {
+      await mapboxMap.style.removeStyleLayer(layer.id);
     }
-    
-    for (final sourceId in allSourceIds) {
-      if (sourceId!.id.startsWith('route-source-')) {
-        try {
-          await mapboxMap.style.removeStyleSource(sourceId.id);
-        } catch (_) {}
-      }
+  }
+  for (final src in [...?sources]) {
+    if (src!.id.startsWith('route-source-') ||
+        src.id.startsWith('change-source-')) {
+      await mapboxMap.style.removeStyleSource(src.id);
     }
-  } catch (e) {
-    print('Error cleaning up old routes: $e');
   }
 
-  // Add each segment with unique ID
+  // ── 2) Draw each route segment as you already do ────────────────
   for (int i = 0; i < segments.length; i++) {
     final seg = segments[i];
     final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
@@ -282,6 +274,45 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
   }
 
+  // ── 3) Add a little circle at each changeover ─────────────────
+  for (int i = 1; i < segments.length; i++) {
+    if (segments[i].mode != segments[i - 1].mode) {
+      // pick the exact coord where you switch
+      final LatLng switchPoint = segments[i].path.first;
+      final srcId = 'change-source-$i';
+      final lyrId = 'change-layer-$i';
+
+      // GeoJSON source for that single point
+      await mapboxMap.style.addSource(GeoJsonSource(
+        id: srcId,
+        data: jsonEncode({
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [switchPoint.longitude, switchPoint.latitude]
+              },
+              "properties": {}
+            }
+          ]
+        }),
+      ));
+
+      // tiny white circle with gray outline
+      await mapboxMap.style.addLayer(CircleLayer(
+        id: lyrId,
+        sourceId: srcId,
+        circleRadius: 6.0,                      // adjust as needed
+        circleColor: Colors.white.value,
+        circleStrokeColor: Colors.grey.value,
+        circleStrokeWidth: 2.0,
+      ));
+    }
+  }
+
+  // ── 4) Re‐draw the destination marker ───────────────────────────
   await deleteDestinationMarker();
   if (segments.isNotEmpty && segments.last.path.isNotEmpty) {
     await addDestinationMarker(segments.last.path.last);
