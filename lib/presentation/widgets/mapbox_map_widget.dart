@@ -353,7 +353,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       id: 'destination-layer',
       sourceId: 'destination-source',
       iconImage: 'destination-marker', // You'd need to load this icon first
-      iconSize: 1.5,
+      iconSize: 0.75,
       iconAnchor: IconAnchor.BOTTOM,
     ));
   }
