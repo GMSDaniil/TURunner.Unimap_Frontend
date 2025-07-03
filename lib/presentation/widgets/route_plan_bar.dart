@@ -301,8 +301,9 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   /*──────── build ────────*/
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Stack(
+    return 
+    // SafeArea(child: 
+    Stack(
         children: [
           Positioned(
           // keep the bar clear of any notch / status bar
@@ -359,7 +360,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
             ),
           ),
         ],
-      ),
+      // ),
     );
   }
 
