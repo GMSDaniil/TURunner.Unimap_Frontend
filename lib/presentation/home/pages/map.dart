@@ -996,6 +996,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     return MapboxMapWidget(
       markerAnnotations: _interactiveAnnotations,
       navBarHeight: _navBarHeight,
+      destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
       //busStopMarkers: busMarkers,
      // scooterMarkers: scooterMarkers,

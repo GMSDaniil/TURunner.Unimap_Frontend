@@ -23,6 +23,7 @@ class MapboxMapWidget extends StatefulWidget {
   /// Annotations to show on the map
   final List<InteractiveAnnotation> markerAnnotations;
   final Map<String, Uint8List> markerImageCache;
+  final LatLng? destinationLatLng;
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
@@ -38,6 +39,7 @@ class MapboxMapWidget extends StatefulWidget {
     Key? key,
     required this.markerAnnotations,
     required this.navBarHeight,
+    this.destinationLatLng,
     required this.markerImageCache,
    // required this.busStopMarkers,
    // required this.scooterMarkers,
@@ -157,6 +159,14 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     if(widget.segments != oldWidget.segments) {
       drawStyledRouteSegments(widget.segments);
       print("Updated polylines");
+    }
+
+    if (widget.destinationLatLng != oldWidget.destinationLatLng) {
+      if (widget.destinationLatLng != null) {
+        addDestinationMarker(widget.destinationLatLng!);
+      } else {
+        deleteDestinationMarker();
+      }
     }
   }
 
