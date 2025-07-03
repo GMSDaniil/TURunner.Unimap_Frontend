@@ -13,7 +13,8 @@ import 'core/configs/theme/app_theme.dart';
 import 'presentation/auth/pages/signup.dart';
 import 'presentation/auth/pages/signin.dart';
 import 'service_locator.dart';
-import 'package:provider/src/change_notifier_provider.dart';
+// import 'package:provider/src/change_notifier_provider.dart';
+import 'package:provider/provider.dart';
 
 import 'package:path_provider/path_provider.dart';
 
@@ -87,6 +88,12 @@ Future<void> main() async {
       systemNavigationBarColor: Colors.black,
     ),
   );
+
+  SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.bottom],
+    );
+
   setupServiceLocator();
   runApp(const MyApp());
 }
@@ -96,11 +103,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [SystemUiOverlay.bottom],
-    );
-
+    
     return MultiBlocProvider(
       // BlocProvider provides AuthStateCubit to the whole widget tree
       providers: [
