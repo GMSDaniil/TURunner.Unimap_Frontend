@@ -149,7 +149,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     location: const LatLng(matheLat, matheLon),
   );
 
-
   String? _activeCategory;
   Color? _activeCategoryColor;
   List<Pointer> _activeCategoryPointers = [];
@@ -399,76 +398,78 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // ─────────────────────────────────────────────────────────────────
     return PopScope(
       canPop: false, // Always intercept the back button
-    onPopInvoked: (bool didPop) async {
-      if (didPop) return; // Already handled
-      
-      // Handle back button press based on current state - priority order:
-      
-      // 1. If search is active, close search first
-      if (_searchActive) {
-        _searchFocusNode.unfocus();
-        setState(() => _searchActive = false);
-        _notifyNavBar(false);
-        return;
-      }
-      
-      // 2. If route planning is active, close route planner
-      if (_creatingRoute || _plannerOverlay != null) {
-        await _dismissPlannerOverlay();
-        setState(() => _creatingRoute = false);
-        _routesNotifier.value = {};
-        _currentMode = TravelMode.walk;
-        _clearPanelData();
-        _notifyNavBar(false);
-        if (_panelController.isPanelOpen) {
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return; // Already handled
+
+        // Handle back button press based on current state - priority order:
+
+        // 1. If search is active, close search first
+        if (_searchActive) {
+          _searchFocusNode.unfocus();
+          setState(() => _searchActive = false);
+          _notifyNavBar(false);
+          return;
+        }
+
+        // 2. If route planning is active, close route planner
+        if (_creatingRoute || _plannerOverlay != null) {
+          await _dismissPlannerOverlay();
+          setState(() => _creatingRoute = false);
+          _routesNotifier.value = {};
+          _currentMode = TravelMode.walk;
+          _clearPanelData();
+          _notifyNavBar(false);
+          if (_panelController.isPanelOpen) {
+            _panelController.close();
+          }
+          return;
+        }
+
+        // 3. If any panel is open, close it
+        if (_panelActive) {
+          // Clear building highlight if active
+          if (_clearBuildingHighlight != null) {
+            _clearBuildingHighlight!();
+          }
+
+          // Restore camera if zoomed to building
+          if (_isBuildingZoomed &&
+              _mapboxMap != null &&
+              _previousCameraOptions != null) {
+            _mapboxMap!.easeTo(
+              _previousCameraOptions!,
+              mb.MapAnimationOptions(duration: 500, startDelay: 0),
+            );
+            _isBuildingZoomed = false;
+            _previousCameraOptions = null;
+          }
+
+          // Clear all panel states
+          setState(() {
+            _buildingPanelPointer = null;
+            _coordinatePanelLatLng = null;
+            _activeCategory = null;
+            _activeCategoryColor = null;
+            _activeCategoryPointers = [];
+          });
+
+          // Reset markers to show all
+          _filterMarkersByCategory(null);
+
+          // Close the panel
           _panelController.close();
+          _notifyNavBar(false);
+
+          return;
         }
-        return;
-      }
-      
-      // 3. If any panel is open, close it
-      if (_panelActive) {
-        // Clear building highlight if active
-        if (_clearBuildingHighlight != null) {
-          _clearBuildingHighlight!();
+
+        // 4. Nothing is active, exit app
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          SystemNavigator.pop(); // Close app
         }
-        
-        // Restore camera if zoomed to building
-        if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
-          _mapboxMap!.easeTo(
-            _previousCameraOptions!,
-            mb.MapAnimationOptions(duration: 500, startDelay: 0),
-          );
-          _isBuildingZoomed = false;
-          _previousCameraOptions = null;
-        }
-        
-        // Clear all panel states
-        setState(() {
-          _buildingPanelPointer = null;
-          _coordinatePanelLatLng = null;
-          _activeCategory = null;
-          _activeCategoryColor = null;
-          _activeCategoryPointers = [];
-        });
-        
-        // Reset markers to show all
-        _filterMarkersByCategory(null);
-        
-        // Close the panel
-        _panelController.close();
-        _notifyNavBar(false);
-        
-        return;
-      }
-      
-      // 4. Nothing is active, exit app
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      } else {
-        SystemNavigator.pop(); // Close app
-      }
-    },
+      },
       child: Scaffold(
         body: SlidingUpPanel(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -478,18 +479,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           snapPoint: 0.29, // when you drag up, snaps at 29% if release early
           isDraggable: true, // allow dragging
           onPanelSlide: (pos) {
-            // start top-bar fade-out only when
-            //  • it is fully shown           (animation finished),
-            //  • the user is dragging down   (pos < _lastPanelPos),
-            //  • and we haven’t started yet.
-            if (!_panelClosingStarted &&
-                _plannerAnimCtr?.isCompleted == true &&
-                pos < _lastPanelPos && // downward motion
-                pos < 0.95) {
-              // allow a small nudge first
-              _panelClosingStarted = true;
-              _dismissPlannerOverlay(); // kicks off reverse anim
-            }
+            // Removed auto‐dismiss on slight downward drag
+            // if (!_panelClosingStarted &&
+            //     _plannerAnimCtr?.isCompleted == true &&
+            //     pos < _lastPanelPos && // downward motion
+            //     pos < 0.95) {
+            //   _panelClosingStarted = true;
+            //   _dismissPlannerOverlay();
+            // }
             _lastPanelPos = pos; // update tracker
           },
           panelBuilder: (sc) {
@@ -497,7 +494,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             if (_activeCategory != null && _activeCategoryPointers.isNotEmpty) {
               return _buildCategoryListPanel(sc);
             }
-      
+
             // Building info panel
             if (_buildingPanelPointer != null) {
               final p = _buildingPanelPointer!;
@@ -542,7 +539,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               showModalBottomSheet(
                                 context: context,
                                 isScrollControlled: true,
-      
+
                                 shape: const RoundedRectangleBorder(
                                   borderRadius: BorderRadius.vertical(
                                     top: Radius.circular(24),
@@ -662,7 +659,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                     56, // ← bump this to whatever Y-axis thickness you want
                                 child: GradientActionButton(
                                   onPressed: () {
-                                    setState(() => _coordinatePanelLatLng = null);
+                                    setState(
+                                      () => _coordinatePanelLatLng = null,
+                                    );
                                     _panelController.close();
                                     _startRouteFlow(latlng);
                                   },
@@ -698,10 +697,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 _activeCategory = null;
                 _activeCategoryPointers = [];
               });
-      
+
               _filterMarkersByCategory(null);
               // Restore previous camera if we zoomed to a building
-              if (_isBuildingZoomed && _mapboxMap != null && _previousCameraOptions != null) {
+              if (_isBuildingZoomed &&
+                  _mapboxMap != null &&
+                  _previousCameraOptions != null) {
                 _mapboxMap!.easeTo(
                   _previousCameraOptions!,
                   mb.MapAnimationOptions(duration: 500, startDelay: 0),
@@ -709,7 +710,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 _isBuildingZoomed = false;
                 _previousCameraOptions = null;
               }
-      
+
               // if the user *tapped* the close handle without dragging,
               // the bar is still up → dismiss it now
               await _dismissPlannerOverlay();
@@ -724,7 +725,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             children: [
               _buildFlutterMap(),
               // MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
-      
+
               // ── animated white sheet over the map ──────────────────────
               AnimatedSlide(
                 offset: _searchActive ? Offset.zero : const Offset(0, -0.06),
@@ -862,7 +863,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // Opens building info panel
   void _showBuildingPanel(Pointer p) async {
-   
     setState(() => _buildingPanelPointer = p);
     _panelController.open();
     _notifyNavBar(true); // Hide nav bar when opening
@@ -999,7 +999,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
       //busStopMarkers: busMarkers,
-     // scooterMarkers: scooterMarkers,
+      // scooterMarkers: scooterMarkers,
       segments: segments,
       //cachedTileProvider: _cachedTiles,
       onMapTap: _onMapTap,
