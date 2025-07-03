@@ -52,6 +52,7 @@ class _Cand {
 /* ------------------------------------------------------------------------- */
 
 class _RoutePlanBarState extends State<RoutePlanBar> {
+  static const int _maxStops = 3;    // ← allow up to 3 stops now
   late final TextEditingController _startCtl;
   late final TextEditingController _destCtl;
   final List<TextEditingController> _stopCtls = [];
@@ -195,37 +196,116 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         Expanded(
           child: GestureDetector(
             onTap: () async {
-              // always start with a clear search bar, but keep ctl.text if canceled
               final picked = await _openSearchOverlay(context, '', hint);
               if (picked != null) {
                 setState(() {
-                  final old = _pool
-                      .where((c) => c.label == ctl.text)
-                      .cast<_Cand?>()
-                      .firstWhere((_) => true, orElse: () => null);
-                  if (old != null) _chosen.remove(old);
-                  _chosen.add(picked);
+                  // 1) figure out which slot we’re editing
+                  int targetIdx;
+                  if (hint == 'Start') {
+                    targetIdx = 0;
+                  } else if (hint == 'Destination') {
+                    targetIdx = _route.length - 1;
+                  } else {
+                    final stopIndex = _stopCtls.indexOf(ctl);
+                    targetIdx = stopIndex + 1;
+                  }
 
-                  
+                  // ── 1.a) special‐case: Start <→ neighbour swap
+                  if (hint == 'Start'
+                      && _route.length > 1
+                      && _route[1].pos == picked.pos) {
+                    // swap the two entries
+                    final oldStart = _route[0];
+                    _route[0] = _route[1];
+                    _route[1] = oldStart;
 
+                    // update controllers & cands
+                    _startCtl.text = _route[0].label;
+                    _startCand   = _route[0];
+                    if (_stopCtls.isNotEmpty) {
+                      _stopCtls[0].text = _route[1].label;
+                    } else {
+                      _destCtl.text = _route[1].label;
+                      _destCand     = _route[1];
+                    }
+
+                    // notify map immediately & bail
+                    widget.onChanged(_route.map((c) => c.pos).toList());
+                    return;
+                  }
+
+                  // ── 1.b) similar for Destination <→ neighbour
+                  if (hint == 'Destination'
+                      && _route.length > 1
+                      && _route[_route.length - 2].pos == picked.pos) {
+                    final oldDest = _route[_route.length - 1];
+                    _route[_route.length - 1] = _route[_route.length - 2];
+                    _route[_route.length - 2] = oldDest;
+
+                    _destCtl.text = _route.last.label;
+                    _destCand   = _route.last;
+                    if (_stopCtls.isNotEmpty) {
+                      _stopCtls.last.text = _route[_route.length - 2].label;
+                    } else {
+                      _startCtl.text = _route[0].label;
+                      _startCand     = _route[0];
+                    }
+
+                    widget.onChanged(_route.map((c) => c.pos).toList());
+                    return;
+                  }
+
+                  // ── 2) existing neighbour‐removal & insertion…
+                  bool swappedOnly = false;
+                  for (final nb in [targetIdx - 1, targetIdx + 1]) {
+                    if (nb >= 0 && nb < _route.length && _route[nb].pos == picked.pos) {
+                      // remove the neighbour entry
+                      _route.removeAt(nb);
+                      // drop its controller if it was a stop
+                      if (nb > 0 && nb < _route.length) {
+                        _stopCtls.removeAt(nb - 1);
+                      }
+                      // clear its text/cand
+                      if (nb == 0) {
+                        _startCtl.clear();
+                        _startCand = null;
+                      } else if (nb == _route.length) {
+                        _destCtl.clear();
+                        _destCand = null;
+                      }
+                      // if we removed something before us, shift our index left
+                      if (nb < targetIdx) targetIdx--;
+                      swappedOnly = true;
+                    }
+                  }
+
+
+                  // ── 2.a) if anything was deleted, clear the old route on the map
+                  if (swappedOnly) {
+                    widget.onChanged(<LatLng>[]);  // tells the map “no route” now
+                  }
+
+                  // ── 3) place the new pick into this slot
                   ctl.text = picked.label;
-                  // if (hint == 'Start')     _startCand = picked;
-                  // else if (hint == 'Destination') _destCand = picked;
                   switch (hint) {
                     case 'Start':
                       _startCand = picked;
+                      _route.isNotEmpty
+                        ? _route[0] = picked
+                        : _route.insert(0, picked);
                       break;
                     case 'Destination':
                       _destCand = picked;
+                      _route.length > 1
+                        ? _route[_route.length - 1] = picked
+                        : _route.add(picked);
                       break;
                     default:
-                      // for stops, we just update the text
-                      final index = _stopCtls.indexOf(ctl);
-                      _route.insert(index+1, picked); // +1 for start location
+                      _route[targetIdx] = picked;
                   }
-                  // print(_route.map((c) => c.pos).toList());
-                  // fire onChanged if both endpoints are set
-                  if (_startCand != null && _destCand != null) {
+
+                  // ── 4) only trigger backend if it wasn’t a neighbour‐swap
+                  if (!swappedOnly && _startCand != null && _destCand != null) {
                     widget.onChanged(_route.map((c) => c.pos).toList());
                   }
                 });
@@ -307,7 +387,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   void _addStop() {
-    if (_stopCtls.length == 3) return;
+    if (_stopCtls.length >= _maxStops) return;   // ← use new limit
     if (_stopCtls.length != _route.length - 2) return; //user must choose stop before creating a new one
     setState(() => _stopCtls.add(TextEditingController()));
   }
@@ -396,7 +476,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                               icon: Icons.add,
                               tooltip: 'Add stop',
                               onTap: _addStop,
-                              enabled: _stopCtls.length < 3,
+                              enabled: _stopCtls.length < _maxStops,   // ← here too
                             ),
                           ],
                         ),
@@ -484,7 +564,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
   List<_Cand> _getSuggestions(String q) {
     final lower = q.toLowerCase();
     return widget.pool
-        .where((c) => !widget.isTaken(c) && (lower.isEmpty || c.label.toLowerCase().contains(lower)))
+        .where((c) => lower.isEmpty || c.label.toLowerCase().contains(lower))
         .take(40)
         .toList();
   }
