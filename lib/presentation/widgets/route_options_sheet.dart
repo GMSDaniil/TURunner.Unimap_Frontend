@@ -2,6 +2,7 @@ import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// Possible travel profiles.  Only *walk* is implemented for now but the
 /// widget is future-proof for bus / scooter.
@@ -276,7 +277,7 @@ class _ModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    Widget pill(TravelMode mode, IconData icon, String label) {
+    Widget pill(TravelMode mode, Widget iconWidget, String label) {
       final bool active = selected == mode;
       return Expanded(
         child: GestureDetector(
@@ -291,11 +292,7 @@ class _ModeSelector extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: active ? theme.colorScheme.onPrimary : Colors.black87,
-                ),
+                iconWidget,
                 const SizedBox(height: 4),
                 Text(
                   label,
@@ -316,11 +313,42 @@ class _ModeSelector extends StatelessWidget {
 
     return Row(
       children: [
-        pill(TravelMode.walk, Icons.directions_walk, 'Walk'),
+        pill(
+          TravelMode.walk,
+          Icon(
+            Icons.directions_walk,
+            size: 20,
+            color: selected == TravelMode.walk ? theme.colorScheme.onPrimary : Colors.black87,
+          ),
+          'Walk',
+        ),
         const SizedBox(width: 6),
-        pill(TravelMode.bus, Icons.directions_bus, 'Bus'),
+        // Use custom SVG for public transport
+        pill(
+          TravelMode.bus,
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Padding(
+              padding: const EdgeInsets.all(2.0),
+              child: SvgPicture.asset(
+                'assets/icons/public_transport.svg',
+                color: selected == TravelMode.bus ? theme.colorScheme.onPrimary : Colors.black87,
+              ),
+            ),
+          ),
+          'Transit',
+        ),
         const SizedBox(width: 6),
-        pill(TravelMode.scooter, Icons.electric_scooter, 'Scooter'),
+        pill(
+          TravelMode.scooter,
+          Icon(
+            Icons.electric_scooter,
+            size: 20,
+            color: selected == TravelMode.scooter ? theme.colorScheme.onPrimary : Colors.black87,
+          ),
+          'Scooter',
+        ),
       ],
     );
   }

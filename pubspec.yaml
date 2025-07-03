@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_svg: ^2.0.10
   cupertino_icons: ^1.0.6
   flutter_bloc:
   dio:
@@ -55,6 +56,9 @@ flutter:
     - assets/icons/pin_default_64.png
     - assets/icons/pin_destination_64.png
     - assets/icons/pin_destination.png
+
+    # Custom public transport icon
+    - assets/icons/public_transport.svg
 
 
   fonts:
