@@ -1276,6 +1276,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     List<LatLng> route, {
     bool rebuildOnly = false,
   }) async {
+    // ◀── NEW: clear any existing route so the sheet enters its "loading" state
+    setState(() {
+      _routesNotifier.value = {};
+    });
+
+    // existing logic kicks off the find-route calls...
     await RouteLogic.onCreateRoute(
       context: context,
       route: route,
