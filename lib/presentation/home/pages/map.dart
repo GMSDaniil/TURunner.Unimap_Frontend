@@ -793,7 +793,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
               Positioned(
-                top: 170, // adjust as needed to not overlap other buttons
+                top: 180, // adjust as needed to not overlap other buttons
                 right: 20,
                 child: FloatingActionButton.extended(
                   heroTag: 'toggle3d',
