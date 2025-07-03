@@ -204,6 +204,9 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
 
   void _addStop() {
     if (_ctls.length >= 5) return; // 1+3+1
+    // Count blank fields (fields with empty text)
+    int blankCount = _ctls.where((c) => c.text.trim().isEmpty).length;
+    if (blankCount >= 1) return;
     setState(() {
       _ctls.insert(_ctls.length - 1, TextEditingController());
       _types.insert(_types.length - 1, 'stop');
@@ -293,6 +296,8 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   void _fire() {
+    // If any field is blank, do not send a request
+    if (_ctls.any((c) => c.text.trim().isEmpty)) return;
     if (_start != null && _dest != null) {
       widget.onChanged(_route.map((e) => e.pos).toList());
     }
@@ -344,15 +349,19 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                           ),
                         ),
                       ),
-                      /* side buttons */
-                      Column(
-                        children: [
-                          _iconBtn(Icons.swap_vert, 'Swap', _swap),
-                          const SizedBox(height: 8),
-                          _iconBtn(Icons.add, 'Add stop', _addStop,
-                              enabled: _ctls.length < 5),
-                        ],
-                      ),
+                    /* side buttons */
+                    Column(
+                      children: [
+                        _iconBtn(Icons.swap_vert, 'Swap', _swap),
+                        const SizedBox(height: 8),
+                        _iconBtn(
+                          Icons.add,
+                          'Add stop',
+                          _addStop,
+                          enabled: _ctls.length < 5 && _ctls.where((c) => c.text.trim().isEmpty).length == 0,
+                        ),
+                      ],
+                    ),
                     ],
                   ),
                 ),
@@ -406,7 +415,8 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
 
   late final TextEditingController _searchCtl =
       TextEditingController(text: widget.initialText);
-  late List<_Cand> _suggestions = _getSuggestions('');
+  late List<_Cand> _suggestions;
+  final FocusNode _focusNode = FocusNode();
 
   List<_Cand> _getSuggestions(String q) {
     final l = q.toLowerCase();
@@ -420,8 +430,13 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
   @override
   void initState() {
     super.initState();
+    _suggestions = _getSuggestions(_searchCtl.text);
     _searchCtl.addListener(() {
       setState(() => _suggestions = _getSuggestions(_searchCtl.text));
+    });
+    // Request focus as soon as the overlay is shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
     });
   }
 
@@ -456,7 +471,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                       orElse: () => _Cand(p.name, LatLng(p.lat, p.lng)));
                   _fadeCtr.reverse().then((_) => widget.onPicked(cand));
                 },
-                focusNode: FocusNode(),
+                focusNode: _focusNode,
                 onBack: _close,
               ),
               Expanded(child: GestureDetector(onTap: _close)),
@@ -471,6 +486,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
   void dispose() {
     _fadeCtr.dispose();
     _searchCtl.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 }
