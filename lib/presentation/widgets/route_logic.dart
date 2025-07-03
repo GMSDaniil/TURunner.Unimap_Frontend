@@ -368,41 +368,21 @@ List<Marker> buildScooterMarkers(List<RouteSegment> segments) {
 
 typedef ClosestPointCalculator = LatLng Function(LatLng stop, List<LatLng> polyline);
 
-List<Marker> buildBusStopMarkers({
+List<LatLng> buildBusStopMarkers({
   required List<RouteSegment> segments,
   required ClosestPointCalculator closestPointCalculator,
 }) {
-  final busStopMarkers = <Marker>[];
+  final busStopPoints = <LatLng>[];
   for (final seg in segments) {
     if (seg.mode == TravelMode.bus && seg.precisePolyline != null) {
       for (final stop in seg.path) {
         // Calculate the closest point on the precise polyline to the stop.
         final markerPoint = closestPointCalculator(stop, seg.precisePolyline!);
-        busStopMarkers.add(
-          Marker(
-            point: markerPoint,
-            width: 18,
-            height: 18,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.blue.shade700, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+        busStopPoints.add(markerPoint);
       }
     }
   }
-  return busStopMarkers;
+  return busStopPoints;
 }
 
 class RoutePlanningPage extends StatefulWidget {

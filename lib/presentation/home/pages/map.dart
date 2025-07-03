@@ -998,7 +998,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       navBarHeight: _navBarHeight,
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
-      //busStopMarkers: busMarkers,
+      busStopMarkers: busMarkers,
       // scooterMarkers: scooterMarkers,
       segments: segments,
       //cachedTileProvider: _cachedTiles,

@@ -20,6 +20,7 @@ final List<String> markers = [
 ];
 
 class MapboxMapWidget extends StatefulWidget {
+  final List<LatLng> busStopMarkers;
   /// Annotations to show on the map
   final List<InteractiveAnnotation> markerAnnotations;
   final Map<String, Uint8List> markerImageCache;
@@ -41,10 +42,8 @@ class MapboxMapWidget extends StatefulWidget {
     required this.navBarHeight,
     this.destinationLatLng,
     required this.markerImageCache,
-   // required this.busStopMarkers,
-   // required this.scooterMarkers,
+    required this.busStopMarkers,
     required this.segments,
-    //required this.cachedTileProvider,
     required this.onMapTap,
     required this.onMapCreated,
     this.onClearHighlightController,
@@ -58,6 +57,54 @@ class MapboxMapWidget extends StatefulWidget {
 
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
+  /// Draws small white points for all bus stops along the bus segments
+  Future<void> drawBusStopMarkers(List<LatLng> busMarkers) async {
+    // Remove old bus stop layers/sources
+    final layers = await mapboxMap.style.getStyleLayers();
+    final sources = await mapboxMap.style.getStyleSources();
+    for (final layer in [...?layers]) {
+      if (layer!.id.startsWith('busstop-layer-')) {
+        await mapboxMap.style.removeStyleLayer(layer.id);
+      }
+    }
+    for (final src in [...?sources]) {
+      if (src!.id.startsWith('busstop-source-')) {
+        await mapboxMap.style.removeStyleSource(src.id);
+      }
+    }
+
+    for (int i = 0; i < busMarkers.length; i++) {
+      final marker = busMarkers[i];
+      final srcId = 'busstop-source-$i';
+      final lyrId = 'busstop-layer-$i';
+
+      await mapboxMap.style.addSource(GeoJsonSource(
+        id: srcId,
+        data: jsonEncode({
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [marker.longitude, marker.latitude]
+              },
+              "properties": {}
+            }
+          ]
+        }),
+      ));
+
+      await mapboxMap.style.addLayer(CircleLayer(
+        id: lyrId,
+        sourceId: srcId,
+        circleRadius: 4.5, // slightly larger for better visibility
+        circleColor: Colors.white.value,
+        circleStrokeColor: Colors.grey.value,
+        circleStrokeWidth: 1.0,
+      ));
+    }
+  }
   /*────────────  zoom-direction “memory”  ────────────*/
   /// pins hidden during the **current zoom-out** gesture
   final Set<String> _hiddenThisZoomOut = {};
@@ -159,6 +206,10 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     if(widget.segments != oldWidget.segments) {
       drawStyledRouteSegments(widget.segments);
       print("Updated polylines");
+      // Draw bus stop markers if provided
+      if (widget.busStopMarkers != null) {
+        drawBusStopMarkers(widget.busStopMarkers!);
+      }
     }
 
     if (widget.destinationLatLng != oldWidget.destinationLatLng) {
