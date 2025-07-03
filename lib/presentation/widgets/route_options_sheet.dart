@@ -41,6 +41,7 @@ class RouteOptionsSheet extends StatefulWidget {
 }
 
 class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
+  String? _routeError;
   late TravelMode _mode;
   bool _loading = false;
 
@@ -62,7 +63,14 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   void _onRoutesChanged() {
     if (mounted) {
       setState(() {
-        _loading = widget.routesNotifier.value[_mode] == null;
+        final route = widget.routesNotifier.value[_mode];
+        _loading = route == null;
+        // If route is present but has no segments, treat as error
+        if (route != null && (route.segments == null || route.segments.isEmpty)) {
+          _routeError = "No route can be found at the moment";
+        } else {
+          _routeError = null;
+        }
       });
     }
   }
@@ -197,34 +205,48 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                           ),
                         ],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.timer, size: 22),
-                              const SizedBox(width: 6),
-                              Text(
-                                _prettyDuration,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.social_distance_rounded,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _prettyDistance,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                      child: _routeError != null
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  _routeError!,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.timer, size: 22),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _prettyDuration,
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.social_distance_rounded,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _prettyDistance,
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
               const SizedBox(height: 28),
               // ── Segments info ──────────────────────────────────────
