@@ -134,194 +134,205 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
     return Material(
       color: Colors.white,
       elevation: 8,
-      clipBehavior: Clip.antiAlias, // ← clip to shape
+      clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SafeArea(
-        top: false, // keep top inset only
-        bottom: false, // ← disable bottom inset
-        child: SingleChildScrollView(
-          controller: widget.scrollController,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag-handle mimic
-              Align(
-                alignment: Alignment.topCenter,
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              // ── Header row ───────────────────────────────────────────
-              Row(
+        top: false,
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Unscrollable top section ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Route options',
-                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                        fontWeight: FontWeight.w700,
+                  // Drag-handle mimic
+                  Align(
+                    alignment: Alignment.topCenter,
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                  // close button in a light-grey circular pill
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.close, size: 18),
-                      splashRadius: 18,
-                      onPressed: widget.onClose,
-                    ),
+                  // ── Header row ─────────────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Route options',
+                          style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.close, size: 18),
+                          splashRadius: 18,
+                          onPressed: widget.onClose,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
+                  _ModeSelector(
+                    selected: _mode,
+                    onChanged: (m) {
+                      setState(() {
+                        _mode = m;
+                        _loading = widget.routesNotifier.value[m] == null;
+                      });
+                      widget.onModeChanged(m);
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const SizedBox(height: 20),
-              _ModeSelector(
-                selected: _mode,
-                onChanged: (m) {
-                  setState(() {
-                    _mode = m;
-                    _loading = widget.routesNotifier.value[m] == null;
-                  });
-                  widget.onModeChanged(m);
-                },
-              ),
-              const SizedBox(height: 24),
-              // ── Info card ───────────────────────────────────────────
-              _loading
-                  ? const SizedBox(
-                      height: 60,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 18,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceVariant,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: _routeError != null
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _routeError!,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        color: Colors.black87,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.timer, size: 22),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _prettyDuration,
-                                      style: Theme.of(context).textTheme.titleMedium,
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.social_distance_rounded,
-                                      size: 22,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      _prettyDistance,
-                                      style: Theme.of(context).textTheme.titleMedium,
-                                    ),
-                                  ],
+            ),
+            // ── Scrollable section ──────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
+                    // ── Info card ───────────────────────────────────
+                    _loading
+                        ? const SizedBox(
+                            height: 60,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
                                 ),
                               ],
                             ),
-                    ),
-              const SizedBox(height: 28),
-              // ── Segments list ─────────────────────────────────────
-              // Google-Maps-style vertical timeline
-              Builder(
-                builder: (ctx) {
-                  final data = widget.routesNotifier.value[_mode];
-                  final segs = data?.segments ?? const <RouteSegment>[];
-                  if (_loading) {
-                    return const SizedBox(height: 60);
-                  }
-                  // only show "no segments" if truly empty
-                  if (segs.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
-                      ),
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // real start label
-                      _RouteEndpointTile(
-                        label: 'Start',
-                        location: _deriveStartName(data),
-                        isFirst: true,
-                        isLast: false,
-                      ),
-                      for (int i = 0; i < segs.length; i++)
-                        // Only show walk segment if it's not a duplicate of the previous
-                        if (!(i > 0 &&
-                            segs[i].mode == TravelMode.walk &&
-                            segs[i - 1].mode == TravelMode.walk &&
-                            segs[i].distanceMeters == segs[i - 1].distanceMeters &&
-                            segs[i].durrationSeconds == segs[i - 1].durrationSeconds))
-                          _SegmentTimelineTile(
-                            segment: segs[i],
-                            isFirst: false,
-                            isLast: false,
+                            child: _routeError != null
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _routeError!,
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              color: Colors.black87,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.timer, size: 22),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _prettyDuration,
+                                            style: Theme.of(context).textTheme.titleMedium,
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.social_distance_rounded,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _prettyDistance,
+                                            style: Theme.of(context).textTheme.titleMedium,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                           ),
-                      // real end label
-                      _RouteEndpointTile(
-                        label: 'End',
-                        location: _deriveEndName(data),
-                        isFirst: false,
-                        isLast: true,
-                      ),
-                    ],
-                  );
-                },
+                    const SizedBox(height: 28),
+                    // ── Segments list ──────────────────────────────
+                    Builder(
+                      builder: (ctx) {
+                        final data = widget.routesNotifier.value[_mode];
+                        final segs = data?.segments ?? const <RouteSegment>[];
+                        if (_loading) {
+                          return const SizedBox(height: 60);
+                        }
+                        if (segs.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _RouteEndpointTile(
+                              label: 'Start',
+                              location: _deriveStartName(data),
+                              isFirst: true,
+                              isLast: false,
+                            ),
+                            for (int i = 0; i < segs.length; i++)
+                              if (!(i > 0 &&
+                                  segs[i].mode == TravelMode.walk &&
+                                  segs[i - 1].mode == TravelMode.walk &&
+                                  segs[i].distanceMeters == segs[i - 1].distanceMeters &&
+                                  segs[i].durrationSeconds == segs[i - 1].durrationSeconds))
+                                _SegmentTimelineTile(
+                                  segment: segs[i],
+                                  isFirst: false,
+                                  isLast: false,
+                                ),
+                            _RouteEndpointTile(
+                              label: 'End',
+                              location: _deriveEndName(data),
+                              isFirst: false,
+                              isLast: true,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ], // children of Column
-          ), // Column
-        ), // SingleChildScrollView
-      ), // SafeArea
-    ); // Material
+            ),
+          ],
+        ),
+      ),
+    );
   } // build
 } // _RouteOptionsSheetState
 

@@ -381,8 +381,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       maxHeight =
           MediaQuery.of(context).size.height * 0.25; // 35% of screen height
     } else if (_panelRoutes != null) {
-      // route sheet always up to 31% of screen height
-      maxHeight = MediaQuery.of(context).size.height * 0.31;
+      // route sheet always up to 50% of screen height
+      maxHeight = MediaQuery.of(context).size.height * 0.5;
 
       // ────────────────────────────────────────────────────────────────
       // Otherwise neither sheet is active, we’ll show a small handle only
