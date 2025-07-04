@@ -1,3 +1,4 @@
+import 'segment_timeline_tile.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
@@ -111,6 +112,21 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
         _loading = widget.routesNotifier.value[widget.currentMode] == null;
       });
     }
+  }
+
+  // ── Helpers to get nice labels for timeline endpoints ────────────────
+  String _deriveStartName(RouteData? data) {
+    if (data == null) return 'Start';
+    final raw = data.customStartName;
+    if (raw != null && raw.trim().isNotEmpty) return raw;
+    return 'Start';
+  }
+
+  String _deriveEndName(RouteData? data) {
+    if (data == null) return 'Destination';
+    final raw = data.customEndName;
+    if (raw != null && raw.trim().isNotEmpty) return raw;
+    return 'Destination';
   }
 
   @override
@@ -250,19 +266,254 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                             ),
                     ),
               const SizedBox(height: 28),
-              // ── Segments info ──────────────────────────────────────
-              // if (segments.isNotEmpty)
-              //   ...segments.map((seg) => Padding(
-              //     padding: const EdgeInsets.only(bottom: 12),
-              //     child: _SegmentInfoCard(segment: seg),
-              //   )),
+              // ── Segments list ─────────────────────────────────────
+              // Google-Maps-style vertical timeline
+              Builder(
+                builder: (ctx) {
+                  final data = widget.routesNotifier.value[_mode];
+                  final segs = data?.segments ?? const <RouteSegment>[];
+                  if (_loading) {
+                    return const SizedBox(height: 60);
+                  }
+                  // only show "no segments" if truly empty
+                  if (segs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
+                      ),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // real start label
+                      _RouteEndpointTile(
+                        label: 'Start',
+                        location: _deriveStartName(data),
+                        isFirst: true,
+                        isLast: false,
+                      ),
+                      for (int i = 0; i < segs.length; i++)
+                        // Only show walk segment if it's not a duplicate of the previous
+                        if (!(i > 0 &&
+                            segs[i].mode == TravelMode.walk &&
+                            segs[i - 1].mode == TravelMode.walk &&
+                            segs[i].distanceMeters == segs[i - 1].distanceMeters &&
+                            segs[i].durrationSeconds == segs[i - 1].durrationSeconds))
+                          _SegmentTimelineTile(
+                            segment: segs[i],
+                            isFirst: false,
+                            isLast: false,
+                          ),
+                      // real end label
+                      _RouteEndpointTile(
+                        label: 'End',
+                        location: _deriveEndName(data),
+                        isFirst: false,
+                        isLast: true,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ], // children of Column
+          ), // Column
+        ), // SingleChildScrollView
+      ), // SafeArea
+    ); // Material
+  } // build
+} // _RouteOptionsSheetState
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Google Maps-style timeline tile for each segment
+// ─────────────────────────────────────────────────────────────────────────────
+Widget _buildSegmentsTimeline(BuildContext context) {
+  final state = context.findAncestorStateOfType<_RouteOptionsSheetState>();
+  final segments = state?.widget.routesNotifier.value[state._mode]?.segments ?? [];
+  if (segments.isEmpty) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(child: Text('No route segments')),
+    );
+  }
+  return Column(
+    children: List.generate(
+      segments.length,
+      (i) => _SegmentTimelineTile(
+        segment: segments[i],
+        isFirst: i == 0,
+        isLast: i == segments.length - 1,
+      ),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Google Maps-style timeline tile for each segment
+// ─────────────────────────────────────────────────────────────────────────────
+class _SegmentTimelineTile extends StatelessWidget {
+  final RouteSegment segment;
+  final bool isFirst;
+  final bool isLast;
+
+  const _SegmentTimelineTile({
+    required this.segment,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isBus = segment.mode.toString().contains('bus');
+    final theme = Theme.of(context);
+    final Color timelineColor = isBus
+        ? theme.colorScheme.primary
+        : Colors.grey.shade400;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Timeline
+        Container(
+          width: 32,
+          child: Column(
+            children: [
+              if (!isFirst)
+                Container(
+                  width: 4,
+                  height: 16,
+                  color: timelineColor,
+                ),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isBus ? theme.colorScheme.primary : Colors.white,
+                  border: Border.all(
+                    color: timelineColor,
+                    width: 3,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    isBus ? Icons.directions_bus : Icons.directions_walk,
+                    size: 12,
+                    color: isBus ? Colors.white : timelineColor,
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 4,
+                  height: 32,
+                  color: timelineColor,
+                ),
             ],
           ),
         ),
-      ),
+        // Content
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: _buildSegmentContent(context, isBus),
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _buildSegmentContent(BuildContext context, bool isBus) {
+    final theme = Theme.of(context);
+    if (isBus) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (segment.transportLine != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    segment.transportLine!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Text(
+                  segment.toStop ?? 'Bus segment',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (segment.durrationSeconds != null)
+                Text(
+                  _prettyTime(segment.durrationSeconds!),
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
+          if (segment.fromStop != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2.0),
+              child: Text(
+                'From: ${segment.fromStop}',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Icon(Icons.directions_walk, size: 16, color: Colors.grey.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Walk ${segment.durrationSeconds != null ? _prettyTime(segment.durrationSeconds!) : ''} (${segment.distanceMeters != null ? _prettyDistance(segment.distanceMeters!) : ''})',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  String _prettyTime(int seconds) {
+    final mins = (seconds / 60).round();
+    return '$mins min';
+  }
+
+  String _prettyDistance(double meters) {
+    return meters >= 1000
+        ? '${(meters / 1000).toStringAsFixed(1)} km'
+        : '${meters.round()} m';
+  }
 }
+    
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small isolated widget for the pill-segment mode selector
@@ -395,6 +646,88 @@ class _SegmentInfoCard extends StatelessWidget {
           if (isBus && segment.toStop != null) Text('To: ${segment.toStop}'),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Widget for start/end location in the timeline
+// ─────────────────────────────────────────────────────────────────────────────
+class _RouteEndpointTile extends StatelessWidget {
+  final String label;
+  final String location;
+  final bool isFirst;
+  final bool isLast;
+
+  const _RouteEndpointTile({
+    required this.label,
+    required this.location,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          child: Column(
+            children: [
+              if (!isFirst)
+                Container(
+                  width: 4,
+                  height: 16,
+                  color: Colors.grey.shade400,
+                ),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  border: Border.all(
+                    color: theme.colorScheme.primary,
+                    width: 3,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    isFirst ? Icons.circle : Icons.flag,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 4,
+                  height: 32,
+                  color: Colors.grey.shade400,
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              location,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -926,7 +926,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     _panelController.close();
                   }
                 },
-                onChanged: (route) async {
+                // update signature to receive start and end labels
+                onChanged: (route, startLabel, endLabel) async {
                   // 1. recalc the route in place
                   await _handleCreateRoute(route, rebuildOnly: true);
 
@@ -936,7 +937,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       data?.segments.expand((s) => s.path).toList() ?? [];
                   if (pts.isNotEmpty) {
                     final bounds = LatLngBounds.fromPoints(pts);
-                    // you can tweak the padding/zoomThreshold here
                     _animatedMapboxMove(bounds.center, 16.0);
                   }
                 },

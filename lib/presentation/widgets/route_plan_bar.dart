@@ -10,6 +10,11 @@ import 'package:auth_app/data/models/pointer.dart';
 import 'route_search_bar.dart';
 
 typedef OnCancelled = void Function();
+/// Called when the route changes:
+/// [positions] is the list of LatLng for start, stops, destination
+/// [startLabel] is the user-entered start text
+/// [endLabel] is the user-entered destination text
+typedef OnRouteChanged = Future<void> Function(List<LatLng> positions, String startLabel, String endLabel);
 
 /*──────────────────────── helpers ───────────────────────*/
 class _Cand {
@@ -41,7 +46,7 @@ class RoutePlanBar extends StatefulWidget {
   final LatLng? initialDestination;
   final List<Pointer> allPointers;
   final OnCancelled onCancelled;
-  final void Function(List<LatLng>) onChanged;
+  final OnRouteChanged onChanged;
 
   @override
   State<RoutePlanBar> createState() => _RoutePlanBarState();
@@ -299,7 +304,10 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
     // If any field is blank, do not send a request
     if (_ctls.any((c) => c.text.trim().isEmpty)) return;
     if (_start != null && _dest != null) {
-      widget.onChanged(_route.map((e) => e.pos).toList());
+      final positions = _route.map((e) => e.pos).toList();
+      final startLabel = _ctls.first.text.trim();
+      final endLabel   = _ctls.last.text.trim();
+      widget.onChanged(positions, startLabel, endLabel);
     }
   }
 
