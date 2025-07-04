@@ -103,6 +103,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   ValueNotifier<Map<TravelMode, RouteData>>? _panelRoutes;
   TravelMode? _panelMode;
 
+  // true ⇒ bottom–sheet shows the full timeline instead of the options card
+  bool _showRouteDetails = false;
+
   // Controller for programmatic snapping after drag-release
   final DraggableScrollableController _sheetCtrl =
       DraggableScrollableController();
@@ -230,6 +233,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _clearPanelData() {
     _panelRoutes = null;
     _panelMode = null;
+    _showRouteDetails = false;
   }
 
   // Returns true if any panel (building or route or coords) is open
@@ -382,7 +386,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           MediaQuery.of(context).size.height * 0.25; // 35% of screen height
     } else if (_panelRoutes != null) {
       // route sheet always up to 50% of screen height
-      maxHeight = MediaQuery.of(context).size.height * 0.5;
+      maxHeight = MediaQuery.of(context).size.height * 0.31;
 
       // ────────────────────────────────────────────────────────────────
       // Otherwise neither sheet is active, we’ll show a small handle only
@@ -561,17 +565,81 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               );
             }
             if (_panelRoutes != null) {
-              return RouteOptionsSheet(
-                routesNotifier: _panelRoutes!,
-                currentMode: _panelMode ?? TravelMode.walk,
-                scrollController: sc,
-                onModeChanged: _changeTravelMode,
-                onClose: () {
-                  _panelController.close();
-                  _notifyNavBar(false); // Hide nav bar when closing
-                },
-              );
+              // ▒▒▒  decide which flavour to render  ▒▒▒
+              if (_showRouteDetails) {
+                final data = _panelRoutes!.value[_panelMode ?? TravelMode.walk];
+                return RouteDetailsSheet(
+                  data: data,
+                  deriveStartName: (data) {
+                    if (data == null) return 'Start';
+                    final raw = data.customStartName;
+                    if (raw != null && raw.trim().isNotEmpty) return raw;
+                    final segs = data.segments;
+                    if (segs != null && segs.isNotEmpty) {
+                      return segs.first.fromStop ??
+                             segs.first.toStop   ??
+                             'Start';
+                    }
+                    return 'Start';
+                  },
+                  deriveEndName: (data) {
+                    if (data == null) return 'Destination';
+                    final raw = data.customEndName;
+                    if (raw != null && raw.trim().isNotEmpty) return raw;
+                    final segs = data.segments;
+                    if (segs != null && segs.isNotEmpty) {
+                      return segs.last.toStop ??
+                             segs.last.fromStop ??
+                             'Destination';
+                    }
+                    return 'Destination';
+                  },
+                  onClose: () {
+                    setState(() => _showRouteDetails = false);
+                  },
+                );
+              } else {
+                return RouteOptionsSheet(
+                  routesNotifier : _panelRoutes!,
+                  currentMode    : _panelMode ?? TravelMode.walk,
+                  scrollController: sc,
+                  onModeChanged  : _changeTravelMode,
+                  onClose        : () {
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  },
+                  onShowDetails  : () {
+                    setState(() => _showRouteDetails = true);
+                  },
+                );
+              }
             }
+  // ── helpers to derive start / end labels if server left them blank ─────────
+  String _deriveStartName(RouteData? data) {
+    if (data == null) return 'Start';
+    final raw = data.customStartName;
+    if (raw != null && raw.trim().isNotEmpty) return raw;
+    final segs = data.segments;
+    if (segs != null && segs.isNotEmpty) {
+      return segs.first.fromStop ??
+             segs.first.toStop   ??
+             'Start';
+    }
+    return 'Start';
+  }
+
+  String _deriveEndName(RouteData? data) {
+    if (data == null) return 'Destination';
+    final raw = data.customEndName;
+    if (raw != null && raw.trim().isNotEmpty) return raw;
+    final segs = data.segments;
+    if (segs != null && segs.isNotEmpty) {
+      return segs.last.toStop ??
+             segs.last.fromStop ??
+             'Destination';
+    }
+    return 'Destination';
+  }
             if (_coordinatePanelLatLng != null) {
               final latlng = _coordinatePanelLatLng!;
               return ClipRRect(
@@ -1313,6 +1381,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }) {
     _panelRoutes = routesNotifier;
     _panelMode = currentMode;
+    _showRouteDetails = false;        // always start in “options” mode
     setState(() {}); // rebuild SlidingUpPanel
     _notifyNavBar(true);
     _panelController.open();

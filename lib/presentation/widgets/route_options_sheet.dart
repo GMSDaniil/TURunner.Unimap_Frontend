@@ -1,9 +1,13 @@
-import 'segment_timeline_tile.dart';
+// --- Timeline segment tile ---
+
+
+
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+// import 'route_details_tile.dart';
 
 /// Possible travel profiles.  Only *walk* is implemented for now but the
 /// widget is future-proof for bus / scooter.
@@ -23,6 +27,7 @@ class RouteOptionsSheet extends StatefulWidget {
   final TravelMode currentMode;
   final VoidCallback onClose;
   final ValueChanged<TravelMode> onModeChanged;
+  final VoidCallback onShowDetails;
 
   /// If the sheet is wrapped in a `DraggableScrollableSheet`, Flutter will
   /// hand us its internal ScrollController so the content keeps scrolling
@@ -35,6 +40,7 @@ class RouteOptionsSheet extends StatefulWidget {
     required this.currentMode,
     required this.onClose,
     required this.onModeChanged,
+    required this.onShowDetails,
     this.scrollController,
   });
 
@@ -115,19 +121,21 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   }
 
   // ── Helpers to get nice labels for timeline endpoints ────────────────
-  String _deriveStartName(RouteData? data) {
-    if (data == null) return 'Start';
-    final raw = data.customStartName;
-    if (raw != null && raw.trim().isNotEmpty) return raw;
-    return 'Start';
-  }
+  // String _deriveStartName(RouteData? data) {
+  //   if (data == null) return 'Start';
+  //   final raw = data.customStartName;
+  //   if (raw != null && raw.trim().isNotEmpty) return raw;
+  //   return 'Start';
+  // }
 
-  String _deriveEndName(RouteData? data) {
-    if (data == null) return 'Destination';
-    final raw = data.customEndName;
-    if (raw != null && raw.trim().isNotEmpty) return raw;
-    return 'Destination';
-  }
+  // String _deriveEndName(RouteData? data) {
+  //   if (data == null) return 'Destination';
+  //   final raw = data.customEndName;
+  //   if (raw != null && raw.trim().isNotEmpty) return raw;
+  //   return 'Destination';
+  // }
+
+  // Removed: now handled by parent via onShowDetails callback.
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +221,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 24),
-                    // ── Info card ───────────────────────────────────
+                    // ── Info card with expand button ───────────────
                     _loading
                         ? const SizedBox(
                             height: 60,
@@ -275,56 +283,25 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                                           ),
                                         ],
                                       ),
+                                      const SizedBox(width: 12),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Theme.of(context).colorScheme.primary,
+                                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                        onPressed: widget.onShowDetails,
+                                        icon: const Icon(Icons.expand_circle_down_outlined),
+                                        label: const Text('Show details'),
+                                      ),
                                     ],
                                   ),
                           ),
                     const SizedBox(height: 28),
-                    // ── Segments list ──────────────────────────────
-                    Builder(
-                      builder: (ctx) {
-                        final data = widget.routesNotifier.value[_mode];
-                        final segs = data?.segments ?? const <RouteSegment>[];
-                        if (_loading) {
-                          return const SizedBox(height: 60);
-                        }
-                        if (segs.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Center(
-                              child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
-                            ),
-                          );
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _RouteEndpointTile(
-                              label: 'Start',
-                              location: _deriveStartName(data),
-                              isFirst: true,
-                              isLast: false,
-                            ),
-                            for (int i = 0; i < segs.length; i++)
-                              if (!(i > 0 &&
-                                  segs[i].mode == TravelMode.walk &&
-                                  segs[i - 1].mode == TravelMode.walk &&
-                                  segs[i].distanceMeters == segs[i - 1].distanceMeters &&
-                                  segs[i].durrationSeconds == segs[i - 1].durrationSeconds))
-                                _SegmentTimelineTile(
-                                  segment: segs[i],
-                                  isFirst: false,
-                                  isLast: false,
-                                ),
-                            _RouteEndpointTile(
-                              label: 'End',
-                              location: _deriveEndName(data),
-                              isFirst: false,
-                              isLast: true,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+            // Timeline/segment list removed. Now only info bar and button are shown.
                   ],
                 ),
               ),
@@ -339,26 +316,9 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Google Maps-style timeline tile for each segment
 // ─────────────────────────────────────────────────────────────────────────────
-Widget _buildSegmentsTimeline(BuildContext context) {
-  final state = context.findAncestorStateOfType<_RouteOptionsSheetState>();
-  final segments = state?.widget.routesNotifier.value[state._mode]?.segments ?? [];
-  if (segments.isEmpty) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Center(child: Text('No route segments')),
-    );
-  }
-  return Column(
-    children: List.generate(
-      segments.length,
-      (i) => _SegmentTimelineTile(
-        segment: segments[i],
-        isFirst: i == 0,
-        isLast: i == segments.length - 1,
-      ),
-    ),
-  );
-}
+// Widget _buildSegmentsTimeline(BuildContext context) {
+//   ...
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Google Maps-style timeline tile for each segment
@@ -619,54 +579,235 @@ class _ModeSelector extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Widget to display info about each segment
 // ─────────────────────────────────────────────────────────────────────────────
-class _SegmentInfoCard extends StatelessWidget {
-  final RouteSegment segment;
+// class _SegmentInfoCard extends StatelessWidget {
+//   ...
+// }
 
-  const _SegmentInfoCard({required this.segment});
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom ScrollBehavior to remove overscroll/scroll glow
+// ─────────────────────────────────────────────────────────────────────────────
+class _NoGlowScrollBehavior extends ScrollBehavior {
+  const _NoGlowScrollBehavior();
 
   @override
-  Widget build(BuildContext context) {
-    final isBus = segment.mode == TravelMode.bus;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isBus ? Colors.blue.shade50 : Colors.green.shade50,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            isBus ? 'Bus segment' : 'Walk segment',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isBus ? Colors.blue : Colors.green,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Distance: ${segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m'}',
-          ),
-          Text('Duration: ${(segment.durrationSeconds / 60).round()} min'),
-          if (isBus && segment.transportType != null)
-            Text('Type: ${segment.transportType}'),
-          if (isBus && segment.transportLine != null)
-            Text('Line: ${segment.transportLine}'),
-          if (isBus && segment.fromStop != null)
-            Text('From: ${segment.fromStop}'),
-          if (isBus && segment.toStop != null) Text('To: ${segment.toStop}'),
-        ],
-      ),
-    );
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Widget for start/end location in the timeline
-// ─────────────────────────────────────────────────────────────────────────────
+/// A bottom sheet that shows the full route timeline/segment list, with close button.
+class RouteDetailsSheet extends StatelessWidget {
+  final RouteData? data;
+  final VoidCallback onClose;
+  final String Function(RouteData?) deriveStartName;
+  final String Function(RouteData?) deriveEndName;
+
+  const RouteDetailsSheet({
+    Key? key,
+    required this.data,
+    required this.onClose,
+    required this.deriveStartName,
+    required this.deriveEndName,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final segs = data?.segments ?? const <RouteSegment>[];
+    final ScrollController scrollController = ScrollController();
+    return Material(
+      color: Colors.white,
+      elevation: 8,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: ScrollConfiguration(
+          behavior: const _NoGlowScrollBehavior(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Route details',
+                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.close, size: 18),
+                        splashRadius: 18,
+                        onPressed: onClose,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is OverscrollNotification &&
+                        notification.overscroll < 0 &&
+                        scrollController.position.pixels <= 0) {
+                      // Only allow panel to close if at the top and user is dragging down
+                      onClose();
+                      return true;
+                    }
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    child: Builder(
+                      builder: (ctx) {
+                        if (segs.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
+                            ),
+                          );
+                        }
+                        // Old style: vertical timeline with endpoints and segment tiles
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Start endpoint
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 32,
+                                  child: Column(
+                                    children: [
+                                      // No line above start
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color: Colors.grey.shade400,
+                                            width: 3,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: 4,
+                                        height: 32,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Text(
+                                    deriveStartName(data),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Segments
+                          for (int i = 0; i < segs.length; i++)
+                            _SegmentTimelineTile(
+                              segment: segs[i],
+                              isFirst: i == 0,
+                              isLast: i == segs.length - 1,
+                            ),
+                          // End endpoint
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 32,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 4,
+                                      height: 32,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        border: Border.all(
+                                          color: Colors.grey.shade400,
+                                          width: 3,
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                      ),
+                                    ),
+                                    // No line below end
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Text(
+                                    deriveEndName(data),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+  }
+}
+
 class _RouteEndpointTile extends StatelessWidget {
   final String label;
-  final String location;
+  final String? location;
   final bool isFirst;
   final bool isLast;
 
@@ -680,65 +821,54 @@ class _RouteEndpointTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 32,
-          child: Column(
-            children: [
-              if (!isFirst)
-                Container(
-                  width: 4,
-                  height: 16,
-                  color: Colors.grey.shade400,
-                ),
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  border: Border.all(
-                    color: theme.colorScheme.primary,
-                    width: 3,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    isFirst ? Icons.circle : Icons.flag,
-                    size: 12,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              if (!isLast)
-                Container(
-                  width: 4,
-                  height: 32,
-                  color: Colors.grey.shade400,
-                ),
-            ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
-        ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(14),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (!isFirst)
+            Container(
+              width: 4,
+              height: 48,
+              color: Colors.grey.shade300,
+              margin: const EdgeInsets.only(right: 12),
             ),
-            child: Text(
-              location,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                    fontSize: 14,
+                  ),
+                ),
+                if (location != null)
+                  Text(
+                    location!,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

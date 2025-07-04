@@ -149,21 +149,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   // helper for RouteOptionsSheet from children
-  void showRouteOptionsSheet({
-    required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
-    required TravelMode currentMode,
-    required ValueChanged<TravelMode> onModeChanged,
-    required VoidCallback onClose,
-  }) {
-    _scaffoldKey.currentState?.showBottomSheet(
-      (_) => RouteOptionsSheet(
-        routesNotifier: routesNotifier,
-        currentMode: currentMode,
-        onClose: onClose,
-        onModeChanged: onModeChanged,
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
-  }
-}
+//   void showRouteOptionsSheet({
+//     required ValueNotifier<Map<TravelMode, RouteData>> routesNotifier,
+//     required TravelMode currentMode,
+//     required ValueChanged<TravelMode> onModeChanged,
+//     required VoidCallback onClose,
+//   }) {
+//     _scaffoldKey.currentState?.showBottomSheet(
+//       (_) => RouteOptionsSheet(
+//         routesNotifier: routesNotifier,
+//         currentMode: currentMode,
+//         onClose: onClose,
+//         onModeChanged: onModeChanged,
+//       ),
+//       backgroundColor: Colors.transparent,
+//       elevation: 0,
+//     );
+//   }
+ }
