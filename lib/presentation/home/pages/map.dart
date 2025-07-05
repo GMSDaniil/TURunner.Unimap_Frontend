@@ -129,6 +129,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _is3D = false;
 
   final Map<String, Uint8List> _categoryImageCache = {};
+  bool _imagesLoaded = false; // Add this flag
 
   mb.MapboxMap? _mapboxMap;
   VoidCallback? _clearBuildingHighlight;
@@ -161,10 +162,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _navBarHeight = widget.navBarHeight;
-    _preloadCategoryImages();
-    _loadBuildingMarkers();
+    _initializeMap(); // Create separate initialization method
     _searchCtl.addListener(_onSearchChanged);
-    _goToCurrentLocation();
     _cachedTiles = FMTC.FMTCTileProvider(
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
     );
@@ -175,6 +174,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         _notifyNavBar(active);
       }
     });
+  }
+
+  Future<void> _initializeMap() async {
+    await _preloadCategoryImages();
+    setState(() => _imagesLoaded = true);
+    await _loadBuildingMarkers();
+    await _goToCurrentLocation();
+  }
+
+  Future<void> _preloadCategoryImages() async {
+    final categories = ['mensa', 'cafe', 'library', 'default', 'destination'];
+    for (final cat in categories) {
+      final assetPath = getPinAssetForCategory(cat);
+      final byteData = await rootBundle.load(assetPath);
+      _categoryImageCache[cat] = byteData.buffer.asUint8List();
+    }
   }
 
   Future<LatLng?> getCurrentLocation() async {
@@ -193,15 +208,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return LatLng(pos.latitude, pos.longitude);
     } catch (e) {
       return null;
-    }
-  }
-
-  Future<void> _preloadCategoryImages() async {
-    final categories = ['mensa', 'cafe', 'library', 'default', 'destination'];
-    for (final cat in categories) {
-      final assetPath = getPinAssetForCategory(cat);
-      final byteData = await rootBundle.load(assetPath);
-      _categoryImageCache[cat] = byteData.buffer.asUint8List();
     }
   }
 
@@ -249,6 +255,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── build ────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while images are loading
+    if (!_imagesLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     // We need to choose how tall the panel should be, based on which content it’s showing.
     double maxHeight;
 
