@@ -30,6 +30,7 @@ dependencies:
   path_provider:
   drag_and_drop_lists: ^0.4.2
   sunrise_sunset_calc: 
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

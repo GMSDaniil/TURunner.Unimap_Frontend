@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:wkt_parser/wkt_parser.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
@@ -1433,11 +1434,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       return;
     }
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
-    // Only allow building selection if zoom is high enough
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
+    Pointer? p;
     if (building != null) {
-      final p = _allPointers.firstWhere(
+      p = _allPointers.firstWhere(
         (x) => x.name == building.name,
         orElse: () => Pointer(
           name: building.name,
@@ -1446,6 +1447,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           category: 'Building',
         ),
       );
+    } else {
+      // If no building found, check if tap is close to any pointer (marker)
+      const double maxDistanceMeters = 20.0; // adjust as needed
+      final Distance dist = Distance();
+      final closePointers = _allPointers.where(
+        (ptr) => dist.as(LengthUnit.Meter, latlng, LatLng(ptr.lat, ptr.lng)) < maxDistanceMeters,
+      );
+      p = closePointers.isNotEmpty ? closePointers.first : null;
+    }
+
+    if (p != null) {
       // Save camera state before zooming to building
       if (_mapboxMap != null && !_isBuildingZoomed) {
         final camState = await _mapboxMap!.getCameraState();
@@ -1459,7 +1471,50 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         _isBuildingZoomed = true;
         _isAnimatingToBuilding = true;
         _buildingZoomTimer?.cancel();
-        _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
+        // --- Fit camera to building contour using precomputed coordinates if available ---
+        bool fitSuccess = false;
+        try {
+          List<LatLng> coords = [];
+          if (p.contourWKT != null && p.contourWKT!.isNotEmpty) {
+            coords = p.contourWKT!;
+          }
+          if (coords.isNotEmpty) {
+            double minLat = coords.first.latitude, maxLat = coords.first.latitude;
+            double minLng = coords.first.longitude, maxLng = coords.first.longitude;
+            for (final c in coords) {
+              if (c.latitude < minLat) minLat = c.latitude;
+              if (c.latitude > maxLat) maxLat = c.latitude;
+              if (c.longitude < minLng) minLng = c.longitude;
+              if (c.longitude > maxLng) maxLng = c.longitude;
+            }
+            final bounds = mb.CoordinateBounds(
+              southwest: mb.Point(coordinates: mb.Position(minLng, minLat)),
+              northeast: mb.Point(coordinates: mb.Position(maxLng, maxLat)),
+              infiniteBounds: false,
+            );
+            final camera = await _mapboxMap!.cameraForCoordinateBounds(
+              bounds,
+              mb.MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
+              null, null, null, null,
+            );
+            await _mapboxMap!.easeTo(
+              camera,
+              mb.MapAnimationOptions(duration: 700, startDelay: 0),
+            );
+            fitSuccess = true;
+          }
+        } catch (e) {
+          fitSuccess = false;
+        }
+        if (!fitSuccess) {
+          await _mapboxMap!.easeTo(
+            mb.CameraOptions(
+              center: mb.Point(coordinates: mb.Position(p.lng, p.lat)),
+              zoom: 18.0,
+            ),
+            mb.MapAnimationOptions(duration: 600, startDelay: 0),
+          );
+        }
         _buildingZoomTimer = Timer(const Duration(milliseconds: 750), () {
           _isAnimatingToBuilding = false;
           _removeCameraListener = () {
@@ -1467,7 +1522,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           };
         });
       } else {
-        _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
+        await _mapboxMap!.easeTo(
+          mb.CameraOptions(
+            center: mb.Point(coordinates: mb.Position(p.lng, p.lat)),
+            zoom: 18.0,
+          ),
+          mb.MapAnimationOptions(duration: 600, startDelay: 0),
+        );
       }
       _showBuildingPanel(p);
     } else {
@@ -1481,7 +1542,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     if (_plannerOverlay != null) return;
     _markerTapJustHandled = true;
 
-    // Save camera state before zooming to building
+    // Try to find the building entity for this pointer (by name)
+    Pointer? building;
+    try {
+      building = _allPointers.firstWhere((b) => b.name == p.name);
+    } catch (_) {
+      building = null;
+    }
+
+    bool fitSuccess = false;
     if (_mapboxMap != null && !_isBuildingZoomed) {
       final camState = await _mapboxMap!.getCameraState();
       _previousCameraOptions = mb.CameraOptions(
@@ -1494,7 +1563,44 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _isBuildingZoomed = true;
       _isAnimatingToBuilding = true;
       _buildingZoomTimer?.cancel();
-      _animatedMapboxMove(LatLng(p.lat, p.lng), 17.5);
+      // Try to fit to polygon if available
+      try {
+        if (building != null && building.contourWKT != null && building.contourWKT!.isNotEmpty) {
+          final List<LatLng> coords = building.contourWKT!;
+          // Calculate bounds
+          double minLat = coords.first.latitude, maxLat = coords.first.latitude;
+          double minLng = coords.first.longitude, maxLng = coords.first.longitude;
+          for (final c in coords) {
+            if (c.latitude < minLat) minLat = c.latitude;
+            if (c.latitude > maxLat) maxLat = c.latitude;
+            if (c.longitude < minLng) minLng = c.longitude;
+            if (c.longitude > maxLng) maxLng = c.longitude;
+          }
+          final bounds = mb.CoordinateBounds(
+            southwest: mb.Point(coordinates: mb.Position(minLng, minLat)),
+            northeast: mb.Point(coordinates: mb.Position(maxLng, maxLat)),
+            infiniteBounds: false,
+          );
+          final camera = await _mapboxMap!.cameraForCoordinateBounds(
+            bounds,
+            mb.MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0), // padding (required, zero)
+            null,
+            null,
+            null,
+            null,
+          );
+          await _mapboxMap!.easeTo(
+            camera,
+            mb.MapAnimationOptions(duration: 600, startDelay: 0),
+          );
+          fitSuccess = true;
+        }
+      } catch (e) {
+        // fallback below
+      }
+      if (!fitSuccess) {
+        _animatedMapboxMove(LatLng(p.lat, p.lng), 17.5);
+      }
       _buildingZoomTimer = Timer(const Duration(milliseconds: 750), () {
         _isAnimatingToBuilding = false;
         _removeCameraListener = () {

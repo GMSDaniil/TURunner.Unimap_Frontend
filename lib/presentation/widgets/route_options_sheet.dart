@@ -5,6 +5,7 @@
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
+import 'shimmer_loading.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 // import 'route_details_tile.dart';
@@ -223,9 +224,9 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                     const SizedBox(height: 24),
                     // ── Info card with expand button ───────────────
                     _loading
-                        ? const SizedBox(
-                            height: 60,
-                            child: Center(child: CircularProgressIndicator()),
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: ShimmerLoading(height: 80, width: double.infinity),
                           )
                         : Container(
                             padding: const EdgeInsets.symmetric(
@@ -301,7 +302,18 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                                   ),
                           ),
                     const SizedBox(height: 28),
-            // Timeline/segment list removed. Now only info bar and button are shown.
+                    // ── Timeline/segment list ──
+                    ...(() {
+                      final segments = widget.routesNotifier.value[_mode]?.segments ?? [];
+                      return List.generate(
+                        segments.length,
+                        (i) => _SegmentTimelineTile(
+                          segment: segments[i],
+                          isFirst: i == 0,
+                          isLast: i == segments.length - 1,
+                        ),
+                      );
+                    })(),
                   ],
                 ),
               ),
@@ -336,11 +348,15 @@ class _SegmentTimelineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBus = segment.mode.toString().contains('bus');
     final theme = Theme.of(context);
+    // Use transportType for correct icon/color
+    final isBus = segment.transportType == 'bus';
+    final isSubway = segment.transportType == 'subway';
     final Color timelineColor = isBus
         ? theme.colorScheme.primary
-        : Colors.grey.shade400;
+        : isSubway
+            ? Colors.blue.shade700
+            : Colors.grey.shade400;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,7 +376,11 @@ class _SegmentTimelineTile extends StatelessWidget {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: isBus ? theme.colorScheme.primary : Colors.white,
+                  color: isBus
+                      ? theme.colorScheme.primary
+                      : isSubway
+                          ? Colors.blue.shade700
+                          : Colors.white,
                   border: Border.all(
                     color: timelineColor,
                     width: 3,
@@ -368,11 +388,11 @@ class _SegmentTimelineTile extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Icon(
-                    isBus ? Icons.directions_bus : Icons.directions_walk,
-                    size: 12,
-                    color: isBus ? Colors.white : timelineColor,
-                  ),
+                  child: isBus
+                      ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
+                      : isSubway
+                          ? Icon(Icons.subway, size: 12, color: Colors.white)
+                          : Icon(Icons.directions_walk, size: 12, color: timelineColor),
                 ),
               ),
               if (!isLast)
@@ -393,16 +413,21 @@ class _SegmentTimelineTile extends StatelessWidget {
               color: theme.colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: _buildSegmentContent(context, isBus),
+            child: _buildSegmentContent(context, isBus, isSubway),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSegmentContent(BuildContext context, bool isBus) {
+  Widget _buildSegmentContent(BuildContext context, bool isBus, bool isSubway) {
     final theme = Theme.of(context);
-    if (isBus) {
+    if (isBus || isSubway) {
+      final Color pillColor = isBus
+          ? theme.colorScheme.primary
+          : isSubway
+              ? Colors.blue.shade700
+              : Colors.grey.shade400;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,7 +438,7 @@ class _SegmentTimelineTile extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
+                    color: pillColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -427,21 +452,20 @@ class _SegmentTimelineTile extends StatelessWidget {
                 ),
               Expanded(
                 child: Text(
-                  segment.toStop ?? 'Bus segment',
+                  segment.toStop ?? (isBus ? 'Bus segment' : 'Subway segment'),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
               ),
-              if (segment.durrationSeconds != null)
-                Text(
-                  _prettyTime(segment.durrationSeconds!),
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
+              Text(
+                _prettyTime(segment.durrationSeconds),
+                style: TextStyle(
+                  color: pillColor,
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
             ],
           ),
           if (segment.fromStop != null)
@@ -464,7 +488,7 @@ class _SegmentTimelineTile extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Walk ${segment.durrationSeconds != null ? _prettyTime(segment.durrationSeconds!) : ''} (${segment.distanceMeters != null ? _prettyDistance(segment.distanceMeters!) : ''})',
+              'Walk ${_prettyTime(segment.durrationSeconds)} (${_prettyDistance(segment.distanceMeters)})',
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
@@ -472,6 +496,8 @@ class _SegmentTimelineTile extends StatelessWidget {
       );
     }
   }
+
+  // Removed duplicate _buildSegmentContent
 
   String _prettyTime(int seconds) {
     final mins = (seconds / 60).round();
