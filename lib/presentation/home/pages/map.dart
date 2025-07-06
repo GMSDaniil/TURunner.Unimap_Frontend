@@ -1367,6 +1367,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         geometry: mb.Point(coordinates: mb.Position(pointer.lng, pointer.lat)),
         iconSize: 2.0,
         image: _loadImageBytesForCategory(pointer.category),
+        iconAnchor: mb.IconAnchor.BOTTOM,
       ),
       onTap: () => _onMarkerTap(pointer),
       category: pointer.category,
