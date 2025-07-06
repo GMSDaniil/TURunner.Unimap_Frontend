@@ -302,8 +302,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     // Choose color and dash style based on mode
     int color;
     List<double>? dashArray;
-    if (seg.mode == TravelMode.bus) {
-      color = const Color(0xFF9C27B0).toARGB32();
+    // Use transportType for color selection
+    if (seg.transportType == 'bus') {
+      color = const Color(0xFF9C27B0).toARGB32(); // purple for bus
+      dashArray = null;
+    } else if (seg.transportType == 'subway') {
+      color = const Color(0xFF1565C0).toARGB32(); // blue for subway (U-Bahn)
       dashArray = null;
     } else if (seg.mode == TravelMode.scooter) {
       color = const Color(0xFFFFA500).toARGB32();
@@ -334,8 +338,10 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         lineJoin: LineJoin.ROUND,
       ));
 
-      // ── Add bus line label as a horizontal rectangle ──
-      if (seg.mode == TravelMode.bus && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
+      // ── Add line label as a horizontal rectangle ──
+      final isBus = seg.transportType == 'bus';
+      final isSubway = seg.transportType == 'subway';
+      if ((isBus || isSubway) && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
         // Find a good label point (midpoint of the polyline)
         final labelPoint = points[points.length ~/ 2];
         final labelSourceId = 'bus-label-source-$i';
@@ -364,7 +370,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
           textField: '{lineName}',
           textSize: 15.0,
           textColor: Colors.white.value,
-          textHaloColor: const Color(0xFF9C27B0).value, // purple halo for contrast
+          textHaloColor: isBus
+              ? const Color(0xFF9C27B0).value // purple for bus
+              : isSubway
+                  ? const Color(0xFF1565C0).value // blue for subway
+                  : Colors.black.value,
           textHaloWidth: 6.0,
           textHaloBlur: 1.0,
           textRotationAlignment: TextRotationAlignment.VIEWPORT,
