@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
@@ -1070,6 +1071,23 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   // ── map widget + helpers ─────────────────────────────────────────
+  // --- Camera change listener for building zoom state ---
+  VoidCallback? _removeCameraListener;
+  bool _isAnimatingToBuilding = false;
+  Timer? _buildingZoomTimer;
+  void _handleCameraChanged(dynamic data) {
+    // Only care if we are in building zoomed state and not animating
+    if (_isBuildingZoomed && !_isAnimatingToBuilding) {
+      _isBuildingZoomed = false;
+      _previousCameraOptions = null;
+      // Remove this listener after first trigger
+      if (_removeCameraListener != null) {
+        _removeCameraListener!();
+        _removeCameraListener = null;
+      }
+    }
+  }
+
   Widget _buildFlutterMap() {
     final route = _routesNotifier.value[_currentMode];
     final segments = route?.segments ?? [];
@@ -1100,9 +1118,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
       busStopMarkers: busMarkers,
-      // scooterMarkers: scooterMarkers,
       segments: segments,
-      //cachedTileProvider: _cachedTiles,
       onMapTap: _onMapTap,
       onMapCreated: (map) {
         _mapboxMap = map;
@@ -1110,6 +1126,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       parentContext: context,
       onClearHighlightController: (clearFn) {
         _clearBuildingHighlight = clearFn;
+      },
+      onCameraChanged: (data) {
+        _handleCameraChanged(data);
       },
       routePoints: const [],
     );
@@ -1406,8 +1425,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           padding: camState.padding,
         );
         _isBuildingZoomed = true;
+        _isAnimatingToBuilding = true;
+        _buildingZoomTimer?.cancel();
+        _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
+        _buildingZoomTimer = Timer(const Duration(milliseconds: 750), () {
+          _isAnimatingToBuilding = false;
+          _removeCameraListener = () {
+            // This disables the callback by setting to null
+          };
+        });
+      } else {
+        _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
       }
-      _animatedMapboxMove(LatLng(p.lat, p.lng), 18);
       _showBuildingPanel(p);
     } else {
       setState(() => _coordinatePanelLatLng = latlng);
@@ -1431,11 +1460,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         padding: camState.padding,
       );
       _isBuildingZoomed = true;
+      _isAnimatingToBuilding = true;
+      _buildingZoomTimer?.cancel();
+      _animatedMapboxMove(LatLng(p.lat, p.lng), 17.5);
+      _buildingZoomTimer = Timer(const Duration(milliseconds: 750), () {
+        _isAnimatingToBuilding = false;
+        _removeCameraListener = () {
+          // This disables the callback by setting to null
+        };
+      });
+    } else {
+      _animatedMapboxMove(LatLng(p.lat, p.lng), 17.5);
     }
-
-    // Zoom in to the building
-    _animatedMapboxMove(LatLng(p.lat, p.lng), 17.5);
-
     _showBuildingPanel(p);
   }
 
@@ -1529,7 +1565,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _mapAnimController!.forward();
   }
 
-  void _animatedMapboxMove(LatLng dest, double zoom) {
+  void _animatedMapboxMove(LatLng dest, double zoom, {VoidCallback? onComplete}) {
     if (_mapboxMap == null) return;
     _mapboxMap!.easeTo(
       mb.CameraOptions(
@@ -1538,8 +1574,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ),
         zoom: zoom,
       ),
-      mb.MapAnimationOptions(duration: 500, startDelay: 0),
+      mb.MapAnimationOptions(
+        duration: 500,
+        startDelay: 0,
+        // If the SDK supports a callback, use it:
+        // callback: (_) => onComplete?.call(),
+      ),
     );
+    // If no callback support, fallback to Future.delayed
+    if (onComplete != null) {
+      Future.delayed(const Duration(milliseconds: 500), onComplete);
+    }
   }
 
   // void _showPlannerBar() {

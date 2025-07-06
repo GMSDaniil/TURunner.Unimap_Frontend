@@ -19,6 +19,7 @@ final List<String> markers = [
   'destination', 
 ];
 
+
 class MapboxMapWidget extends StatefulWidget {
   final List<LatLng> busStopMarkers;
   /// Annotations to show on the map
@@ -28,13 +29,12 @@ class MapboxMapWidget extends StatefulWidget {
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
-  //final List<Marker> busStopMarkers;
- // final List<Marker> scooterMarkers;
   final List<RouteSegment> segments;
-  //final TileProvider cachedTileProvider;
   final Function(LatLng) onMapTap;
   final void Function(MapboxMap)? onMapCreated;
   final BuildContext parentContext;
+  /// New: optional camera change callback
+  final void Function(CameraChangedEventData)? onCameraChanged;
 
   const MapboxMapWidget({
     Key? key,
@@ -48,6 +48,7 @@ class MapboxMapWidget extends StatefulWidget {
     required this.onMapCreated,
     this.onClearHighlightController,
     required this.parentContext,
+    this.onCameraChanged,
     List<RouteSegment> routePoints = const [],
   }) : super(key: key);
 
@@ -874,13 +875,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
       onMapCreated: (map) {
         _onMapCreated(map);
       },
-      // onCameraChangeListener: (CameraChangedEventData data) async {
-      //   final zoom = data.cameraState.zoom;
-      //   if (_lastZoom != zoom) {
-      //     _lastZoom = zoom;
-      //     await _updateMarkerVisibility(zoom);
-      //   }
-      // },
+      onCameraChangeListener: widget.onCameraChanged,
     );
 
     
