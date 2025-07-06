@@ -1,3 +1,4 @@
+import 'package:auth_app/data/source/error_message_extractor.dart';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:auth_app/core/network/dio_client.dart';
@@ -6,6 +7,7 @@ import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/data/models/schedule_req_params.dart';
 
 class StudentApiService {
+  final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
   Future<Either<String, Response>> getStudentSchedule(
     GetStudentScheduleReqParams params,
   ) async {
@@ -20,6 +22,7 @@ class StudentApiService {
       
       return Right(response);
     } on DioException catch (e) {
+      
       String errorMessage = 'Unknown error';
       if (e.response?.data != null) {
         if (e.response?.data is Map) {
@@ -33,7 +36,8 @@ class StudentApiService {
         errorMessage = e.message ?? 'Network error';
       }
       
-      return Left(errorMessage);
+      // return Left(errorMessage);
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
 }

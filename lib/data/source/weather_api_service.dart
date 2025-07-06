@@ -1,3 +1,4 @@
+import 'package:auth_app/data/source/error_message_extractor.dart';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:auth_app/core/network/dio_client.dart';
@@ -6,6 +7,7 @@ import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/data/models/get_weather_info_req_params.dart';
 
 class WeatherApiService {
+  final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
   Future<Either<String, Response>> fetchWeather(
     GetWeatherInfoReqParams params,
   ) async {
@@ -15,7 +17,7 @@ class WeatherApiService {
       final response = await sl<DioClient>().get(url);
       return Right(response);
     } on DioException catch (e) {
-      return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
 }

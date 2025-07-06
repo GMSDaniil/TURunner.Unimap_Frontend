@@ -81,7 +81,10 @@ class WelcomePage extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        context.read<AuthStateCubit>().loginAsGuest();
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/home',
+                          (route) => false
+                        );
                       },
                       child: const Text(
                         'Continue as Guest',

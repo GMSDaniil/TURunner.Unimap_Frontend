@@ -28,6 +28,8 @@ class SigninPage extends StatelessWidget {
   final TextEditingController _passwordCon = TextEditingController();
 
   final ValueNotifier<bool> _isFormValid = ValueNotifier(false);
+  final ValueNotifier<String?> _usernameError = ValueNotifier(null);
+  final ValueNotifier<String?> _passwordError = ValueNotifier(null);
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +39,8 @@ class SigninPage extends StatelessWidget {
         child: BlocListener<ButtonStateCubit, ButtonState>(
           listener: (context, state) async {
             if (state is ButtonSuccessState) {
+              _usernameError.value = null;
+              _passwordError.value = null;
               SignInResponse response = state.data;
               var userProvider = Provider.of<UserProvider>(
                 context,
@@ -76,8 +80,7 @@ class SigninPage extends StatelessWidget {
             }
             if (state is ButtonFailureState) {
               // Show error message on login failure
-              var snackBar = SnackBar(content: Text(state.errorMessage));
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              _handleLoginError(state.errorMessage);
             }
           },
           child: SafeArea(
@@ -105,6 +108,28 @@ class SigninPage extends StatelessWidget {
     );
   }
 
+  void _handleLoginError(String errorMessage) {
+    // Clear previous errors
+    _usernameError.value = null;
+    _passwordError.value = null;
+
+    // Parse error message and set appropriate field errors
+    final lowerError = errorMessage.toLowerCase();
+    
+    if (lowerError.contains('user') || lowerError.contains('user not found')) {
+      _usernameError.value = 'Username not found';
+    } else if (lowerError.contains('password') || lowerError.contains('incorrect password')) {
+      _passwordError.value = 'Incorrect password';
+    } else if (lowerError.contains('invalid credentials') || lowerError.contains('login failed')) {
+      // Generic error - show on both fields
+      _usernameError.value = 'Invalid credentials';
+      _passwordError.value = 'Invalid credentials';
+    } else {
+      // Unknown error - show on username field as fallback
+      _usernameError.value = errorMessage;
+    }
+  }
+
   Widget _signin() {
     return Text(
       'Sign In',
@@ -117,48 +142,122 @@ class SigninPage extends StatelessWidget {
   }
 
   Widget _usernameField() {
-    return TextField(
-      controller: _usernameCon,
-      decoration: InputDecoration(
-        hintText: 'Username',
-        filled: true,
-        fillColor: Color(0xFFF5F6FA),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 16,
-          horizontal: 20,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      style: const TextStyle(color: Colors.black),
-      onChanged: (value) {
-        _validateForm();
+    return ValueListenableBuilder<String?>(
+      valueListenable: _usernameError,
+      builder: (context, error, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _usernameCon,
+              decoration: InputDecoration(
+                hintText: 'Username',
+                filled: true,
+                fillColor: const Color(0xFFF5F6FA),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                // Add error border if there's an error
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: error != null 
+                    ? const BorderSide(color: Colors.red, width: 1.0)
+                    : BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: error != null 
+                    ? const BorderSide(color: Colors.red, width: 2.0)
+                    : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
+                ),
+              ),
+              style: const TextStyle(color: Colors.black),
+              onChanged: (value) {
+                // Clear error when user starts typing
+                if (error != null) {
+                  _usernameError.value = null;
+                }
+                _validateForm();
+              },
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                error,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
       },
     );
   }
 
   Widget _passwordField() {
-    return TextField(
-      controller: _passwordCon,
-      obscureText: true,
-      decoration: InputDecoration(
-        hintText: 'Password',
-        filled: true,
-        fillColor: Color(0xFFF5F6FA),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 16,
-          horizontal: 20,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      style: const TextStyle(color: Colors.black),
-      onChanged: (value) {
-        _validateForm();
+    return ValueListenableBuilder<String?>(
+      valueListenable: _passwordError,
+      builder: (context, error, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _passwordCon,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: 'Password',
+                filled: true,
+                fillColor: const Color(0xFFF5F6FA),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                // Add error border if there's an error
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: error != null 
+                    ? const BorderSide(color: Colors.red, width: 1.0)
+                    : BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: error != null 
+                    ? const BorderSide(color: Colors.red, width: 2.0)
+                    : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
+                ),
+              ),
+              style: const TextStyle(color: Colors.black),
+              onChanged: (value) {
+                // Clear error when user starts typing
+                if (error != null) {
+                  _passwordError.value = null;
+                }
+                _validateForm();
+              },
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                error,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
       },
     );
   }

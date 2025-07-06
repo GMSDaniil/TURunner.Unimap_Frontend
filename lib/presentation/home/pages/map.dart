@@ -17,6 +17,7 @@ import 'package:auth_app/data/favourites_manager.dart';
 import 'package:auth_app/presentation/widgets/building_popup_manager.dart';
 import 'package:auth_app/presentation/widgets/category_navigation.dart'
     show CategoryNavigationBar;
+import 'package:auth_app/presentation/widgets/gradient_widget.dart';
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
 import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/mapbox_map_widget.dart';
@@ -876,26 +877,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
               Positioned(
-                top: 180, // adjust as needed to not overlap other buttons
+                top: 180,
                 right: 20,
-                child: FloatingActionButton.extended(
-                  heroTag: 'toggle3d',
-                  backgroundColor: Colors.white,
-                  label: Text(
-                    _is3D ? '2D' : '3D',
-                    style: const TextStyle(color: Colors.blue),
+                child: AnimatedSlide(
+                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
+                  duration: _animDuration,
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
+                    duration: _animDuration,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'toggle3d',
+                      backgroundColor: Colors.white,
+                      label: GradientWidget(
+                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+                        child: Text(
+                          _is3D ? '2D' : '3D',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      onPressed: () {
+                        setState(() => _is3D = !_is3D);
+                        if (_mapboxMap != null) {
+                          _mapboxMap!.easeTo(
+                            mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
+                            mb.MapAnimationOptions(duration: 600, startDelay: 0),
+                          );
+                        }
+                      },
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() => _is3D = !_is3D);
-                    if (_mapboxMap != null) {
-                      _mapboxMap!.easeTo(
-                        mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
-                        mb.MapAnimationOptions(duration: 600, startDelay: 0),
-                      );
-                    }
-                  },
                 ),
               ),
+              if (!_panelActive) _buildTUButton(),
               if (!_panelActive) _buildCurrentLocationButton(),
               if (!_panelActive)
                 Positioned(
@@ -1135,11 +1153,84 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         child: FloatingActionButton(
           backgroundColor: Colors.white,
           onPressed: () => _goToCurrentLocation(moveMap: true),
-          child: const Icon(Icons.my_location, color: Colors.blue),
+          child: GradientWidget(
+          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+          child: const Icon(
+            Icons.my_location,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
         ),
       ),
     ),
   );
+
+  Widget _buildTUButton() => Positioned(
+    bottom: _bottomOffset,
+    right: 90,
+    child: AnimatedSlide(
+      offset: _searchActive ? const Offset(0, 1) : Offset.zero,
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _searchActive ? 0 : 1,
+        duration: _animDuration,
+        child: FloatingActionButton.extended(
+          heroTag: 'tubutton',
+          backgroundColor: Colors.white,
+          label: GradientWidget(
+          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+          child: const Text(
+            'TU',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+          // icon: const Icon(Icons.school, color: Colors.blue), 
+          onPressed: () {
+            _animatedMapboxMove(LatLng(52.5125, 13.3269), 15.0);
+            _resetToDefaultState();
+          },
+        ),
+      ),
+    ),
+  );
+
+  void _resetToDefaultState() {
+  // Close any open panels
+  if (_panelController.isPanelOpen) {
+    _panelController.close();
+  }
+  
+  // Clear any active states
+  setState(() {
+    _buildingPanelPointer = null;
+    _coordinatePanelLatLng = null;
+    _activeCategory = null;
+    _activeCategoryColor = null;
+    _activeCategoryPointers = [];
+  });
+  
+  // Reset markers to show all
+  _filterMarkersByCategory(null);
+  
+  // Clear building highlight if active
+  if (_clearBuildingHighlight != null) {
+    _clearBuildingHighlight!();
+  }
+  
+  // Restore camera if zoomed to building
+  if (_isBuildingZoomed && _mapboxMap != null) {
+    _isBuildingZoomed = false;
+    _previousCameraOptions = null;
+  }
+  
+  _notifyNavBar(false);
+}
 
   // ── markers, filter & search ─────────────────────────────────────
   Uint8List _loadImageBytesForCategory(String category) {

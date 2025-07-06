@@ -224,8 +224,18 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   @override
     void dispose(){
       // No polling timer to cancel
-      mapboxMap.dispose();
+      try{
+        mapboxMap.dispose();
+      }catch(e){
+        if(kDebugMode){
+          print("Error disposing mapboxMap: $e");
+        }
+      }
       userPositionStream?.cancel();
+      _liveAnnotations.clear();
+      _markerTapCallbacks.clear();
+      _hiddenThisZoomOut.clear();
+      _visibleThisZoomIn.clear();
       super.dispose();
     }
 

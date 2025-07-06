@@ -1,5 +1,6 @@
 import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/core/network/dio_client.dart';
+import 'package:auth_app/data/source/error_message_extractor.dart';
 import 'package:auth_app/data/source/token_manager.dart';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
@@ -17,6 +18,7 @@ abstract class AuthApiService {
 } 
 
 class AuthApiServiceImpl extends AuthApiService {
+  final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
   
 
   @override
@@ -31,7 +33,7 @@ class AuthApiServiceImpl extends AuthApiService {
       return Right(response);
 
     } on DioException catch(e) {
-      return Left(e.response!.data['message']);
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
   
@@ -79,7 +81,7 @@ class AuthApiServiceImpl extends AuthApiService {
         }
         
       }
-      return Left(e.response?.data['message'] ?? 'An error occurred');
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
   
@@ -95,7 +97,7 @@ class AuthApiServiceImpl extends AuthApiService {
       return Right(response);
 
     } on DioException catch(e) {
-      return Left(e.response!.data['message']);
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
   

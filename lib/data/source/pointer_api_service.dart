@@ -1,10 +1,12 @@
 import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/core/network/dio_client.dart';
+import 'package:auth_app/data/source/error_message_extractor.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 
 class PointerApiService {
+  final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
   Future<Either> getPointers() async {
     try{
       final response = await sl<DioClient>().get(
@@ -12,7 +14,7 @@ class PointerApiService {
       );
       return Right(response);
     } on DioException catch (e) {
-      return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
+      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
     }
   }
 }
