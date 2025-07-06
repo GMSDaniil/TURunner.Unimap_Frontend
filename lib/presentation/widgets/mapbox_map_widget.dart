@@ -67,12 +67,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     // Remove old bus stop layers/sources
     final layers = await mapboxMap.style.getStyleLayers();
     final sources = await mapboxMap.style.getStyleSources();
-    for (final layer in [...?layers]) {
+    for (final layer in [...layers]) {
       if (layer!.id.startsWith('busstop-layer-')) {
         await mapboxMap.style.removeStyleLayer(layer.id);
       }
     }
-    for (final src in [...?sources]) {
+    for (final src in [...sources]) {
       if (src!.id.startsWith('busstop-source-')) {
         await mapboxMap.style.removeStyleSource(src.id);
       }
@@ -103,6 +103,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       await mapboxMap.style.addLayer(CircleLayer(
         id: lyrId,
         sourceId: srcId,
+        circleEmissiveStrength: 1.0,
         circleRadius: 4.5, // slightly larger for better visibility
         circleColor: Colors.white.value,
         circleStrokeColor: Colors.grey.value,
@@ -443,6 +444,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       await mapboxMap.style.addLayer(CircleLayer(
         id: lyrId,
         sourceId: srcId,
+        circleEmissiveStrength: 1.0,
         circleRadius: 6.0,                      // adjust as needed
         circleColor: Colors.white.value,
         circleStrokeColor: Colors.grey.value,
