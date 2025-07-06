@@ -21,7 +21,7 @@ import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/data/repository/route_repository_impl.dart';
 import 'package:auth_app/domain/usecases/find_walking_route.dart';
 import 'package:auth_app/domain/repository/route_repository.dart';
-import 'package:dio/dio.dart';
+//import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 import 'package:auth_app/domain/repository/mensa.dart';
@@ -35,90 +35,89 @@ import 'package:auth_app/domain/usecases/find_building_at_point.dart';
 
 import 'package:auth_app/domain/repository/weather.dart';
 import 'package:auth_app/data/repository/weather.dart';
-import 'package:auth_app/domain/usecases/get_weather_info.dart';
 
+// STUDENT DOMAIN
 import 'package:auth_app/data/repository/student_repository_impl.dart';
 import 'package:auth_app/domain/repository/student.dart';
 import 'package:auth_app/domain/usecases/get_student_schedule.dart';
+import 'package:auth_app/domain/usecases/get_study_programs.dart';
 
+// FAVOURITES DOMAIN
 import 'package:auth_app/data/source/favourites_api_service.dart';
 import 'package:auth_app/data/repository/favourites.dart';
 import 'package:auth_app/domain/repository/favourites.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/add_favourite.dart';
 import 'package:auth_app/domain/usecases/delete_favourite.dart';
-import 'package:auth_app/data/source/study_programs_api_service.dart';
-import 'package:auth_app/data/repository/study_programs.dart';
-import 'package:auth_app/domain/repository/study_programs.dart';
-import 'package:auth_app/domain/usecases/get_study_programs.dart';
 
 final sl = GetIt.instance;
 
 void setupServiceLocator() {
   sl.registerSingleton<DioClient>(DioClient());
 
-  // Services
+  // ──────────────────── API SERVICES ────────────────────
   sl.registerSingleton<AuthApiService>(AuthApiServiceImpl());
-
   sl.registerSingleton<AuthLocalService>(AuthLocalServiceImpl());
-
   sl.registerSingleton<FindRouteApiService>(FindRouteApiService());
   sl.registerSingleton<MensaApiService>(MensaApiService());
   sl.registerSingleton<PointerApiService>(PointerApiService());
-
   sl.registerSingleton<WeatherApiService>(WeatherApiService());
+  
+  // Student API Service
   sl.registerSingleton<StudentApiService>(StudentApiService());
-
+  
+  // Favourites API Service
   sl.registerSingleton<FavouritesApiService>(FavouritesApiService());
-  sl.registerSingleton<StudyProgramsApiService>(StudyProgramsApiService());
 
-  // Repositories
+  // ──────────────────── REPOSITORIES ────────────────────
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
-
   sl.registerSingleton<RouteRepository>(RouteRepositoryImpl());
-
   sl.registerSingleton<MensaRepository>(MensaRepositoryImpl());
-
   sl.registerSingleton<PointersRepository>(PointersRepositoryImpl());
+  sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());
+  
+  // Student Repository (unified - handles both schedule + study programs)
+  sl.registerSingleton<StudentRepository>(StudentRepositoryImpl());
+  
+  // Favourites Repository (separate domain)
+  sl.registerSingleton<FavouritesRepository>(FavouritesRepositoryImpl());
 
+  // Building repository (lazy singleton pattern)
   sl.registerLazySingleton<BuildingDataSource>(() => BuildingDataSource());
   sl.registerLazySingleton<BuildingRepositoryImpl>(
     () => BuildingRepositoryImpl(sl()),
   );
-  sl.registerLazySingleton<FindBuildingAtPoint>(() => FindBuildingAtPoint());
 
-  sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());
-
-  sl.registerSingleton<StudentRepository>(StudentRepositoryImpl());
-  sl.registerSingleton<FavouritesRepository>(FavouritesRepositoryImpl());
-  sl.registerSingleton<StudyProgramsRepository>(StudyProgramsRepositoryImpl());
-
-  // Usecases
+  // ──────────────────── USE CASES ────────────────────
+  
+  // Auth Use Cases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
-
   sl.registerSingleton<IsLoggedInUseCase>(IsLoggedInUseCase());
-
   sl.registerSingleton<GetUserUseCase>(GetUserUseCase());
-
   sl.registerSingleton<LogoutUseCase>(LogoutUseCase());
-
   sl.registerSingleton<SigninUseCase>(SigninUseCase());
 
+  // Route Use Cases
   sl.registerSingleton<FindWalkingRouteUseCase>(FindWalkingRouteUseCase());
-  sl.registerSingleton<GetMensaMenuUseCase>(GetMensaMenuUseCase());
-
-  sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
-
   sl.registerSingleton<FindBusRouteUseCase>(FindBusRouteUseCase());
-
   sl.registerSingleton<FindScooterRouteUseCase>(FindScooterRouteUseCase());
 
+  // Map & Pointers Use Cases
+  sl.registerSingleton<GetPointersUseCase>(GetPointersUseCase());
+  sl.registerLazySingleton<FindBuildingAtPoint>(() => FindBuildingAtPoint());
+
+  // Mensa Use Cases
+  sl.registerSingleton<GetMensaMenuUseCase>(GetMensaMenuUseCase());
+
+  // Weather Use Cases
   sl.registerSingleton<GetWeatherInfoUseCase>(GetWeatherInfoUseCase());
 
+  // Student Use Cases
   sl.registerSingleton<GetStudentScheduleUseCase>(GetStudentScheduleUseCase());
+  sl.registerSingleton<GetStudyProgramsUseCase>(GetStudyProgramsUseCase());
 
+  // Favourites Use Cases
   sl.registerSingleton<GetFavouritesUseCase>(GetFavouritesUseCase());
   sl.registerSingleton<AddFavouriteUseCase>(AddFavouriteUseCase());
   sl.registerSingleton<DeleteFavouriteUseCase>(DeleteFavouriteUseCase());
-  sl.registerSingleton<GetStudyProgramsUseCase>(GetStudyProgramsUseCase());
 }

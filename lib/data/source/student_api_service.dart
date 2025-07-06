@@ -8,6 +8,7 @@ import 'package:auth_app/data/models/schedule_req_params.dart';
 
 class StudentApiService {
   final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
+  
   Future<Either<String, Response>> getStudentSchedule(
     GetStudentScheduleReqParams params,
   ) async {
@@ -22,22 +23,18 @@ class StudentApiService {
       
       return Right(response);
     } on DioException catch (e) {
+      return Left(_errorMessageExtractor.extractErrorMessage(e));
+    }
+  }
+
+  Future<Either<String, Response>> getStudyPrograms() async {
+    try {
+      final url = ApiUrls.getStudyPrograms;
+      final response = await sl<DioClient>().get(url);
+      return Right(response);
       
-      String errorMessage = 'Unknown error';
-      if (e.response?.data != null) {
-        if (e.response?.data is Map) {
-          errorMessage = e.response?.data['message'] ?? 
-                        e.response?.data['error'] ?? 
-                        'Request failed with status ${e.response?.statusCode}';
-        } else {
-          errorMessage = e.response?.data.toString() ?? 'Request failed';
-        }
-      } else {
-        errorMessage = e.message ?? 'Network error';
-      }
-      
-      // return Left(errorMessage);
-      return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));
+    } on DioException catch (e) {
+      return Left(_errorMessageExtractor.extractErrorMessage(e));
     }
   }
 }
