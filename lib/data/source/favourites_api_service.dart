@@ -9,11 +9,17 @@ import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 class FavouritesApiService {
   // GET read all favourites for the current user
   Future<Either<String, Response>> getFavourites() async {
+    print('FavouritesApiService.getFavourites called');
     try {
       final url = '${ApiUrls.baseURL}FavoritePlaces';
+      print('Calling GET $url');
       final response = await sl<DioClient>().get(url);
+      print(
+        'FavouritesApiService.getFavourites got response: ${response.data}',
+      );
       return Right(response);
     } on DioException catch (e) {
+      print('FavouritesApiService DioException: $e');
       return Left(e.response?.data['message'] ?? e.message ?? 'Unknown error');
     }
   }

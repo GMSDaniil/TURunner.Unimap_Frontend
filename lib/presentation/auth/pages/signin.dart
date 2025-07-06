@@ -14,12 +14,9 @@ import '../../../common/bloc/button/button_state.dart';
 import '../../home/pages/home.dart';
 import 'signup.dart';
 
-import 'package:auth_app/data/models/get_favourites_req_params.dart';
-import 'package:auth_app/domain/repository/favourites.dart';
-
-import 'package:auth_app/data/models/get_favourites_req_params.dart';
 import 'package:auth_app/domain/repository/favourites.dart';
 import 'package:auth_app/domain/entities/favourite.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
 
 class SigninPage extends StatelessWidget {
   SigninPage({super.key});
@@ -44,30 +41,25 @@ class SigninPage extends StatelessWidget {
               );
               userProvider.setUser(response.user);
 
-              // --- FAVOURITES LOADING (token not ready) ---
-              /*
-              final favouritesResult = await sl<FavouritesRepository>()
-                  .getFavourites(
-                    GetFavouritesReqParams(userId: response.user.id),
-                  );
+              print('hello world');
+
+              /// loding favourites after login
+              final favouritesResult = await sl<GetFavouritesUseCase>().call();
+              print('DEBUG favouritesResult: $favouritesResult');
+
               favouritesResult.fold(
                 (error) {
-                  // Error handling, set a snackBar.
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error occured during favourites loading: $error'),
+                      content: Text('Failed to load favourites: $error'),
                     ),
                   );
-                  userProvider.setFavourites(
-                    [],
-                  ); // if error occurs, then set an empty list.
+                  userProvider.setFavourites([]);
                 },
                 (favourites) {
                   userProvider.setFavourites(favourites);
                 },
               );
-              */
-              // TODO: Enable favourites loading after token handling is finalized.
 
               Navigator.pushReplacement(
                 context,

@@ -6,15 +6,9 @@ import 'package:dartz/dartz.dart';
 import 'package:auth_app/data/models/favourite_status_response.dart';
 
 class AddFavouriteUseCase
-    implements
-        UseCase<
-          Either<String, FavouriteStatusResponse>,
-          AddFavouriteReqParams
-        > {
+    implements UseCase<Either<String, void>, AddFavouriteReqParams> {
   @override
-  Future<Either<String, FavouriteStatusResponse>> call({
-    AddFavouriteReqParams? param,
-  }) async {
+  Future<Either<String, void>> call({AddFavouriteReqParams? param}) async {
     if (param == null) return Left("Parameters cannot be null");
     try {
       return await sl<FavouritesRepository>().addFavourite(param);
