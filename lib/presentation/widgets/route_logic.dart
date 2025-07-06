@@ -127,8 +127,8 @@ class RouteLogic {
         (routeResponse) {
           setState(() {
             final segments = <RouteSegment>[];
-            for (final route in routeResponse.segments) {
-              for (final seg in route.segments) {
+            for (final seg in routeResponse.segments) {
+              // for (final seg in route.segments) {
                 // Convert each segment to RouteSegment
               segments.add(
                 RouteSegment(
@@ -143,7 +143,7 @@ class RouteLogic {
                   toStop: seg.toStop,
                 ),
               );
-              }
+              // }
             }
             setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);

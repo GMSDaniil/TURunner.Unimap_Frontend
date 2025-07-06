@@ -945,6 +945,41 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+              Positioned(
+  top: 250,
+  right: 20,
+  child: AnimatedSlide(
+    offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
+    duration: _animDuration,
+    curve: Curves.easeInOut,
+    child: AnimatedOpacity(
+      opacity: _searchActive ? 0 : 1, // Fade out when search is active
+      duration: _animDuration,
+      child: FloatingActionButton(
+        heroTag: 'theme_toggle',
+        backgroundColor: Colors.white,
+        onPressed: () {
+          // Cycle through themes manually
+          final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
+          final nextIndex = (currentIndex + 1) % MapTheme.values.length;
+          setState(() {
+            _currentMapTheme = MapTheme.values[nextIndex];
+          });
+        },
+        child: GradientWidget(
+          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+          child: Icon(
+            _getThemeIcon(_currentMapTheme),
+            color: Colors.white,
+            size: 22,
+          ),
+        ),
+      ),
+    ),
+  ),
+),
+
+
               if (!_panelActive) _buildTUButton(),
               if (!_panelActive) _buildCurrentLocationButton(),
               if (!_panelActive)
@@ -1088,6 +1123,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // first time in → rebuildOnly=false (default)
     _handleCreateRoute([currentLocation!, _routeDestination!]);
   }
+
+  IconData _getThemeIcon(MapTheme theme) {
+  switch (theme) {
+    case MapTheme.dawn:
+      return Icons.wb_twilight;
+    case MapTheme.day:
+      return Icons.wb_sunny;
+    case MapTheme.dusk:
+      return Icons.wb_twilight;
+    case MapTheme.night:
+      return Icons.nightlight;
+  }
+}
 
   // ── search listener ──────────────────────────────────────────────
   void _onSearchChanged() {

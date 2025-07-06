@@ -62,19 +62,6 @@ class ThemeManager {
     }
   }
   
-  static String getThemeString(MapTheme theme) {
-    switch (theme) {
-      case MapTheme.dawn:
-        return 'dawn';
-      case MapTheme.day:
-        return 'day';
-      case MapTheme.dusk:
-        return 'dusk';
-      case MapTheme.night:
-        return 'night';
-    }
-  }
-  
   static Duration getNextThemeChangeDelay() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

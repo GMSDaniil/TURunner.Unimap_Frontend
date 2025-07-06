@@ -49,7 +49,18 @@ class RouteRepositoryImpl implements RouteRepository {
           final data = response.data is String
               ? jsonDecode(response.data)
               : response.data;
-          final route = FindBusRouteResponse.fromJson(data);
+          
+          if (data is List && data.isNotEmpty){
+            final firstRoute = data[0];
+            final route = FindBusRouteResponse.fromJson(firstRoute);
+            return Right(route);
+          }else if (data is Map<String, dynamic>) {
+            final route = FindBusRouteResponse.fromJson(data);
+            return Right(route);
+          } else {
+            return Left('Unexpected data format');
+          }
+          
           // print('=== Bus Route Debug ===');
           // for (int i = 0; i < route.segments.length; i++) {
           //   print('Segment $i:');
@@ -69,7 +80,6 @@ class RouteRepositoryImpl implements RouteRepository {
           //     }
           //   }
           // }
-          return Right(route);
         } catch (e) {
           print('Error parsing route data: $e');
           return Left('Failed to parse route data');

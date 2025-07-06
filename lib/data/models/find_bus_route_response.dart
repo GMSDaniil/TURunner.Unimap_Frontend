@@ -34,7 +34,8 @@ class BusRouteSegment {
       distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
       transportType: map['TransportType'],
       precisePolyline: (map['precisePolyline'] as List?)
-          ?.map<LatLng>((e) => LatLng(e[0], e[1]))
+          ?.expand((e) => e as List? ?? [])
+          .map<LatLng>((e) => LatLng(e[0], e[1]))
           .toList(),
       transportLine: map['TransportLine'],
       fromStop: map['FromStop'],
@@ -72,16 +73,28 @@ class FindBusRouteResponseSegment {
 }
 
 class FindBusRouteResponse {
-  List<FindBusRouteResponseSegment> segments;
+  List<BusRouteSegment> segments;
+  LatLng start;
+  LatLng end;
+  double distanceMeters;
+  int durationSeconds;
 
   FindBusRouteResponse({
     required this.segments,
+    required this.start,
+    required this.end,
+    required this.distanceMeters,
+    required this.durationSeconds,
   });
 
-  factory FindBusRouteResponse.fromJson(List<dynamic> json) {
+  factory FindBusRouteResponse.fromJson(Map<String,dynamic> json) {
     return FindBusRouteResponse(
-      segments: json
-          .map((e) => FindBusRouteResponseSegment.fromJson(e))
+      start: LatLng(json['Start'][0], json['Start'][1]),
+      end: LatLng(json['End'][0], json['End'][1]),
+      distanceMeters: (json['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
+      durationSeconds: json['DurationSeconds'] ?? 0,
+      segments: (json["Segments"] as List)
+          .map((e) => BusRouteSegment.fromJson(e))
           .toList(),
     );
   }
