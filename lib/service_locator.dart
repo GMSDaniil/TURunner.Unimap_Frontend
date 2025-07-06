@@ -47,6 +47,10 @@ import 'package:auth_app/domain/repository/favourites.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/add_favourite.dart';
 import 'package:auth_app/domain/usecases/delete_favourite.dart';
+import 'package:auth_app/data/source/study_programs_api_service.dart';
+import 'package:auth_app/data/repository/study_programs.dart';
+import 'package:auth_app/domain/repository/study_programs.dart';
+import 'package:auth_app/domain/usecases/get_study_programs.dart';
 
 final sl = GetIt.instance;
 
@@ -66,6 +70,7 @@ void setupServiceLocator() {
   sl.registerSingleton<StudentApiService>(StudentApiService());
 
   sl.registerSingleton<FavouritesApiService>(FavouritesApiService());
+  sl.registerSingleton<StudyProgramsApiService>(StudyProgramsApiService());
 
   // Repositories
   sl.registerSingleton<AuthRepository>(AuthRepositoryImpl());
@@ -84,10 +89,9 @@ void setupServiceLocator() {
 
   sl.registerSingleton<WeatherRepository>(WeatherRepositoryImpl());
 
-  sl.registerSingleton<StudentRepository>(
-    StudentRepositoryImpl(sl<StudentApiService>()),
-  );
+  sl.registerSingleton<StudentRepository>(StudentRepositoryImpl());
   sl.registerSingleton<FavouritesRepository>(FavouritesRepositoryImpl());
+  sl.registerSingleton<StudyProgramsRepository>(StudyProgramsRepositoryImpl());
 
   // Usecases
   sl.registerSingleton<SignupUseCase>(SignupUseCase());
@@ -116,4 +120,5 @@ void setupServiceLocator() {
   sl.registerSingleton<GetFavouritesUseCase>(GetFavouritesUseCase());
   sl.registerSingleton<AddFavouriteUseCase>(AddFavouriteUseCase());
   sl.registerSingleton<DeleteFavouriteUseCase>(DeleteFavouriteUseCase());
+  sl.registerSingleton<GetStudyProgramsUseCase>(GetStudyProgramsUseCase());
 }

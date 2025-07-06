@@ -6,27 +6,34 @@ import 'package:auth_app/core/constants/api_urls.dart';
 import 'package:auth_app/data/models/schedule_req_params.dart';
 
 class StudentApiService {
-  Future<Either<String, Response>> fetchStudentSchedule(
+  Future<Either<String, Response>> getStudentSchedule(
     GetStudentScheduleReqParams params,
   ) async {
     try {
-      print('🔍 Request params: ${params.toMap()}');
+      final url = '${ApiUrls.baseURL}student-schedule';
+      final queryParameters = params.toMap();
       
       final response = await sl<DioClient>().get(
-        ApiUrls.getStudentSchedule,
-        queryParameters: params.toMap(),
+        url,
+        queryParameters: queryParameters,
       );
-      
-      print('✅ API Response received');
-      print('📊 Response type: ${response.data.runtimeType}');
       
       return Right(response);
     } on DioException catch (e) {
-      print('❌ DioException: ${e.message}');
-      return Left(e.response?.data['message'] ?? e.message ?? 'Network error');
-    } catch (e) {
-      print('❌ Unknown error: $e');
-      return Left('Unknown error occurred');
+      String errorMessage = 'Unknown error';
+      if (e.response?.data != null) {
+        if (e.response?.data is Map) {
+          errorMessage = e.response?.data['message'] ?? 
+                        e.response?.data['error'] ?? 
+                        'Request failed with status ${e.response?.statusCode}';
+        } else {
+          errorMessage = e.response?.data.toString() ?? 'Request failed';
+        }
+      } else {
+        errorMessage = e.message ?? 'Network error';
+      }
+      
+      return Left(errorMessage);
     }
   }
 }

@@ -11,12 +11,14 @@ class GetStudentScheduleReqParams {
 
   Map<String, dynamic> toMap() {
     final map = {
-      'study_program': studyProgram,  // e.g., "Computer Science"
-      'semester': semester,           // e.g., "2"
+      'stupo': studyProgram,
+      'semester': semester,
     };
+    
     if (filterDates != null) {
       map['filter_dates'] = filterDates.toString();
     }
+    
     return map;
   }
 }

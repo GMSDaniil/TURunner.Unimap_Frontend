@@ -20,6 +20,9 @@ import 'package:auth_app/data/models/schedule_req_params.dart';
 import 'package:auth_app/domain/usecases/get_student_schedule.dart';
 import 'package:auth_app/data/models/student_schedule_response.dart';
 import 'package:auth_app/presentation/home/pages/student/student_schedule_detail_page.dart';
+import 'package:auth_app/domain/usecases/get_study_programs.dart';
+import 'package:auth_app/domain/entities/study_program.dart';
+import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -38,12 +41,97 @@ class _ProfilePageState extends State<ProfilePage> {
   final _studyProgramController = TextEditingController();
   final _semesterController = TextEditingController();
 
+  // Add these new fields
+  List<StudyProgramEntity> _studyPrograms = [];
+  StudyProgramEntity? _selectedStudyProgram;
+  bool _isLoadingStudyPrograms = false;
+
   @override
   void initState() {
     super.initState();
     // User-friendly default values
     _studyProgramController.text = 'Computer Science';
     _semesterController.text = '2';
+    _loadStudyPrograms();
+  }
+
+  // Update _loadStudyPrograms method to remove test data fallback
+  Future<void> _loadStudyPrograms() async {
+    setState(() => _isLoadingStudyPrograms = true);
+    
+    final result = await sl<GetStudyProgramsUseCase>().call();
+    
+    result.fold(
+      (error) {
+        setState(() {
+          _studyPrograms = [];
+          _isLoadingStudyPrograms = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load study programs: $error'),
+              backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _loadStudyPrograms,
+              ),
+            ),
+          );
+        }
+      },
+      (studyPrograms) {
+        setState(() {
+          _studyPrograms = studyPrograms;
+          _isLoadingStudyPrograms = false;
+          
+          if (_selectedStudyProgram == null && studyPrograms.isNotEmpty) {
+            _selectedStudyProgram = studyPrograms.first;
+          }
+        });
+      },
+    );
+  }
+
+  Future<void> _fetchSchedule() async {
+    final semesterText = _semesterController.text.trim();
+    
+    if (_selectedStudyProgram == null || semesterText.isEmpty) {
+      setState(() => _scheduleError = 'Please select a study program and enter semester');
+      return;
+    }
+    
+    if (int.tryParse(semesterText) == null) {
+      setState(() => _scheduleError = 'Semester must be a number (e.g., 2, 4, 6)');
+      return;
+    }
+
+    setState(() {
+      _isLoadingSchedule = true;
+      _scheduleError = null;
+    });
+
+    final params = GetStudentScheduleReqParams(
+      studyProgram: _selectedStudyProgram!.stupoNumber,
+      semester: semesterText,
+      filterDates: true,
+    );
+
+    final result = await sl<GetStudentScheduleUseCase>().call(param: params);
+    
+    result.fold(
+      (error) => setState(() {
+        _scheduleError = error;
+        _isLoadingSchedule = false;
+      }),
+      (scheduleResponse) => setState(() {
+        _lectures = scheduleResponse.lectures;
+        _isLoadingSchedule = false;
+        _showScheduleSection = true;
+      }),
+    );
   }
 
   @override
@@ -103,48 +191,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _fetchSchedule() async {
-    final studyProgramText = _studyProgramController.text.trim();
-    final semesterText = _semesterController.text.trim();
-    
-    // Validate inputs
-    if (studyProgramText.isEmpty || semesterText.isEmpty) {
-      setState(() => _scheduleError = 'Please fill in both fields');
-      return;
-    }
-    
-    // Validate semester is numeric
-    if (int.tryParse(semesterText) == null) {
-      setState(() => _scheduleError = 'Semester must be a number (e.g., 2, 4, 6)');
-      return;
-    }
-
-    setState(() {
-      _isLoadingSchedule = true;
-      _scheduleError = null;
-    });
-
-    final params = GetStudentScheduleReqParams(
-      studyProgram: studyProgramText,
-      semester: semesterText,
-      filterDates: true,
-    );
-
-    final result = await sl<GetStudentScheduleUseCase>().call(param: params);
-    
-    result.fold(
-      (error) => setState(() {
-        _scheduleError = error;
-        _isLoadingSchedule = false;
-      }),
-      (scheduleResponse) => setState(() {
-        _lectures = scheduleResponse.lectures;
-        _isLoadingSchedule = false;
-        _showScheduleSection = true;
-      }),
     );
   }
 
@@ -309,23 +355,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      TextFormField(
-                        controller: _studyProgramController,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                        decoration: InputDecoration(
-                          hintText: 'e.g., Computer Science',
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          isDense: true,
-                        ),
+                      SearchableDropdown(
+                        items: _studyPrograms,
+                        selectedItem: _selectedStudyProgram,
+                        onChanged: (studyProgram) {
+                          setState(() {
+                            _selectedStudyProgram = studyProgram;
+                          });
+                        },
+                        hintText: 'Search study programs...',
+                        isLoading: _isLoadingStudyPrograms,
                       ),
                       const SizedBox(height: 16),
                       const Text(
