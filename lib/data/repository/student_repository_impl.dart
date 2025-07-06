@@ -13,21 +13,19 @@ class StudentRepositoryImpl implements StudentRepository {
   Future<Either<String, StudentScheduleResponse>> getStudentSchedule(
     GetStudentScheduleReqParams params,
   ) async {
-    // Use service locator instead of constructor injection
     final result = await sl<StudentApiService>().getStudentSchedule(params);
 
     return result.fold(
       (errorMessage) => Left(errorMessage),
       (response) {
         try {
-          print('✅ API Response received');
-          print('📊 Response type: ${response.data.runtimeType}');
+          final data = response.data is String
+              ? jsonDecode(response.data)
+              : response.data;
           
-          final scheduleResponse = StudentScheduleResponse.fromJson(response.data);
+          final scheduleResponse = StudentScheduleResponse.fromJson(data);
           return Right(scheduleResponse);
         } catch (e) {
-          print('❌ Parsing error: $e');
-          print('📄 Response data: ${response.data}');
           return Left('Failed to parse student schedule data: $e');
         }
       },
@@ -42,8 +40,16 @@ class StudentRepositoryImpl implements StudentRepository {
       (errorMessage) => Left(errorMessage),
       (response) {
         try {
-          final programs = (response.data as List)
-              .map((json) => StudyProgramEntity.fromJson(json))
+          final data = response.data is String
+              ? jsonDecode(response.data)
+              : response.data;
+
+          if (data is! List) {
+            return Left('Invalid study programs data format: expected list');
+          }
+
+          final programs = data
+              .map((json) => StudyProgramEntity.fromJson(json as Map<String, dynamic>))
               .toList();
           
           return Right(programs);

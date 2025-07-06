@@ -21,7 +21,7 @@ import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/data/repository/route_repository_impl.dart';
 import 'package:auth_app/domain/usecases/find_walking_route.dart';
 import 'package:auth_app/domain/repository/route_repository.dart';
-import 'package:dio/dio.dart';
+//import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 import 'package:auth_app/domain/repository/mensa.dart';
