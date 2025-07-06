@@ -15,6 +15,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   void setFavourites(List<FavouriteEntity> favourites) {
+    print('✅ setFavourites called with ${favourites.length} items');
     _favourites = favourites;
     notifyListeners();
   }
@@ -24,8 +25,8 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void deleteFavourite(String favouriteId) {
-    _favourites.removeWhere((f) => f.id == favouriteId);
+  void deleteFavourite(int placeId) {
+    _favourites.removeWhere((f) => f.placeId == placeId);
     notifyListeners();
   }
 

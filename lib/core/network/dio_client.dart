@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'interceptors.dart';
 
@@ -17,12 +18,30 @@ class DioClient {
           receiveTimeout: const Duration(seconds: 30),
         ),
       )..interceptors.addAll([LoggerInterceptor()]) {
+    _setupInterceptors();
     // Bypass SSL certificate verification for development
     (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
       client.badCertificateCallback = (cert, host, port) => true;
       return client;
     };
+  }
+
+  void _setupInterceptors() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          // Token aus SharedPreferences holen und setzen
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('accessToken');
+          //print('DioClient: Set token2: $token');
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+      ),
+    );
   }
 
   // GET METHOD

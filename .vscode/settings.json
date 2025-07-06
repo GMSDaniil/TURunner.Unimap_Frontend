@@ -1,3 +1,17 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "files.associations": {
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "vector": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp",
+        "complex": "cpp",
+        "type_traits": "cpp",
+        "forward_list": "cpp",
+        "limits": "cpp",
+        "ratio": "cpp",
+        "variant": "cpp"
+    }
 }

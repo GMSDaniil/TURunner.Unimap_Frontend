@@ -11,10 +11,14 @@ class FavouritesApiService {
   final ErrorMessageExtractor _errorMessageExtractor = ErrorMessageExtractor();
   // GET read all favourites for the current user
   Future<Either<String, Response>> getFavourites() async {
-
+    print('FavouritesApiService.getFavourites called');
     try {
       final url = '${ApiUrls.baseURL}FavoritePlaces';
+      print('Calling GET $url');
       final response = await sl<DioClient>().get(url);
+      print(
+        'FavouritesApiService.getFavourites got response: ${response.data}',
+      );
       return Right(response);
     } on DioException catch (e) {
       return Left(_errorMessageExtractor.extractErrorMessage(e.response?.data));

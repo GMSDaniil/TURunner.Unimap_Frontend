@@ -5,16 +5,15 @@ class FavouriteResponse {
 
   FavouriteResponse({required this.favourites});
 
-  factory FavouriteResponse.fromJson(Map<String, dynamic> json) {
+  factory FavouriteResponse.fromJson(dynamic json) {
     return FavouriteResponse(
-      favourites: (json['favourites'] as List)
+      favourites: (json as List)
           .map(
             (e) => FavouriteEntity(
-              id: e['id'],
-              name: e['name'],
-              lat: (e['lat'] as num).toDouble(),
-              lng: (e['lng'] as num).toDouble(),
-              //category: e['category'],
+              placeId: e['placeId'] ?? 0,
+              name: e['name'] ?? 'Unnamed',
+              lat: (e['latitude'] as num).toDouble(),
+              lng: (e['longitude'] as num).toDouble(),
             ),
           )
           .toList(),

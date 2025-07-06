@@ -20,10 +20,15 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/material.dart';
 //import 'package:flutter_map/flutter_map.dart';      // ← for TileLayer
-import 'package:latlong2/latlong.dart';             // ← for LatLng & LatLngBounds
+import 'package:latlong2/latlong.dart'; // ← for LatLng & LatLngBounds
 //import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 
 import 'dart:async'; // for unawaited
+
+import 'package:auth_app/data/models/add_favourite_req_params.dart';
+import 'package:auth_app/data/models/delete_favourite_req_params.dart';
+import 'package:auth_app/domain/repository/favourites.dart';
+import 'package:auth_app/service_locator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,11 +47,14 @@ Future<void> main() async {
     // Download style pack (adjust style as needed)
     final styleUri = MapboxStyles.MAPBOX_STREETS;
     final stylePackLoadOptions = StylePackLoadOptions(
-      glyphsRasterizationMode: GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY,
+      glyphsRasterizationMode:
+          GlyphsRasterizationMode.IDEOGRAPHS_RASTERIZED_LOCALLY,
       metadata: {"tag": "campus"},
       acceptExpired: false,
     );
-    await offlineManager.loadStylePack(styleUri, stylePackLoadOptions, (progress) {
+    await offlineManager.loadStylePack(styleUri, stylePackLoadOptions, (
+      progress,
+    ) {
       // Optionally handle progress
     });
 
@@ -61,21 +69,19 @@ Future<void> main() async {
             [13.34, 52.50], // SE
             [13.34, 52.52], // NE
             [13.31, 52.52], // NW
-            [13.31, 52.50]  // Close polygon
-          ]
-        ]
+            [13.31, 52.50], // Close polygon
+          ],
+        ],
       },
       descriptorsOptions: [
-        TilesetDescriptorOptions(
-          styleURI: styleUri,
-          minZoom: 15,
-          maxZoom: 18,
-        )
+        TilesetDescriptorOptions(styleURI: styleUri, minZoom: 15, maxZoom: 18),
       ],
       acceptExpired: true,
       networkRestriction: NetworkRestriction.NONE,
     );
-    await tileStore.loadTileRegion(tileRegionId, tileRegionLoadOptions, (progress) {
+    await tileStore.loadTileRegion(tileRegionId, tileRegionLoadOptions, (
+      progress,
+    ) {
       // Optionally handle progress
     });
   } catch (e) {
@@ -90,11 +96,12 @@ Future<void> main() async {
   );
 
   SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [SystemUiOverlay.bottom],
-    );
+    SystemUiMode.manual,
+    overlays: [SystemUiOverlay.bottom],
+  );
 
   setupServiceLocator();
+
   runApp(const MyApp());
 }
 
@@ -103,7 +110,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     return MultiBlocProvider(
       // BlocProvider provides AuthStateCubit to the whole widget tree
       providers: [
