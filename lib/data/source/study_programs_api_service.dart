@@ -8,7 +8,7 @@ class StudyProgramsApiService {
   
   Future<Either<String, Response>> getStudyPrograms() async {
     try {
-      final url = '${ApiUrls.baseURL}study-programs';
+      final url = ApiUrls.getStudyPrograms;
       print('🔍 Requesting study programs from: $url');
       
       final response = await sl<DioClient>().get(url);

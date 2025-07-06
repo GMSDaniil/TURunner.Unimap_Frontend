@@ -7,11 +7,8 @@ class StudyProgramResponse {
 
   factory StudyProgramResponse.fromJson(Map<String, dynamic> json) {
     return StudyProgramResponse(
-      studyPrograms: (json['study_programs'] as List)
-          .map((e) => StudyProgramEntity(
-                name: e['name'],
-                stupoNumber: e['stupo_number'],
-              ))
+      studyPrograms: (json as List)
+          .map((e) => StudyProgramEntity.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

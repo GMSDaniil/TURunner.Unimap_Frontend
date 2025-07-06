@@ -16,4 +16,6 @@ class ApiUrls {
 
   // Student schedule (Moses TU Berlin)
   static const getStudentSchedule = '${baseURL}student-schedule';
+
+  static const getStudyPrograms = '${baseURL}StudyProgram';
 }
