@@ -8,6 +8,7 @@ import 'package:auth_app/domain/repository/route_repository.dart';
 import 'package:dartz/dartz.dart';
 import 'package:auth_app/data/source/find_route_api_service.dart';
 import 'package:auth_app/service_locator.dart';
+import 'package:flutter/foundation.dart';
 
 class RouteRepositoryImpl implements RouteRepository {
    @override
@@ -49,6 +50,25 @@ class RouteRepositoryImpl implements RouteRepository {
               ? jsonDecode(response.data)
               : response.data;
           final route = FindBusRouteResponse.fromJson(data);
+          // print('=== Bus Route Debug ===');
+          // for (int i = 0; i < route.segments.length; i++) {
+          //   print('Segment $i:');
+          //   for (int j = 0; j < route.segments[i].segments.length; j++) {
+          //     final subSegment = route.segments[i].segments[j];
+          //     if (subSegment.precisePolyline != null) {
+          //       print('  Sub-segment $j (${subSegment.precisePolyline!.length} points):');
+          //       final coordinates = subSegment.precisePolyline!
+          //           .map((e) => "(${e.latitude}, ${e.longitude})")
+          //           .toList();
+                
+          //       // Print coordinates in chunks of 10
+          //       for (int k = 0; k < coordinates.length; k += 10) {
+          //         final chunk = coordinates.skip(k).take(10).toList();
+          //         print('    Points ${k}-${k + chunk.length - 1}: $chunk');
+          //       }
+          //     }
+          //   }
+          // }
           return Right(route);
         } catch (e) {
           print('Error parsing route data: $e');

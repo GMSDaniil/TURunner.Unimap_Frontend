@@ -42,8 +42,7 @@ class FindRouteApiService {
 
       if (response.statusCode != 200) {
         return Left('Failed to fetch route data');
-      }
-
+      }  
       return Right(response);
 
     } on DioException catch (e) {

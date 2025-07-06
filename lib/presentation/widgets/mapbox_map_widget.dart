@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_segment.dart';
+import 'package:auth_app/data/theme_manager.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter/material.dart';
 //import 'package:flutter_map/flutter_map.dart' hide MapOptions;
@@ -25,6 +26,7 @@ class MapboxMapWidget extends StatefulWidget {
   /// Annotations to show on the map
   final List<InteractiveAnnotation> markerAnnotations;
   final Map<String, Uint8List> markerImageCache;
+  final MapTheme? mapTheme;
   final LatLng? destinationLatLng;
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
@@ -41,6 +43,7 @@ class MapboxMapWidget extends StatefulWidget {
     required this.markerAnnotations,
     required this.navBarHeight,
     this.destinationLatLng,
+    this.mapTheme,
     required this.markerImageCache,
     required this.busStopMarkers,
     required this.segments,
@@ -58,6 +61,7 @@ class MapboxMapWidget extends StatefulWidget {
 
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
+  var _currentTheme = MapTheme.day;
   /// Draws small white points for all bus stops along the bus segments
   Future<void> drawBusStopMarkers(List<LatLng> busMarkers) async {
     // Remove old bus stop layers/sources
@@ -162,6 +166,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   void initState() {
     super.initState();
     _setupPositionTracking();
+    _currentTheme = widget.mapTheme ?? ThemeManager.getCurrentTheme();
+    
     // Expose the canonical clear highlight function to the parent if requested
     if (widget.onClearHighlightController != null) {
       widget.onClearHighlightController!(unhighlightCurrentBuilding);
@@ -170,6 +176,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
   final Map<String, VoidCallback> _markerTapCallbacks = {};
   late MapboxMap mapboxMap;
+  Map<String, Object> mapConfig = {
+      "showPointOfInterestLabels": false,
+      "lightPreset": "day",
+      "colorBuildingHighlight": "#B39DDB",
+    };
   late PointAnnotationManager pointAnnotationManager;
   late PolylineAnnotationManager polylineAnnotationManager;
 
@@ -220,6 +231,18 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         deleteDestinationMarker();
       }
     }
+
+    if (widget.mapTheme != oldWidget.mapTheme && widget.mapTheme != null) {
+      _currentTheme = widget.mapTheme!;
+      _updateMapTheme();
+    }
+  }
+
+  void _updateMapTheme() {
+    if (mapboxMap == null) return;
+    
+    mapConfig["lightPreset"] = _currentTheme.toString();
+    mapboxMap.style.setStyleImportConfigProperties("basemap", mapConfig);
   }
 
   @override
@@ -791,7 +814,8 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
   void _onMapCreated(MapboxMap map) async {
     mapboxMap = map;
-
+    _updateMapTheme();
+    
     pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
     polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
 
@@ -829,11 +853,11 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     false, [], [], null);
 
 
-    mapboxMap.style.setStyleImportConfigProperties("basemap", {
-      "showPointOfInterestLabels": false,
-      "lightPreset": "day",
-      "colorBuildingHighlight": "#B39DDB",
-    });
+    mapboxMap.style.setStyleImportConfigProperties("basemap", mapConfig);
+    
+    var x = await mapboxMap.style.getStyleImportConfigProperties("basemap");
+    print("Style import config: ${x["lightPreset"]!.value as String}");
+    // x["lightPreset"].toString();
 
     
 

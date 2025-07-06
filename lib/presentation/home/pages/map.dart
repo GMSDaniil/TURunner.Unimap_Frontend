@@ -5,6 +5,7 @@ import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
+import 'package:auth_app/data/theme_manager.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
@@ -134,6 +135,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _imagesLoaded = false; // Add this flag
 
   mb.MapboxMap? _mapboxMap;
+  Map<String, Object>? _mapConfig;
+
+
+  MapTheme _currentMapTheme = MapTheme.day;
+  Timer? _themeTimer;
+  
   VoidCallback? _clearBuildingHighlight;
 
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
@@ -165,6 +172,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     super.initState();
     _navBarHeight = widget.navBarHeight;
     _initializeMap(); // Create separate initialization method
+    _currentMapTheme = ThemeManager.getCurrentTheme();
+    print(_currentMapTheme.toString());
     _searchCtl.addListener(_onSearchChanged);
     _cachedTiles = FMTC.FMTCTileProvider(
       stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
@@ -175,6 +184,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         setState(() => _searchActive = active);
         _notifyNavBar(active);
       }
+    });
+    _startThemeTimer();
+  }
+
+  void _startThemeTimer() {
+    _updateThemeTimer();
+  }
+  
+  void _updateThemeTimer() {
+    _themeTimer?.cancel();
+    
+    final delay = ThemeManager.getNextThemeChangeDelay();
+    _themeTimer = Timer(delay, () {
+      final newTheme = ThemeManager.getCurrentTheme();
+      if (_currentMapTheme != newTheme) {
+        setState(() {
+          _currentMapTheme = newTheme;
+        });
+      }
+      _updateThemeTimer(); // Schedule next update
     });
   }
 
@@ -220,6 +249,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _panelController.close();
     _searchCtl.dispose();
     _searchFocusNode.dispose();
+    _themeTimer?.cancel();
     super.dispose();
   }
 
@@ -1119,6 +1149,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       markerImageCache: _categoryImageCache,
       busStopMarkers: busMarkers,
       segments: segments,
+      mapTheme: _currentMapTheme,
       onMapTap: _onMapTap,
       onMapCreated: (map) {
         _mapboxMap = map;
@@ -1211,6 +1242,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         ),
           // icon: const Icon(Icons.school, color: Colors.blue), 
           onPressed: () {
+            
             _animatedMapboxMove(LatLng(52.5125, 13.3269), 15.0);
             _resetToDefaultState();
           },
@@ -1697,6 +1729,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       setState: setState,
       updateCurrentMode: (m) => setState(() => _currentMode = m),
     );
+  }
+
+  void _updateMapConfig(){
+    if (_mapConfig == null || _mapboxMap == null) return;
+    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
+
   }
 
   Widget _buildCategoryListPanel(ScrollController sc) {
