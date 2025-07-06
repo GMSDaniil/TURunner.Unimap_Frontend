@@ -5,6 +5,7 @@
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
+import 'shimmer_loading.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 // import 'route_details_tile.dart';
@@ -223,9 +224,9 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                     const SizedBox(height: 24),
                     // ── Info card with expand button ───────────────
                     _loading
-                        ? const SizedBox(
-                            height: 60,
-                            child: Center(child: CircularProgressIndicator()),
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: ShimmerLoading(height: 80, width: double.infinity),
                           )
                         : Container(
                             padding: const EdgeInsets.symmetric(

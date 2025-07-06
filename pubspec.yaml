@@ -29,6 +29,7 @@ dependencies:
   mapbox_maps_flutter:
   path_provider:
   drag_and_drop_lists: ^0.4.2
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
