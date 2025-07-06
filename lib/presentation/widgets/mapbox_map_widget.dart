@@ -865,8 +865,8 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
     mapboxMap.style.setStyleImportConfigProperties("basemap", mapConfig);
     
-    var x = await mapboxMap.style.getStyleImportConfigProperties("basemap");
-    print("Style import config: ${x["lightPreset"]!.value as String}");
+    // var x = await mapboxMap.style.getStyleImportConfigProperties("basemap");
+    // print("Style import config: ${x["lightPreset"]!.value as String}");
     // x["lightPreset"].toString();
 
     

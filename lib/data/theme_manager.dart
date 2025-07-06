@@ -34,7 +34,7 @@ class ThemeManager {
     final sunriseSunset = getSunriseSunset(
       _berlinLocation.latitude,
       _berlinLocation.longitude,
-      Duration(hours: 2),
+      Duration(hours: 0),
       now,
     );
     
