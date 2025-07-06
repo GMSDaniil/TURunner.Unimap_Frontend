@@ -25,8 +25,8 @@ dependencies:
   flutter_polyline_points: ^2.1.0
   geolocator: ^14.0.1
   sliding_up_panel: ^2.0.0
-  flutter_dotenv: 
-  mapbox_maps_flutter: 
+  flutter_dotenv:
+  mapbox_maps_flutter:
   path_provider:
   drag_and_drop_lists: ^0.4.2
 
@@ -56,10 +56,11 @@ flutter:
     - assets/icons/pin_default_64.png
     - assets/icons/pin_destination_64.png
     - assets/icons/pin_destination.png
+    - assets/icons/pin_favourite.png
+    - assets/icons/pin_favourite_64.png
 
     # Custom public transport icon
     - assets/icons/public_transport.svg
-
 
   fonts:
     - family: Nunito
@@ -71,7 +72,6 @@ flutter:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/images/android_app_icon.png"            # fallback for older devices
+  image_path: "assets/images/android_app_icon.png" # fallback for older devices
   adaptive_icon_background: "assets/images/tubify_logo_background.png"
   adaptive_icon_foreground: "assets/images/tubify_logo_white_overlay_slick.png"
-
