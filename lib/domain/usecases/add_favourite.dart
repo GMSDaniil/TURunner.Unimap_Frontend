@@ -3,7 +3,7 @@ import 'package:auth_app/domain/repository/favourites.dart';
 import 'package:auth_app/core/usecase/usecase.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:dartz/dartz.dart';
-import 'package:auth_app/data/models/favourite_status_response.dart';
+//import 'package:auth_app/data/models/favourite_status_response.dart';
 
 class AddFavouriteUseCase
     implements UseCase<Either<String, void>, AddFavouriteReqParams> {
