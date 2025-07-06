@@ -302,7 +302,18 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                                   ),
                           ),
                     const SizedBox(height: 28),
-            // Timeline/segment list removed. Now only info bar and button are shown.
+                    // ── Timeline/segment list ──
+                    ...(() {
+                      final segments = widget.routesNotifier.value[_mode]?.segments ?? [];
+                      return List.generate(
+                        segments.length,
+                        (i) => _SegmentTimelineTile(
+                          segment: segments[i],
+                          isFirst: i == 0,
+                          isLast: i == segments.length - 1,
+                        ),
+                      );
+                    })(),
                   ],
                 ),
               ),
