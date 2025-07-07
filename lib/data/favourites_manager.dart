@@ -1,4 +1,4 @@
-import 'package:auth_app/data/models/pointer.dart';
+/*import 'package:auth_app/data/models/pointer.dart';
 
 class FavouritesManager {
   static final FavouritesManager _instance = FavouritesManager._internal();
@@ -18,4 +18,4 @@ class FavouritesManager {
   void remove(Pointer pointer) {
     _favourites.removeWhere((p) => p.name == pointer.name);
   }
-}
+}*/

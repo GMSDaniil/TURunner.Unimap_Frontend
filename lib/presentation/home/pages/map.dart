@@ -48,6 +48,13 @@ import 'package:auth_app/presentation/widgets/route_plan_bar.dart';
 import 'package:auth_app/presentation/widgets/category_top_bar.dart';
 //import 'package:flutter_map/plugin_api.dart' show FitBoundsOptions;
 
+import 'package:provider/provider.dart';
+import 'package:auth_app/common/providers/user.dart';
+import 'package:auth_app/domain/entities/favourite.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/domain/usecases/add_favourite.dart';
+import 'package:auth_app/data/models/add_favourite_req_params.dart';
+
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
 // ─────────────────────────────────────────────────────────────────────────
@@ -133,7 +140,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _is3D = false;
 
   final Map<String, Uint8List> _categoryImageCache = {};
-  bool _imagesLoaded = false; // Add this flag
+  bool _imagesLoaded = false;
 
   mb.MapboxMap? _mapboxMap;
   Map<String, Object>? _mapConfig;
@@ -216,7 +223,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _preloadCategoryImages() async {
-    final categories = ['mensa', 'cafe', 'library', 'default', 'destination'];
+    final categories = [
+      'mensa',
+      'cafe',
+      'library',
+      'default',
+      'destination',
+      'favourite',
+    ];
     for (final cat in categories) {
       final assetPath = getPinAssetForCategory(cat);
       final byteData = await rootBundle.load(assetPath);
@@ -290,11 +304,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     // Show loading indicator while images are loading
     if (!_imagesLoaded) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // We need to choose how tall the panel should be, based on which content it’s showing.
@@ -558,12 +568,66 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   _panelController.close();
                   _startRouteFlow(LatLng(p.lat, p.lng));
                 },
-                onAddToFavourites: () {
-                  FavouritesManager().add(p);
-                  setState(() => _buildingPanelPointer = null);
-                  _panelController.close();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${p.name} added to favourites!')),
+                onAddToFavourites: () async {
+                  //print('[DEBUG] Add to Favourites button pressed');
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  /*print(
+                    '[DEBUG] Calling AddFavouriteUseCase with: '
+                    'name=${p.name}, lat=${p.lat}, lng=${p.lng}',
+                  );*/
+
+                  final result = await sl<AddFavouriteUseCase>().call(
+                    param: AddFavouriteReqParams(
+                      name: p.name,
+                      latitude: p.lat,
+                      longitude: p.lng,
+                    ),
+                  );
+                  //print('[DEBUG] AddFavouriteUseCase result: $result');
+
+                  Navigator.of(context).pop();
+
+                  result.fold(
+                    (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to add favourite: $error'),
+                        ),
+                      );
+                    },
+                    (_) async {
+                      if (!mounted) return;
+                      //print('[DEBUG] Favourite added successfully, reloading favourites...');
+                      final updated = await sl<GetFavouritesUseCase>().call();
+                      if (!mounted) return;
+                      updated.fold(
+                        (error) => print(
+                          '[DEBUG] Failed to reload favourites: $error',
+                        ),
+                        (favs) {
+                          if (!mounted) return;
+                          Provider.of<UserProvider>(
+                            context,
+                            listen: false,
+                          ).setFavourites(favs);
+                        },
+                      );
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${p.name} added to favourites!'),
+                        ),
+                      );
+                      setState(() => _buildingPanelPointer = null);
+                      _panelController.close();
+                    },
                   );
                 },
                 onClose: () {
@@ -625,8 +689,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     final segs = data.segments;
                     if (segs != null && segs.isNotEmpty) {
                       return segs.first.fromStop ??
-                             segs.first.toStop   ??
-                             'Start';
+                          segs.first.toStop ??
+                          'Start';
                     }
                     return 'Start';
                   },
@@ -637,8 +701,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     final segs = data.segments;
                     if (segs != null && segs.isNotEmpty) {
                       return segs.last.toStop ??
-                             segs.last.fromStop ??
-                             'Destination';
+                          segs.last.fromStop ??
+                          'Destination';
                     }
                     return 'Destination';
                   },
@@ -648,46 +712,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 );
               } else {
                 return RouteOptionsSheet(
-                  routesNotifier : _panelRoutes!,
-                  currentMode    : _panelMode ?? TravelMode.walk,
+                  routesNotifier: _panelRoutes!,
+                  currentMode: _panelMode ?? TravelMode.walk,
                   scrollController: sc,
-                  onModeChanged  : _changeTravelMode,
-                  onClose        : () {
+                  onModeChanged: _changeTravelMode,
+                  onClose: () {
                     _panelController.close();
                     _notifyNavBar(false);
                   },
-                  onShowDetails  : () {
+                  onShowDetails: () {
                     setState(() => _showRouteDetails = true);
                   },
                 );
               }
             }
-  // ── helpers to derive start / end labels if server left them blank ─────────
-  String _deriveStartName(RouteData? data) {
-    if (data == null) return 'Start';
-    final raw = data.customStartName;
-    if (raw != null && raw.trim().isNotEmpty) return raw;
-    final segs = data.segments;
-    if (segs != null && segs.isNotEmpty) {
-      return segs.first.fromStop ??
-             segs.first.toStop   ??
-             'Start';
-    }
-    return 'Start';
-  }
+            // ── helpers to derive start / end labels if server left them blank ─────────
+            String _deriveStartName(RouteData? data) {
+              if (data == null) return 'Start';
+              final raw = data.customStartName;
+              if (raw != null && raw.trim().isNotEmpty) return raw;
+              final segs = data.segments;
+              if (segs != null && segs.isNotEmpty) {
+                return segs.first.fromStop ?? segs.first.toStop ?? 'Start';
+              }
+              return 'Start';
+            }
 
-  String _deriveEndName(RouteData? data) {
-    if (data == null) return 'Destination';
-    final raw = data.customEndName;
-    if (raw != null && raw.trim().isNotEmpty) return raw;
-    final segs = data.segments;
-    if (segs != null && segs.isNotEmpty) {
-      return segs.last.toStop ??
-             segs.last.fromStop ??
-             'Destination';
-    }
-    return 'Destination';
-  }
+            String _deriveEndName(RouteData? data) {
+              if (data == null) return 'Destination';
+              final raw = data.customEndName;
+              if (raw != null && raw.trim().isNotEmpty) return raw;
+              final segs = data.segments;
+              if (segs != null && segs.isNotEmpty) {
+                return segs.last.toStop ?? segs.last.fromStop ?? 'Destination';
+              }
+              return 'Destination';
+            }
+
             if (_coordinatePanelLatLng != null) {
               final latlng = _coordinatePanelLatLng!;
               return ClipRRect(
@@ -912,11 +973,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 top: 180,
                 right: 20,
                 child: AnimatedSlide(
-                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
+                  offset: _searchActive
+                      ? const Offset(0, -1)
+                      : Offset.zero, // Slide up when search is active
                   duration: _animDuration,
                   curve: Curves.easeInOut,
                   child: AnimatedOpacity(
-                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
+                    opacity: _searchActive
+                        ? 0
+                        : 1, // Fade out when search is active
                     duration: _animDuration,
                     child: FloatingActionButton.extended(
                       heroTag: 'toggle3d',
@@ -937,7 +1002,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         if (_mapboxMap != null) {
                           _mapboxMap!.easeTo(
                             mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
-                            mb.MapAnimationOptions(duration: 600, startDelay: 0),
+                            mb.MapAnimationOptions(
+                              duration: 600,
+                              startDelay: 0,
+                            ),
                           );
                         }
                       },
@@ -1191,6 +1259,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
     final scooterMarkers = buildScooterMarkers(segments);
 
+    // 1. Favourites & Icon aus Provider/Cache holen
+    final favourites = Provider.of<UserProvider>(context).favourites;
+    final favouriteIcon = _categoryImageCache['favourite'];
+    if (favouriteIcon == null) {
+      // Show loading indicator while icon is loading
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // 2. Marker-Annotations
+    final allAnnotations = [
+      ..._interactiveAnnotations, // normal POIs
+      ...buildFavouriteAnnotations(favourites, favouriteIcon), // Favourites!
+    ];
+
     return MapboxMapWidget(
       markerAnnotations: _interactiveAnnotations,
       navBarHeight: _navBarHeight,
@@ -1253,13 +1335,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           backgroundColor: Colors.white,
           onPressed: () => _goToCurrentLocation(moveMap: true),
           child: GradientWidget(
-          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-          child: const Icon(
-            Icons.my_location,
-            color: Colors.white,
-            size: 24,
+            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            child: const Icon(Icons.my_location, color: Colors.white, size: 24),
           ),
-        ),
         ),
       ),
     ),
@@ -1279,17 +1357,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           heroTag: 'tubutton',
           backgroundColor: Colors.white,
           label: GradientWidget(
-          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-          child: const Text(
-            'TU',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            child: const Text(
+              'TU',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
-        ),
-          // icon: const Icon(Icons.school, color: Colors.blue), 
+          // icon: const Icon(Icons.school, color: Colors.blue),
           onPressed: () {
             
             _animatedMapboxMove(LatLng(52.5125, 13.3269), 15.0);
@@ -1301,36 +1379,36 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   );
 
   void _resetToDefaultState() {
-  // Close any open panels
-  if (_panelController.isPanelOpen) {
-    _panelController.close();
+    // Close any open panels
+    if (_panelController.isPanelOpen) {
+      _panelController.close();
+    }
+
+    // Clear any active states
+    setState(() {
+      _buildingPanelPointer = null;
+      _coordinatePanelLatLng = null;
+      _activeCategory = null;
+      _activeCategoryColor = null;
+      _activeCategoryPointers = [];
+    });
+
+    // Reset markers to show all
+    _filterMarkersByCategory(null);
+
+    // Clear building highlight if active
+    if (_clearBuildingHighlight != null) {
+      _clearBuildingHighlight!();
+    }
+
+    // Restore camera if zoomed to building
+    if (_isBuildingZoomed && _mapboxMap != null) {
+      _isBuildingZoomed = false;
+      _previousCameraOptions = null;
+    }
+
+    _notifyNavBar(false);
   }
-  
-  // Clear any active states
-  setState(() {
-    _buildingPanelPointer = null;
-    _coordinatePanelLatLng = null;
-    _activeCategory = null;
-    _activeCategoryColor = null;
-    _activeCategoryPointers = [];
-  });
-  
-  // Reset markers to show all
-  _filterMarkersByCategory(null);
-  
-  // Clear building highlight if active
-  if (_clearBuildingHighlight != null) {
-    _clearBuildingHighlight!();
-  }
-  
-  // Restore camera if zoomed to building
-  if (_isBuildingZoomed && _mapboxMap != null) {
-    _isBuildingZoomed = false;
-    _previousCameraOptions = null;
-  }
-  
-  _notifyNavBar(false);
-}
 
   // ── markers, filter & search ─────────────────────────────────────
   Uint8List _loadImageBytesForCategory(String category) {
@@ -1472,6 +1550,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       onTap: () => _onMarkerTap(pointer),
       category: pointer.category,
     );
+  }
+
+  List<InteractiveAnnotation> buildFavouriteAnnotations(
+    List<FavouriteEntity> favourites,
+    Uint8List favouriteIcon,
+  ) {
+    return favourites.map((fav) {
+      return InteractiveAnnotation(
+        options: mb.PointAnnotationOptions(
+          geometry: mb.Point(coordinates: mb.Position(fav.lng, fav.lat)),
+          iconSize: 2.0,
+          image: favouriteIcon,
+          iconAnchor: mb.IconAnchor.BOTTOM,
+        ),
+        onTap: () {
+          // Optional: open Panel or display info
+        },
+        category: 'favourite',
+      );
+    }).toList();
   }
 
   // ── taps ─────────────────────────────────────────────────────────
@@ -1710,7 +1808,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }) {
     _panelRoutes = routesNotifier;
     _panelMode = currentMode;
-    _showRouteDetails = false;        // always start in “options” mode
+    _showRouteDetails = false; // always start in “options” mode
     setState(() {}); // rebuild SlidingUpPanel
     _notifyNavBar(true);
     _panelController.open();
@@ -1809,6 +1907,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return 'assets/icons/pin_library_64.png';
       case 'destination':
         return 'assets/icons/pin_destination_64.png';
+      case 'favourite':
+        return 'assets/icons/pin_favourite_64.png';
       default:
         return 'assets/icons/pin_default_64.png';
     }

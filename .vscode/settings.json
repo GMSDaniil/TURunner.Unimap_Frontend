@@ -12,6 +12,9 @@
         "forward_list": "cpp",
         "limits": "cpp",
         "ratio": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "typeinfo": "cpp",
+        "__locale": "cpp",
+        "locale": "cpp"
     }
 }

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:auth_app/common/providers/user.dart';
+import 'package:auth_app/domain/entities/favourite.dart';
+import 'package:auth_app/domain/usecases/delete_favourite.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'package:auth_app/data/favourites_manager.dart';
+import 'package:auth_app/service_locator.dart';
+import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 
 class FavouritesPage extends StatefulWidget {
   const FavouritesPage({super.key});
@@ -10,21 +16,18 @@ class FavouritesPage extends StatefulWidget {
 }
 
 class _FavouritesPageState extends State<FavouritesPage> {
+  Set<String> deletingIds = {};
   @override
   Widget build(BuildContext context) {
     final gradient = Theme.of(context).primaryGradient;
+    final favourites = Provider.of<UserProvider>(context).favourites;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // appBar: AppBar(
-      //   title: Text('Favourites', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
-      //   centerTitle: true ,
-      //   automaticallyImplyLeading: false,
-      // ),
       body: SafeArea(
         child: Stack(
           children: [
-            FavouritesManager().favourites.isEmpty
+            favourites.isEmpty
                 ? Center(
                     child: ShaderMask(
                       shaderCallback: (bounds) => gradient.createShader(
@@ -41,9 +44,9 @@ class _FavouritesPageState extends State<FavouritesPage> {
                     ),
                   )
                 : ListView.builder(
-                    itemCount: FavouritesManager().favourites.length,
+                    itemCount: favourites.length,
                     itemBuilder: (context, index) {
-                      final pointer = FavouritesManager().favourites[index];
+                      final fav = favourites[index];
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.symmetric(
@@ -56,17 +59,65 @@ class _FavouritesPageState extends State<FavouritesPage> {
                             color: Colors.pink,
                           ),
                           title: Text(
-                            pointer.name,
+                            fav.name,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          subtitle: Text(pointer.category),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline),
-                            onPressed: () {
-                              setState(() {
-                                FavouritesManager().remove(pointer);
-                              });
-                            },
+                            // Disable button if this favourite is currently being deleted
+                            onPressed: deletingIds.contains(fav.id)
+                                ? null // Button is disabled while deleting
+                                : () async {
+                                    setState(() {
+                                      deletingIds.add(fav.id);
+                                    });
+
+                                    final result =
+                                        await sl<DeleteFavouriteUseCase>().call(
+                                          param: DeleteFavouriteReqParams(
+                                            favouriteId: fav.id.toString(),
+                                          ),
+                                        );
+
+                                    if (!mounted) return;
+
+                                    result.fold(
+                                      (error) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Failed to delete: $error',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      (_) async {
+                                        if (!mounted) return;
+                                        // Reload favourites from backend after successful delete
+                                        final getResult =
+                                            await sl<GetFavouritesUseCase>()
+                                                .call();
+                                        if (!mounted) return;
+                                        getResult.fold((error) {}, (
+                                          freshFavourites,
+                                        ) {
+                                          Provider.of<UserProvider>(
+                                            context,
+                                            listen: false,
+                                          ).setFavourites(freshFavourites);
+                                        });
+                                      },
+                                    );
+
+                                    if (mounted) {
+                                      setState(() {
+                                        deletingIds.remove(fav.id);
+                                      });
+                                    }
+                                  },
                           ),
                         ),
                       );

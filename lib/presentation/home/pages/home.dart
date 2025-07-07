@@ -12,6 +12,9 @@ import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:provider/provider.dart';
+import 'package:auth_app/common/providers/user.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -69,6 +72,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final favourites = Provider.of<UserProvider>(context).favourites;
+
     if (_pages == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }

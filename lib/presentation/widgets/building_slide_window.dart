@@ -96,107 +96,107 @@ class BuildingSlideWindow extends StatelessWidget {
         child: SafeArea(
           top: false,
           // child: SingleChildScrollView(
-            // physics: const ClampingScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Default handle for all panels
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+          // physics: const ClampingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Default handle for all panels
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
+                ),
 
-                  // Header: title & small circular close button aligned with top of title
-                  Row(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start, // align children to top
-                    children: [
-                      // Title + category
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              category,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
+                // Header: title & small circular close button aligned with top of title
+                Row(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start, // align children to top
+                  children: [
+                    // Title + category
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            category,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
+                    ),
+                    const SizedBox(width: 8),
 
-                      // smaller circular close button, no top margin
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey.shade200,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.close, size: 16),
-                          splashRadius: 16,
-                          padding: const EdgeInsets.all(4),
-                          onPressed: onClose,
-                        ),
+                    // smaller circular close button, no top margin
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade200,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Row of action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GradientActionButton(
-                          onPressed: onCreateRoute,
-                          icon: Icons.directions,
-                          label: 'Create Route',
-                          colors: const [_purple, _pink],
-                        ),
+                      child: IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        splashRadius: 16,
+                        padding: const EdgeInsets.all(4),
+                        onPressed: onClose,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: GradientActionButton(
-                          onPressed: onAddToFavourites,
-                          icon: Icons.favorite_border,
-                          label: 'Add to Favourites',
-                          colors: const [_deepOrange, _orange],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (isCanteen && onShowMenu != null) ...[
-                    const SizedBox(height: 16),
-                    GradientActionButton(
-                      onPressed: onShowMenu!,
-                      icon: Icons.restaurant_menu,
-                      label: 'Show Mensa Plan',
-                      colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+
+                // Row of action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: GradientActionButton(
+                        onPressed: onCreateRoute,
+                        icon: Icons.directions,
+                        label: 'Create Route',
+                        colors: const [_purple, _pink],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: GradientActionButton(
+                        onPressed: onAddToFavourites,
+                        icon: Icons.favorite_border,
+                        label: 'Add to Favourites',
+                        colors: const [_deepOrange, _orange],
+                      ),
+                    ),
+                  ],
+                ),
+                if (isCanteen && onShowMenu != null) ...[
+                  const SizedBox(height: 16),
+                  GradientActionButton(
+                    onPressed: onShowMenu!,
+                    icon: Icons.restaurant_menu,
+                    label: 'Show Mensa Plan',
+                    colors: const [Color(0xFF4CAF50), Color(0xFF43A047)],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
+      ),
       // ),
     );
   }

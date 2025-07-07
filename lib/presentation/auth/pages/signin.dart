@@ -107,12 +107,14 @@ class SigninPage extends StatelessWidget {
 
     // Parse error message and set appropriate field errors
     final lowerError = errorMessage.toLowerCase();
-    
+
     if (lowerError.contains('user') || lowerError.contains('user not found')) {
       _usernameError.value = 'Username not found';
-    } else if (lowerError.contains('password') || lowerError.contains('incorrect password')) {
+    } else if (lowerError.contains('password') ||
+        lowerError.contains('incorrect password')) {
       _passwordError.value = 'Incorrect password';
-    } else if (lowerError.contains('invalid credentials') || lowerError.contains('login failed')) {
+    } else if (lowerError.contains('invalid credentials') ||
+        lowerError.contains('login failed')) {
       // Generic error - show on both fields
       _usernameError.value = 'Invalid credentials';
       _passwordError.value = 'Invalid credentials';
@@ -157,15 +159,15 @@ class SigninPage extends StatelessWidget {
                 // Add error border if there's an error
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: error != null 
-                    ? const BorderSide(color: Colors.red, width: 1.0)
-                    : BorderSide.none,
+                  borderSide: error != null
+                      ? const BorderSide(color: Colors.red, width: 1.0)
+                      : BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: error != null 
-                    ? const BorderSide(color: Colors.red, width: 2.0)
-                    : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
+                  borderSide: error != null
+                      ? const BorderSide(color: Colors.red, width: 2.0)
+                      : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
                 ),
               ),
               style: const TextStyle(color: Colors.black),
@@ -181,10 +183,7 @@ class SigninPage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 error,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.red, fontSize: 12),
               ),
             ],
           ],
@@ -218,15 +217,15 @@ class SigninPage extends StatelessWidget {
                 // Add error border if there's an error
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: error != null 
-                    ? const BorderSide(color: Colors.red, width: 1.0)
-                    : BorderSide.none,
+                  borderSide: error != null
+                      ? const BorderSide(color: Colors.red, width: 1.0)
+                      : BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: error != null 
-                    ? const BorderSide(color: Colors.red, width: 2.0)
-                    : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
+                  borderSide: error != null
+                      ? const BorderSide(color: Colors.red, width: 2.0)
+                      : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
                 ),
               ),
               style: const TextStyle(color: Colors.black),
@@ -242,10 +241,7 @@ class SigninPage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 error,
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.red, fontSize: 12),
               ),
             ],
           ],

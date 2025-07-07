@@ -59,6 +59,13 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
     final result = await sl<FavouritesApiService>().deleteFavourite(params);
 
     return result.fold((errorMessage) => Left(errorMessage), (response) {
+      // prüfung, ob response wirklich ein response-objekt ist.
+
+      // Wenn response ein string ist, dann hat der server keinen inhalt geliefert
+      if (response is String) {
+        // Backend hat keinen Content geliefert, aber Status ist trzm ok
+        return const Right(null);
+      }
       if (response.statusCode == 200 || response.statusCode == 204) {
         return const Right(null);
       } else {

@@ -10,7 +10,8 @@ class FavouriteResponse {
       favourites: (json as List)
           .map(
             (e) => FavouriteEntity(
-              placeId: e['placeId'] ?? 0,
+              id: e['id'] ?? '',
+              placeId: e['placeId'] is int ? e['placeId'] : null,
               name: e['name'] ?? 'Unnamed',
               lat: (e['latitude'] as num).toDouble(),
               lng: (e['longitude'] as num).toDouble(),

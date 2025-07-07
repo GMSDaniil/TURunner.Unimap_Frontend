@@ -12,6 +12,12 @@ import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/service_locator.dart';
 
+import 'package:auth_app/domain/usecases/add_favourite.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/data/models/add_favourite_req_params.dart';
+import 'package:provider/provider.dart';
+import 'package:auth_app/common/providers/user.dart';
+
 /// Manages all info / coordinate bottom‐sheets that pop up from the map.
 /// Every sheet is opened with **`showBottomSheet` on the root scaffold**
 /// (passed in as a [GlobalKey]) so the map underneath stays interactive and
@@ -84,7 +90,7 @@ class BuildingPopupManager {
                 result.fold(
                   (error) => ScaffoldMessenger.of(
                     ctx,
-                  ).showSnackBar(SnackBar(content: Text('Fehler: $error'))),
+                  ).showSnackBar(SnackBar(content: Text('Error: $error'))),
                   (menu) => showModalBottomSheet(
                     context: ctx,
                     isScrollControlled: true,
@@ -108,11 +114,60 @@ class BuildingPopupManager {
               }
             : null,
         onCreateRoute: onCreateRoute ?? () {},
-        onAddToFavourites: () {
-          FavouritesManager().add(pointer);
-          _closeSheet();
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(content: Text('$title added to favourites!')),
+        onAddToFavourites: () async {
+          print('[DEBUG] Add to Favourites button pressed');
+          showDialog(
+            context: ctx,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator()),
+          );
+
+          print(
+            '[DEBUG] Calling AddFavouriteUseCase with: '
+            'name=${pointer.name}, lat=${pointer.lat}, lng=${pointer.lng}',
+          );
+
+          final result = await sl<AddFavouriteUseCase>().call(
+            param: AddFavouriteReqParams(
+              name: pointer.name,
+              latitude: pointer.lat,
+              longitude: pointer.lng,
+            ),
+          );
+          print('[DEBUG] AddFavouriteUseCase result: $result');
+
+          Navigator.of(ctx).pop();
+          result.fold(
+            (error) {
+              print('[DEBUG] Failed to add favourite: $error');
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(content: Text('Failed to add favourite: $error')),
+              );
+            },
+            (_) async {
+              print(
+                '[DEBUG] Favourite added successfully, reloading favourites...',
+              );
+
+              final updated = await sl<GetFavouritesUseCase>().call();
+              updated.fold(
+                (error) => print('[DEBUG] Failed to reload favourites: $error'),
+                (favs) {
+                  print(
+                    '[DEBUG] setFavourites called with ${favs.length} items',
+                  );
+                  Provider.of<UserProvider>(
+                    ctx,
+                    listen: false,
+                  ).setFavourites(favs);
+                },
+              );
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(content: Text('${pointer.name} added to favourites!')),
+              );
+              _closeSheet();
+              onClose();
+            },
           );
         },
         onClose: _closeSheet,
@@ -259,13 +314,63 @@ class _SimpleBuildingSheet extends StatelessWidget {
 
               // Add to favourites
               ElevatedButton.icon(
-                onPressed: () {
-                  FavouritesManager().add(pointer);
-                  onClose();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${pointer.name} added to favourites!'),
+                onPressed: () async {
+                  print('DEBUG: Add to Favourites button pressed');
+                  // Show loading indicator while adding
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  print('DEBUG: About to call AddFavouriteUseCase');
+
+                  print(
+                    'AddFavouriteUseCase wird aufgerufen mit: ${pointer.name}, ${pointer.lat}, ${pointer.lng}',
+                  );
+
+                  // Call AddFavouriteUseCase with real pointer data
+                  final result = await sl<AddFavouriteUseCase>().call(
+                    param: AddFavouriteReqParams(
+                      name: pointer.name,
+                      latitude: pointer.lat,
+                      longitude: pointer.lng,
                     ),
+                  );
+                  print('AddFavouriteUseCase result: $result');
+
+                  // Remove loading indicator
+                  Navigator.of(context).pop();
+
+                  result.fold(
+                    (error) {
+                      // Show error message if adding failed
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to add favourite: $error'),
+                        ),
+                      );
+                    },
+                    (_) async {
+                      // Reload favourites from backend and update UserProvider
+                      final updated = await sl<GetFavouritesUseCase>().call();
+                      updated.fold(
+                        (error) {},
+                        (favs) => Provider.of<UserProvider>(
+                          context,
+                          listen: false,
+                        ).setFavourites(favs),
+                      );
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${pointer.name} added to favourites!'),
+                        ),
+                      );
+                      // Optionally close the popup
+                      onClose();
+                    },
                   );
                 },
                 icon: const Icon(Icons.favorite),
