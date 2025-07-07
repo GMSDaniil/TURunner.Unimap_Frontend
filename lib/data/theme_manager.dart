@@ -61,46 +61,5 @@ class ThemeManager {
       return MapTheme.night;
     }
   }
-  
-  static Duration getNextThemeChangeDelay() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    final sunriseSunset = getSunriseSunset(
-      _berlinLocation.latitude,
-      _berlinLocation.longitude,
-      Duration(hours: 2),
-      now,
-    );
-    
-    final sunrise = sunriseSunset.sunrise;
-    final sunset = sunriseSunset.sunset;
-    
-    // Calculate next transition times
-    final dawnStart = sunrise.subtract(Duration(minutes: 45));
-    final dawnEnd = sunrise.add(Duration(minutes: 15));
-    final duskStart = sunset.subtract(Duration(minutes: 15));
-    final duskEnd = sunset.add(Duration(minutes: 45));
-    
-    // Find next transition
-    final transitions = [dawnStart, dawnEnd, duskStart, duskEnd];
-    
-    for (final transition in transitions) {
-      if (now.isBefore(transition)) {
-        return transition.difference(now);
-      }
-    }
-    
-    // If no transition today, check tomorrow
-    final tomorrow = today.add(Duration(days: 1));
-    final tomorrowSunrise = getSunriseSunset(
-      _berlinLocation.latitude,
-      _berlinLocation.longitude,
-      Duration(hours: 2),
-      tomorrow,
-    );
-    
-    final nextDawn = tomorrowSunrise.sunrise.subtract(Duration(minutes: 45));
-    return nextDawn.difference(now);
-  }
+
 }

@@ -215,8 +215,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _updateThemeTimer() {
     _themeTimer?.cancel();
     
-    final delay = ThemeManager.getNextThemeChangeDelay();
-    _themeTimer = Timer(delay, () {
+    _themeTimer = Timer(Duration(minutes: 5), () {
       final newTheme = ThemeManager.getCurrentTheme();
       if (_currentMapTheme != newTheme) {
         setState(() {
