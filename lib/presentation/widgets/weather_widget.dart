@@ -57,6 +57,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     )..then((either) {
         either.fold((_) => null, (r) {
           _globalCache[key] = r;
+
           widget.onWeatherChanged?.call(r.weather);
           _globalFetchTime[key] = DateTime.now();
         });

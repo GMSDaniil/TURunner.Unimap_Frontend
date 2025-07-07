@@ -165,12 +165,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // every focus toggle.  A ValueKey guarantees Flutter re-uses the
   // same State object, keeping the previously-fetched data alive.
   // ────────────────────────────────────────────────────────────────
+  bool _isRaining = false;
   late final Widget _persistentWeather = WeatherWidget(
     key: const ValueKey('persistentWeather'),
     location: const LatLng(matheLat, matheLon),
     onWeatherChanged: (weather) {
-      if(weather.description.toLowerCase() == 'rain' ||
-         weather.description.toLowerCase() == 'drizzle') {
+      print('[DEBUG] Weather changed: ${weather.description}');
+      if(weather.description.toLowerCase().contains('rain') ||
+         weather.description.toLowerCase().contains('drizzle')) {
         setState(() => _isRaining = true);
       } else {
         setState(() => _isRaining = false);
@@ -178,7 +180,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     },
   );
 
-  bool _isRaining = false;
+  
 
   String? _activeCategory;
   Color? _activeCategoryColor;
