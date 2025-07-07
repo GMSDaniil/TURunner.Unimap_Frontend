@@ -168,7 +168,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   late final Widget _persistentWeather = WeatherWidget(
     key: const ValueKey('persistentWeather'),
     location: const LatLng(matheLat, matheLon),
+    onWeatherChanged: (weather) {
+      if(weather.description.toLowerCase() == 'rain' ||
+         weather.description.toLowerCase() == 'drizzle') {
+        setState(() => _isRaining = true);
+      } else {
+        setState(() => _isRaining = false);
+      }
+    },
   );
+
+  bool _isRaining = false;
 
   String? _activeCategory;
   Color? _activeCategoryColor;
@@ -969,83 +979,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              Positioned(
-                top: 180,
-                right: 20,
-                child: AnimatedSlide(
-                  offset: _searchActive
-                      ? const Offset(0, -1)
-                      : Offset.zero, // Slide up when search is active
-                  duration: _animDuration,
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _searchActive
-                        ? 0
-                        : 1, // Fade out when search is active
-                    duration: _animDuration,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'toggle3d',
-                      backgroundColor: Colors.white,
-                      label: GradientWidget(
-                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-                        child: Text(
-                          _is3D ? '2D' : '3D',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() => _is3D = !_is3D);
-                        if (_mapboxMap != null) {
-                          _mapboxMap!.easeTo(
-                            mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
-                            mb.MapAnimationOptions(
-                              duration: 600,
-                              startDelay: 0,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-  top: 250,
-  right: 20,
-  child: AnimatedSlide(
-    offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
-    duration: _animDuration,
-    curve: Curves.easeInOut,
-    child: AnimatedOpacity(
-      opacity: _searchActive ? 0 : 1, // Fade out when search is active
-      duration: _animDuration,
-      child: FloatingActionButton(
-        heroTag: 'theme_toggle',
-        backgroundColor: Colors.white,
-        onPressed: () {
-          // Cycle through themes manually
-          final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
-          final nextIndex = (currentIndex + 1) % MapTheme.values.length;
-          setState(() {
-            _currentMapTheme = MapTheme.values[nextIndex];
-          });
-        },
-        child: GradientWidget(
-          colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-          child: Icon(
-            _getThemeIcon(_currentMapTheme),
-            color: Colors.white,
-            size: 22,
-          ),
-        ),
-      ),
-    ),
-  ),
-),
+              _build3DButton(),
+              
+              _buildThemesButton(),
+              _buildRainButton(),
 
 
               if (!_panelActive) _buildTUButton(),
@@ -1279,6 +1216,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
       busStopMarkers: busMarkers,
+      isRaining: _isRaining,
       segments: segments,
       mapTheme: _currentMapTheme,
       onMapTap: _onMapTap,
@@ -1342,6 +1280,114 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ),
     ),
   );
+
+  Widget _build3DButton() => Positioned(
+                top: 180,
+                right: 20,
+                child: AnimatedSlide(
+                  offset: _searchActive
+                      ? const Offset(0, -1)
+                      : Offset.zero, // Slide up when search is active
+                  duration: _animDuration,
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _searchActive
+                        ? 0
+                        : 1, // Fade out when search is active
+                    duration: _animDuration,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'toggle3d',
+                      backgroundColor: Colors.white,
+                      label: GradientWidget(
+                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+                        child: Text(
+                          _is3D ? '2D' : '3D',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      onPressed: () {
+                        setState(() => _is3D = !_is3D);
+                        if (_mapboxMap != null) {
+                          _mapboxMap!.easeTo(
+                            mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
+                            mb.MapAnimationOptions(
+                              duration: 600,
+                              startDelay: 0,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              );
+
+  Widget _buildRainButton() => Positioned(
+                top: 320,
+                right: 20,
+                child: AnimatedSlide(
+                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
+                  duration: _animDuration,
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
+                    duration: _animDuration,
+                    child: FloatingActionButton(
+                      heroTag: 'rain_toggle',
+                      backgroundColor: Colors.white,
+                      onPressed: () {
+                        setState(() => _isRaining = !_isRaining);
+                      },
+                      child: GradientWidget(
+                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+                        child: Icon(
+                          Icons.thunderstorm,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+
+  Widget _buildThemesButton() => Positioned(
+                top: 250,
+                right: 20,
+                child: AnimatedSlide(
+                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
+                  duration: _animDuration,
+                  curve: Curves.easeInOut,
+                  child: AnimatedOpacity(
+                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
+                    duration: _animDuration,
+                    child: FloatingActionButton(
+                      heroTag: 'theme_toggle',
+                      backgroundColor: Colors.white,
+                      onPressed: () {
+                        // Cycle through themes manually
+                        final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
+                        final nextIndex = (currentIndex + 1) % MapTheme.values.length;
+                        setState(() {
+                          _currentMapTheme = MapTheme.values[nextIndex];
+                        });
+                      },
+                      child: GradientWidget(
+                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+                        child: Icon(
+                          _getThemeIcon(_currentMapTheme),
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
 
   Widget _buildTUButton() => Positioned(
     bottom: _bottomOffset,

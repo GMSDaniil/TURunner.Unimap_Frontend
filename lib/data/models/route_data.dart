@@ -6,11 +6,14 @@ class RouteData {
   /// Custom start name provided by the route plan bar.
   final String? customStartName;
 
+  final bool error;
+
   /// Custom end name provided by the route plan bar.
   final String? customEndName;
 
   RouteData({
     required this.segments,
+    this.error = false,
     this.customStartName,
     this.customEndName,
   });

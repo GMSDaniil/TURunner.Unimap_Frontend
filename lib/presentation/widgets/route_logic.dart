@@ -63,8 +63,11 @@ class RouteLogic {
     final walkingResult = await sl<FindWalkingRouteUseCase>().call(param: params);
     walkingResult.fold(
       (error) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $error')));
+        setState((){
+              final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+              newMap[TravelMode.walk] = RouteData(segments: [], error: true);
+              routesNotifier.value = newMap;
+            });
       },
       (routeResponse) {
         setState(() {
@@ -121,8 +124,11 @@ class RouteLogic {
       }
       busResult.fold(
         (error) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Bus route error: $error')));
+          setState((){
+              final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+              newMap[TravelMode.bus] = RouteData(segments: [], error: true);
+              routesNotifier.value = newMap;
+            });
         },
         (routeResponse) {
           setState(() {
@@ -160,8 +166,11 @@ class RouteLogic {
     sl<FindScooterRouteUseCase>().call(param: params).then((scooterResult) {
       scooterResult.fold(
         (error) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Scooter route error: $error')));
+          setState((){
+              final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+              newMap[TravelMode.scooter] = RouteData(segments: [], error: true);
+              routesNotifier.value = newMap;
+            });
         },
         (response) {
           List<RouteSegment> scooterSegments = [];
@@ -296,9 +305,11 @@ class RouteLogic {
 
       result.fold(
         (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $error')),
-          );
+          setState((){
+              final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
+              newMap[TravelMode.scooter] = RouteData(segments: [], error: true);
+              routesNotifier.value = newMap;
+            });
         },
         (response) {
           List<RouteSegment> scooterSegments = [];

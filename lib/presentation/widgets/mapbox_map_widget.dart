@@ -28,6 +28,7 @@ class MapboxMapWidget extends StatefulWidget {
   final List<InteractiveAnnotation> markerAnnotations;
   final Map<String, Uint8List> markerImageCache;
   final MapTheme? mapTheme;
+  bool isRaining = false; // New: flag to control rain overlay
   final LatLng? destinationLatLng;
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
@@ -39,8 +40,8 @@ class MapboxMapWidget extends StatefulWidget {
   /// New: optional camera change callback
   final void Function(CameraChangedEventData)? onCameraChanged;
 
-  const MapboxMapWidget({
-    Key? key,
+  MapboxMapWidget({
+    super.key,
     required this.markerAnnotations,
     required this.navBarHeight,
     this.destinationLatLng,
@@ -48,13 +49,14 @@ class MapboxMapWidget extends StatefulWidget {
     required this.markerImageCache,
     required this.busStopMarkers,
     required this.segments,
+    this.isRaining = false,
     required this.onMapTap,
     required this.onMapCreated,
     this.onClearHighlightController,
     required this.parentContext,
     this.onCameraChanged,
     List<RouteSegment> routePoints = const [],
-  }) : super(key: key);
+  });
 
   @override
   State<MapboxMapWidget> createState() => _MapBoxWidgetState();
@@ -218,10 +220,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
 
     if(widget.segments != oldWidget.segments) {
+      drawStyledRouteSegments(widget.segments);
       if (widget.busStopMarkers != null) {
         drawBusStopMarkers(widget.busStopMarkers!);
       }
-      drawStyledRouteSegments(widget.segments);
+      
       print("Updated polylines");
       
       // Draw bus stop markers if provided
@@ -301,46 +304,9 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
   }
 
-  // ── 2) Add a little circle at each changeover ─────────────────
-  for (int i = 1; i < segments.length; i++) {
-    if (segments[i].mode != segments[i - 1].mode) {
-      // pick the exact coord where you switch
-      final LatLng switchPoint = segments[i].path.first;
-      final srcId = 'change-source-$i';
-      final lyrId = 'change-layer-$i';
+  
 
-      // GeoJSON source for that single point
-      await mapboxMap.style.addSource(GeoJsonSource(
-        id: srcId,
-        data: jsonEncode({
-          "type": "FeatureCollection",
-          "features": [
-            {
-              "type": "Feature",
-              "geometry": {
-                "type": "Point",
-                "coordinates": [switchPoint.longitude, switchPoint.latitude]
-              },
-              "properties": {}
-            }
-          ]
-        }),
-      ));
-
-      // tiny white circle with gray outline
-      await mapboxMap.style.addLayer(CircleLayer(
-        id: lyrId,
-        sourceId: srcId,
-        circleEmissiveStrength: 1.0,
-        circleRadius: 6.0,                      // adjust as needed
-        circleColor: Colors.white.value,
-        circleStrokeColor: Colors.grey.value,
-        circleStrokeWidth: 2.0,
-      ));
-    }
-  }
-
-  // ── 3) Draw each route segment as you already do ────────────────
+  // ── 2) Draw each route segment as you already do ────────────────
   for (int i = 0; i < segments.length; i++) {
     final seg = segments[i];
     final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
@@ -457,6 +423,45 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       }
     } catch (e) {
       print('Error adding route segment $i (${seg.mode.name}): $e');
+    }
+  }
+
+  // ── 3) Add a little circle at each changeover ─────────────────
+  for (int i = 1; i < segments.length; i++) {
+    if (segments[i].mode != segments[i - 1].mode) {
+      // pick the exact coord where you switch
+      final LatLng switchPoint = segments[i].path.first;
+      final srcId = 'change-source-$i';
+      final lyrId = 'change-layer-$i';
+
+      // GeoJSON source for that single point
+      await mapboxMap.style.addSource(GeoJsonSource(
+        id: srcId,
+        data: jsonEncode({
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [switchPoint.longitude, switchPoint.latitude]
+              },
+              "properties": {}
+            }
+          ]
+        }),
+      ));
+
+      // tiny white circle with gray outline
+      await mapboxMap.style.addLayer(CircleLayer(
+        id: lyrId,
+        sourceId: srcId,
+        circleEmissiveStrength: 1.0,
+        circleRadius: 6.0,                      // adjust as needed
+        circleColor: Colors.white.value,
+        circleStrokeColor: Colors.grey.value,
+        circleStrokeWidth: 2.0,
+      ));
     }
   }
 
@@ -925,7 +930,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
         },
         onCameraChangeListener: widget.onCameraChanged,
       ),
-      RainOverlay(isRaining: true),]
+      RainOverlay(isRaining: widget.isRaining),]
     );
 
     

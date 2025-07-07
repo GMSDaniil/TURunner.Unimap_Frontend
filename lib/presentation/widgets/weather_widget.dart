@@ -16,8 +16,9 @@ class WeatherWidget extends StatefulWidget {
 
   // If true, displays weather info vertically (column), otherwise horizontally (row)
   //final bool vertical;
+  final void Function(WeatherInfo weather)? onWeatherChanged;
 
-  const WeatherWidget({super.key, required this.location});
+  const WeatherWidget({super.key, required this.location, this.onWeatherChanged});
 
   @override
   State<WeatherWidget> createState() => _WeatherWidgetState();
@@ -56,6 +57,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     )..then((either) {
         either.fold((_) => null, (r) {
           _globalCache[key] = r;
+          widget.onWeatherChanged?.call(r.weather);
           _globalFetchTime[key] = DateTime.now();
         });
       });
