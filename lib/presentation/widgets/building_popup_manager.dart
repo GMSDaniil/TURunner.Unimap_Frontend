@@ -278,7 +278,7 @@ class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
 
     return Material(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: SafeArea(
         top: false,
         child: Padding(
@@ -292,7 +292,10 @@ class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -422,7 +425,7 @@ class _CoordinateSheet extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface, 
         child: SafeArea(
           top: false,
           child: Padding(
@@ -438,7 +441,10 @@ class _CoordinateSheet extends StatelessWidget {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -479,7 +485,10 @@ class _CoordinateSheet extends StatelessWidget {
                       height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.grey.shade200,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.1),
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.close, size: 16),

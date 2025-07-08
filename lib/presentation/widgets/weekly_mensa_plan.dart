@@ -24,14 +24,41 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
     "Friday",
   ];
 
+  List<DateTime> weekDates = [];
+
   @override
   void initState() {
     super.initState();
+    _calculateWeekDates();
     final today = DateTime.now().weekday;
     // If today is saturday or sonnday, we set the selected day to friday
     // otherwise set it to the previous day (Mon-Fri)
     selectedDayIndex = today >= 6 ? 4 : today - 1;
   }
+
+  void _calculateWeekDates() {
+    final now = DateTime.now();
+    final mondayOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    
+    weekDates = List.generate(5, (index) {
+      return mondayOfWeek.add(Duration(days: index));
+    });
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day.$month';
+  }
+
+  bool _isToday(DateTime date) {
+    final today = DateTime.now();
+    return date.year == today.year &&
+           date.month == today.month &&
+           date.day == today.day;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +78,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: Container(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -64,7 +91,10 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                 height: 5,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.black12,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -77,10 +107,12 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
             const SizedBox(height: 12),
             // Weekday selector bar
             SizedBox(
-              height: 48,
+              height: 64,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(weekdayLabels.length, (i) {
+                  final date = weekDates[i];
+                  final isToday = _isToday(date);
                   final isSelected = i == selectedDayIndex;
                   return Expanded(
                     child: GestureDetector(
@@ -94,7 +126,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                         decoration: BoxDecoration(
                           color: isSelected
                               ? const Color(0xFF4CAF50).withOpacity(0.15)
-                              : Colors.transparent,
+                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -109,7 +141,23 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                                     : FontWeight.normal,
                                 color: isSelected
                                     ? const Color(0xFF4CAF50)
-                                    : Colors.black,
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            
+                            Text(
+                              _formatDate(date),
+                              style: TextStyle(
+                                fontWeight: isSelected || isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.secondary
+                                    : isToday
+                                        ? Theme.of(context).colorScheme.secondary
+                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                fontSize: 11,
                               ),
                             ),
                           ],

@@ -15,7 +15,7 @@ class CategoryTopBar extends StatelessWidget {
         child: Container(
           height: 60,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(

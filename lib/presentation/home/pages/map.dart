@@ -858,7 +858,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   top: Radius.circular(28), // Match route options sheet
                 ),
                 child: Material(
-                  color: Theme.of(context).colorScheme.onPrimary,
+                  color: Theme.of(context).colorScheme.surface,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       20,
@@ -875,7 +875,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             width: 40,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.3),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -913,7 +916,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               margin: const EdgeInsets.only(left: 8, top: 0),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.grey.shade200,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.1),
                                 // boxShadow: [
                                 //   BoxShadow(
                                 //     color: Colors.black.withOpacity(0.06),
@@ -2214,7 +2220,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           height: 4,
           margin: const EdgeInsets.only(top: 12, bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -2228,7 +2234,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   '${_activeCategory}',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
               Container(
@@ -2236,10 +2245,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey.shade200,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface , size: 18),
                   splashRadius: 16,
                   padding: const EdgeInsets.all(4),
                   onPressed: () {
@@ -2272,7 +2281,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimary,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -2294,7 +2303,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   ),
                   title: Text(
                     p.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -16,8 +16,8 @@ class AppTheme {
 
   static const Color lightPrimary = Color(0xFF833AB4);
   static const Color lightSecondary = Color(0xFFFF5E3A);
-  static const Color darkPrimary = Color(0xFF9C4DCF);
-  static const Color darkSecondary = Color(0xFFFF7043);
+  static const Color darkPrimary = Color(0xFF6B2C91);    
+  static const Color darkSecondary = Color(0xFFCC4A2A); 
 
   // ✅ Light Theme
   static final ThemeData lightTheme = ThemeData(
@@ -100,8 +100,8 @@ class AppTheme {
       ),
     ),
     colorScheme: ColorScheme.fromSwatch(brightness: Brightness.dark).copyWith(
-      primary: const Color(0xFF9C4DCF),
-      secondary: const Color(0xFFFF7043),
+      primary: darkPrimary,
+      secondary: darkSecondary,
       surface: const Color(0xFF1E1E1E),
       onPrimary: Colors.white,
       onSecondary: Colors.white,
