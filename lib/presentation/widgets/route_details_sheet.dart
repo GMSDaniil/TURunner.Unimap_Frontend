@@ -2,741 +2,425 @@ import 'package:flutter/material.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 
+/// Custom painter for dashed lines
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+  final double thickness;
+  final double dash;
+  final double gap;
 
+  DashedLinePainter({
+    required this.color,
+    required this.thickness,
+    required this.dash,
+    required this.gap,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = thickness
+      ..strokeCap = StrokeCap.round;
+
+    double startY = 0;
+    while (startY < size.height) {
+      canvas.drawLine(
+        Offset(size.width / 2, startY),
+        Offset(size.width / 2, (startY + dash).clamp(0, size.height)),
+        paint,
+      );
+      startY += dash + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Re‑implementation that mirrors the latest reference:
+///
+/// * Extra‑thick rail (12 px) glued to the sheet’s left padding.
+/// * Small indicators (16 px) so the rail is visually dominant.
+/// * No grey bubble backgrounds – just plain text rows.
+/// * For every **vehicle** segment show **start stop, end stop _and_ stop count**.
+/// * Dividers between legs for clarity; walk legs stay minimal.
 class RouteDetailsPanel extends StatelessWidget {
+  const RouteDetailsPanel({
+    super.key,
+    required this.data,
+    required this.onClose,
+    required this.deriveStartName,
+    required this.deriveEndName,
+  });
+
   final RouteData? data;
   final VoidCallback onClose;
   final String Function(RouteData?) deriveStartName;
   final String Function(RouteData?) deriveEndName;
 
-  const RouteDetailsPanel({
-    Key? key,
-    required this.data,
-    required this.onClose,
-    required this.deriveStartName,
-    required this.deriveEndName,
-  }) : super(key: key);
+  // Visual constants
+  static const double _railThickness = 24;
+  static const double _indicatorSize = 34.5; // Circle + border should be bigger than rail
+  static const double _railAreaWidth = 50; // Fixed width for the rail area
 
   @override
   Widget build(BuildContext context) {
     final segs = data?.segments ?? const <RouteSegment>[];
-    final ScrollController scrollController = ScrollController();
-    return Material(
-      color: Colors.white,
-      elevation: 8,
-      clipBehavior: Clip.antiAlias,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 320), // Match route options sheet min height
-          child: ScrollConfiguration(
-            behavior: const _NoGlowScrollBehavior(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Route details',
-                          style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.arrow_back, size: 18),
-                          splashRadius: 18,
-                          onPressed: onClose,
-                        ),
-                      ),
-                    ],
+    final textTheme = Theme.of(context).textTheme;
+
+    (Color colour, IconData icon) _styleFor(RouteSegment s) {
+      switch (s.transportType) {
+        case 'bus':
+          return (Theme.of(context).colorScheme.primary, Icons.directions_bus);
+        case 'subway':
+          return (Colors.blue.shade700, Icons.subway);
+        case 'suburban':
+          return (const Color(0xff388e3c), Icons.train);
+        default:
+          return (Colors.grey.shade400, Icons.directions_walk);
+      }
+    }
+
+    /// Vehicle (bus / train) segment tile ---------------------------------------------------
+    /// `nextIsWalk` tells us whether the **following** tile is a walk leg.  
+    /// If so, we end the solid rail with a **dotted** connector so the walk
+    /// section appears dotted all the way.
+    Widget _vehicleTile(
+      RouteSegment segment, {
+      required bool isLast,
+      required bool nextIsWalk,
+    }) {
+      final (colour, icon) = _styleFor(segment);
+      // Only create pill for vehicle segments (not walking segments)
+      final pill = segment.transportType != 'walk' && segment.transportLine != null
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(8)),
+              child: Text(segment.transportLine!,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            )
+          : null;
+      final stopCount = segment.stopCount;
+
+      return Container(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left rail area with fixed width
+            Container(
+              width: _railAreaWidth,
+              child: Column(
+                children: [
+                  // Transport icon circle
+                  Container(
+                    width: _indicatorSize,
+                    height: _indicatorSize,
+                    decoration: BoxDecoration(
+                      color: colour,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.shade300, width: 3),
+                    ),
+                    child: Icon(icon, size: 16, color: Colors.white),
                   ),
+                  // Rail connector below
+                  if (!isLast)
+                    Container(
+                      width: _railThickness,
+                      height: 60,
+                      color: nextIsWalk ? Colors.grey.shade400 : colour,
+                    ),
+                ],
+              ),
+            ),
+            // Right content area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            segment.fromStop ?? '',
+                            style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Text(_minutes(segment.durationSeconds),
+                            style: textTheme.bodyMedium?.copyWith(color: colour)),
+                      ],
+                    ),
+                    if (pill != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: pill,
+                      ),
+                    if (segment.transportType != 'walk')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Ride ${stopCount > 0 ? stopCount : 1} stop${(stopCount > 0 ? stopCount : 1) == 1 ? '' : 's'}',
+                          style: textTheme.bodySmall?.copyWith(
+                              color: textTheme.bodySmall!.color!.withOpacity(0.6)),
+                        ),
+                      ),
+                    // End stop moved to walking tile
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      if (notification is OverscrollNotification &&
-                          notification.overscroll < 0 &&
-                          scrollController.position.pixels <= 0) {
-                        onClose();
-                        return true;
-                      }
-                      return false;
-                    },
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                      child: Builder(
-                        builder: (ctx) {
-                          if (segs.isEmpty) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: Center(
-                                child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
-                              ),
-                            );
-                          }
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          width: 20,
-                                          height: 20,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border.all(
-                                              color: Colors.grey.shade400,
-                                              width: 3,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Center(
-                                            child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 4,
-                                          height: 32,
-                                          color: Colors.grey.shade400,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceVariant,
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Text(
-                                        deriveStartName(data),
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              for (int i = 0; i < segs.length; i++)
-                                // Inline copy of _SegmentTimelineTile to avoid import issues
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 32,
-                                      child: Column(
-                                        children: [
-                                          if (i != 0)
-                                            Container(
-                                              width: 4,
-                                              height: 16,
-                                          color: segs[i].transportType == 'bus'
-                                              ? Theme.of(context).colorScheme.primary
-                                              : segs[i].transportType == 'subway'
-                                                  ? Colors.blue.shade700
-                                                  : segs[i].transportType == 'suburban'
-                                                      ? Color(0xFF388E3C)
-                                                      : Colors.grey.shade400,
-                                            ),
-                                          Container(
-                                            width: 20,
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                          color: segs[i].transportType == 'bus'
-                                              ? Theme.of(context).colorScheme.primary
-                                              : segs[i].transportType == 'subway'
-                                                  ? Colors.blue.shade700
-                                                  : segs[i].transportType == 'suburban'
-                                                      ? Color(0xFF388E3C)
-                                                      : Colors.white,
-                                          border: Border.all(
-                                            color: segs[i].transportType == 'bus'
-                                                ? Theme.of(context).colorScheme.primary
-                                                : segs[i].transportType == 'subway'
-                                                    ? Colors.blue.shade700
-                                                    : segs[i].transportType == 'suburban'
-                                                        ? Color(0xFF388E3C)
-                                                        : Colors.grey.shade400,
-                                            width: 3,
-                                          ),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Center(
-                                          child: segs[i].transportType == 'bus'
-                                              ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
-                                              : segs[i].transportType == 'subway'
-                                                  ? Icon(Icons.subway, size: 12, color: Colors.white)
-                                                  : segs[i].transportType == 'suburban'
-                                                      ? Icon(Icons.train, size: 12, color: Colors.white)
-                                                      : Icon(Icons.directions_walk, size: 12, color: segs[i].transportType == 'bus'
-                                                          ? Theme.of(context).colorScheme.primary
-                                                          : segs[i].transportType == 'subway'
-                                                              ? Colors.blue.shade700
-                                                              : segs[i].transportType == 'suburban'
-                                                                  ? Color(0xFF388E3C)
-                                                                  : Colors.grey.shade400),
-                                            ),
-                                          ),
-                                          if (i != segs.length - 1)
-                                            Container(
-                                              width: 4,
-                                              height: 32,
-                                              color: segs[i].transportType == 'bus'
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : segs[i].transportType == 'subway'
-                                                      ? Colors.blue.shade700
-                                                      : Colors.grey.shade400,
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Container(
-                                        margin: const EdgeInsets.only(bottom: 8),
-                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.surfaceVariant,
-                                          borderRadius: BorderRadius.circular(14),
-                                        ),
-                                        child: (() {
-                                          final segment = segs[i];
-                                          final isBus = segment.transportType == 'bus';
-                                          final isSubway = segment.transportType == 'subway';
-                                          final isSuburban = segment.transportType == 'suburban';
-                                          final Color pillColor = isBus
-                                              ? Theme.of(context).colorScheme.primary
-                                              : isSubway
-                                                  ? Colors.blue.shade700
-                                                  : isSuburban
-                                                      ? Color(0xFF388E3C)
-                                                      : Colors.grey.shade400;
-                                          if (isBus || isSubway || isSuburban) {
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    if (segment.transportLine != null)
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                        margin: const EdgeInsets.only(right: 8),
-                                                        decoration: BoxDecoration(
-                                                          color: pillColor,
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: Text(
-                                                          segment.transportLine!,
-                                                          style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontWeight: FontWeight.bold,
-                                                            fontSize: 13,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    Expanded(
-                                                      child: Text(
-                                                        segment.toStop ?? (isBus ? 'Bus segment' : isSubway ? 'Subway segment' : isSuburban ? 'S-Bahn segment' : ''),
-                                                        style: const TextStyle(
-                                                          fontWeight: FontWeight.w600,
-                                                          fontSize: 15,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      ((segment.durrationSeconds / 60).round()).toString() + ' min',
-                                                      style: TextStyle(
-                                                        color: pillColor,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                if (segment.fromStop != null && segment.fromStop!.trim().isNotEmpty)
-                                                  Padding(
-                                                    padding: const EdgeInsets.only(top: 2.0),
-                                                    child: Text(
-                                                      'Board at: ${segment.fromStop}',
-                                                      style: TextStyle(
-                                                        color: Colors.grey.shade700,
-                                                        fontSize: 13,
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            );
-                                          } else {
-                                            return Row(
-                                              children: [
-                                                Icon(Icons.directions_walk, size: 16, color: Colors.grey.shade700),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    'Walk ' + ((segment.durrationSeconds / 60).round()).toString() + ' min (' + (segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m') + ')',
-                                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          }
-                                        })(),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          width: 4,
-                                          height: 32,
-                                          color: Colors.grey.shade400,
-                                        ),
-                                        Container(
-                                          width: 20,
-                                          height: 20,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            border: Border.all(
-                                              color: Colors.grey.shade400,
-                                              width: 3,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Center(
-                                            child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceVariant,
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Text(
-                                        deriveEndName(data),
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          );
-                        },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    /// Walk segment tile --------------------------------------------------------------------
+    Widget _walkTile(RouteSegment segment, {required bool isLast, required bool isFirst, String? previousEndStop}) {
+      final (colour, icon) = _styleFor(segment);
+      
+      return Container(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left rail area with fixed width
+            Container(
+              width: _railAreaWidth,
+              child: Column(
+                children: [
+                  // Walk icon circle
+                  Container(
+                    width: _indicatorSize,
+                    height: _indicatorSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colour, width: 3),
+                    ),
+                    child: Icon(icon, size: 10, color: colour),
+                  ),
+                  // Rail connector below (dashed)
+                  // Always show connector except if this is the very last tile and there's no flag tile after
+                  Container(
+                    width: _railThickness ,
+                    height: 60,
+                    child: CustomPaint(
+                      painter: DashedLinePainter(
+                        color: colour,
+                        thickness: _railThickness / 4,
+                        dash: 4, // Smaller dots
+                        gap: 15,  // Smaller gaps
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            // Right content area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          deriveStartName(data),
+                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    if (previousEndStop != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          previousEndStop,
+                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.directions_walk, size: 14, color: textTheme.bodyMedium!.color),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Walk ${_minutes(segment.durationSeconds)} • ${_distance(segment.distanceMeters)}',
+                            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    /// Flag tiles (end only) ----------------------------------------------------------------
+    Widget _flagTile({required bool isStart}) {
+      final grey = Colors.grey.shade400;
+      
+      // Only show end content since we removed start flag
+      String content = deriveEndName(data);
+      
+      return Container(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left rail area with fixed width
+            Container(
+              width: _railAreaWidth,
+              child: Column(
+                children: [
+                  // Flag icon circle (always end flag now)
+                  Container(
+                    width: _indicatorSize,
+                    height: _indicatorSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: grey, width: 3),
+                    ),
+                    child: Icon(
+                      Icons.flag, 
+                      size: 10, 
+                      color: grey
+                    ),
+                  ),
+                  // No rail connector for end tile
+                ],
+              ),
+            ),
+            // Right content area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Text(
+                  content,
+                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Build list of tiles -------------------------------------------------------------------
+    final tiles = <Widget>[];
+    
+    // Debug: Add some info about the data
+    if (segs.isEmpty) {
+      tiles.add(
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'No route segments available',
+            style: textTheme.bodyMedium?.copyWith(color: Colors.red),
           ),
+        ),
+      );
+    } else {
+      // Process segments normally
+      for (int i = 0; i < segs.length; i++) {
+        final seg = segs[i];
+        final isLast = i == segs.length - 1;
+        final isFirst = i == 0;
+
+        /// look-ahead: is the next segment a walk?
+        final nextIsWalk =
+            !isLast && segs[i + 1].transportType == 'walk';
+
+        // Get previous segment's end stop if this is a walking segment
+        String? previousEndStop;
+        if ((seg.transportType == 'walk' || seg.transportType == null) && i > 0) {
+          final prevSeg = segs[i - 1];
+          if (prevSeg.transportType != 'walk') {
+            previousEndStop = prevSeg.toStop;
+          }
+        }
+
+        tiles.add(
+          seg.transportType == 'walk' || seg.transportType == null
+              ? _walkTile(seg, isLast: isLast, isFirst: isFirst, previousEndStop: previousEndStop)
+              : _vehicleTile(
+                  seg,
+                  isLast: isLast,
+                  nextIsWalk: nextIsWalk,
+                ),
+        );
+      }
+      tiles.add(_flagTile(isStart: false));
+    }
+
+    // UI scaffold ---------------------------------------------------------------------------
+    return Material(
+      color: Colors.white,
+      elevation: 12,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text('Route details',
+                          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: Colors.grey.shade200, shape: BoxShape.circle),
+                      child: IconButton(
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                        splashRadius: 20,
+                        onPressed: onClose,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // Timeline itself (with left padding to keep rail on screen)
+            SliverPadding(
+              padding: const EdgeInsets.only(left: 16, right: 16),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    ...tiles,
+                  ],
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
         ),
       ),
     );
-    
   }
+
+  // ---------------------------------------------------------------------------
+  // Helpers -------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  String _minutes(int seconds) => '${(seconds / 60).round()} min';
+
+  String _distance(double meters) =>
+      meters >= 1000 ? '${(meters / 1000).toStringAsFixed(1)} km' : '${meters.round()} m';
 }
-
-class _NoGlowScrollBehavior extends ScrollBehavior {
-  const _NoGlowScrollBehavior();
-
-  @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    return child;
-  }
-}
-
-// Import _SegmentTimelineTile from route_options_sheet.dart
-// import 'package:auth_app/data/models/route_data.dart';
-// import 'package:auth_app/data/models/route_segment.dart';
-
-
-// // Use the TravelMode enum from your main app if available, otherwise define here.
-// enum TravelMode { walk, bus, scooter }
-
-// // --- Timeline endpoint tile (start/end) ---
-// class _RouteEndpointTile extends StatelessWidget {
-//   final String label;
-//   final String location;
-//   final bool isFirst;
-//   final bool isLast;
-
-//   const _RouteEndpointTile({
-//     required this.label,
-//     required this.location,
-//     required this.isFirst,
-//     required this.isLast,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     return Row(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Container(
-//           width: 32,
-//           child: Column(
-//             children: [
-//               if (!isFirst)
-//                 Container(
-//                   width: 4,
-//                   height: 16,
-//                   color: Colors.grey.shade400,
-//                 ),
-//               Container(
-//                 width: 20,
-//                 height: 20,
-//                 decoration: BoxDecoration(
-//                   color: theme.colorScheme.primary,
-//                   border: Border.all(
-//                     color: theme.colorScheme.primary,
-//                     width: 3,
-//                   ),
-//                   shape: BoxShape.circle,
-//                 ),
-//                 child: Center(
-//                   child: Icon(
-//                     isFirst ? Icons.circle : Icons.flag,
-//                     size: 12,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//               ),
-//               if (!isLast)
-//                 Container(
-//                   width: 4,
-//                   height: 32,
-//                   color: Colors.grey.shade400,
-//                 ),
-//             ],
-//           ),
-//         ),
-//         Expanded(
-//           child: Container(
-//             margin: const EdgeInsets.only(bottom: 8),
-//             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-//             decoration: BoxDecoration(
-//               color: theme.colorScheme.surfaceVariant,
-//               borderRadius: BorderRadius.circular(14),
-//             ),
-//             child: Text(
-//               location,
-//               style: const TextStyle(
-//                 fontWeight: FontWeight.w600,
-//                 fontSize: 15,
-//               ),
-//             ),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
-
-// // --- Timeline segment tile ---
-// class _SegmentTimelineTile extends StatelessWidget {
-//   final RouteSegment segment;
-//   final bool isFirst;
-//   final bool isLast;
-
-//   const _SegmentTimelineTile({
-//     required this.segment,
-//     required this.isFirst,
-//     required this.isLast,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final isBus = segment.mode.toString().contains('bus');
-//     final theme = Theme.of(context);
-//     final Color timelineColor = isBus
-//         ? theme.colorScheme.primary
-//         : Colors.grey.shade400;
-
-//     return Row(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         // Timeline
-//         Container(
-//           width: 32,
-//           child: Column(
-//             children: [
-//               if (!isFirst)
-//                 Container(
-//                   width: 4,
-//                   height: 16,
-//                   color: timelineColor,
-//                 ),
-//               Container(
-//                 width: 20,
-//                 height: 20,
-//                 decoration: BoxDecoration(
-//                   color: isBus ? theme.colorScheme.primary : Colors.white,
-//                   border: Border.all(
-//                     color: timelineColor,
-//                     width: 3,
-//                   ),
-//                   shape: BoxShape.circle,
-//                 ),
-//                 child: Center(
-//                   child: Icon(
-//                     isBus ? Icons.directions_bus : Icons.directions_walk,
-//                     size: 12,
-//                     color: isBus ? Colors.white : timelineColor,
-//                   ),
-//                 ),
-//               ),
-//               if (!isLast)
-//                 Container(
-//                   width: 4,
-//                   height: 32,
-//                   color: timelineColor,
-//                 ),
-//             ],
-//           ),
-//         ),
-//         // Content
-//         Expanded(
-//           child: Container(
-//             margin: const EdgeInsets.only(bottom: 8),
-//             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-//             decoration: BoxDecoration(
-//               color: theme.colorScheme.surfaceVariant,
-//               borderRadius: BorderRadius.circular(14),
-//             ),
-//             child: _buildSegmentContent(context, isBus),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-
-//   Widget _buildSegmentContent(BuildContext context, bool isBus) {
-//     final theme = Theme.of(context);
-//     if (isBus) {
-//       return Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               if (segment.transportLine != null)
-//                 Container(
-//                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-//                   margin: const EdgeInsets.only(right: 8),
-//                   decoration: BoxDecoration(
-//                     color: theme.colorScheme.primary,
-//                     borderRadius: BorderRadius.circular(8),
-//                   ),
-//                   child: Text(
-//                     segment.transportLine!,
-//                     style: const TextStyle(
-//                       color: Colors.white,
-//                       fontWeight: FontWeight.bold,
-//                       fontSize: 13,
-//                     ),
-//                   ),
-//                 ),
-//               Expanded(
-//                 child: Text(
-//                   segment.toStop ?? 'Bus segment',
-//                   style: const TextStyle(
-//                     fontWeight: FontWeight.w600,
-//                     fontSize: 15,
-//                   ),
-//                 ),
-//               ),
-//               Text(
-//                 _prettyTime(segment.durrationSeconds),
-//                 style: TextStyle(
-//                   color: theme.colorScheme.primary,
-//                   fontWeight: FontWeight.w500,
-//                 ),
-//               ),
-//             ],
-//           ),
-//           if (segment.fromStop != null)
-//             Padding(
-//               padding: const EdgeInsets.only(top: 2.0),
-//               child: Text(
-//                 'From: ${segment.fromStop}',
-//                 style: TextStyle(
-//                   color: Colors.grey.shade700,
-//                   fontSize: 13,
-//                 ),
-//               ),
-//             ),
-//         ],
-//       );
-//     } else {
-//       return Row(
-//         children: [
-//           Icon(Icons.directions_walk, size: 16, color: Colors.grey.shade700),
-//           const SizedBox(width: 8),
-//           Expanded(
-//             child: Text(
-//               'Walk ${_prettyTime(segment.durrationSeconds)} (${_prettyDistance(segment.distanceMeters)})',
-//               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-//             ),
-//           ),
-//         ],
-//       );
-//     }
-//   }
-
-//   String _prettyTime(int seconds) {
-//     final mins = (seconds / 60).round();
-//     return '$mins min';
-//   }
-
-//   String _prettyDistance(double meters) {
-//     return meters >= 1000
-//         ? '${(meters / 1000).toStringAsFixed(1)} km'
-//         : '${meters.round()} m';
-//   }
-// }
-
-// class RouteDetailsSheet extends StatelessWidget {
-//   final RouteData? data;
-//   final VoidCallback onClose;
-//   final String Function(RouteData?) deriveStartName;
-//   final String Function(RouteData?) deriveEndName;
-
-//   const RouteDetailsSheet({
-//     Key? key,
-//     required this.data,
-//     required this.onClose,
-//     required this.deriveStartName,
-//     required this.deriveEndName,
-//   }) : super(key: key);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final segs = data?.segments ?? const <RouteSegment>[];
-//     return Material(
-//       color: Colors.white,
-//       elevation: 8,
-//       clipBehavior: Clip.antiAlias,
-//       shape: const RoundedRectangleBorder(
-//         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-//       ),
-//       child: SafeArea(
-//         top: false,
-//         bottom: false,
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-//               child: Row(
-//                 children: [
-//                   Expanded(
-//                     child: Text(
-//                       'Route details',
-//                       style: Theme.of(context).textTheme.titleLarge!.copyWith(
-//                             fontWeight: FontWeight.w700,
-//                           ),
-//                     ),
-//                   ),
-//                   Container(
-//                     width: 36,
-//                     height: 36,
-//                     decoration: BoxDecoration(
-//                       color: Colors.grey.shade200,
-//                       shape: BoxShape.circle,
-//                     ),
-//                     child: IconButton(
-//                       padding: EdgeInsets.zero,
-//                       icon: const Icon(Icons.close, size: 18),
-//                       splashRadius: 18,
-//                       onPressed: onClose,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             Expanded(
-//               child: SingleChildScrollView(
-//                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-//                 child: Builder(
-//                   builder: (ctx) {
-//                     if (segs.isEmpty) {
-//                       return Padding(
-//                         padding: const EdgeInsets.symmetric(vertical: 16),
-//                         child: Center(
-//                           child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
-//                         ),
-//                       );
-//                     }
-//                     return Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         _RouteEndpointTile(
-//                           label: 'Start',
-//                           location: deriveStartName(data),
-//                           isFirst: true,
-//                           isLast: false,
-//                         ),
-//                         for (int i = 0; i < segs.length; i++)
-//                           if (!(i > 0 &&
-//                               segs[i].mode == TravelMode.walk &&
-//                               segs[i - 1].mode == TravelMode.walk &&
-//                               segs[i].distanceMeters == segs[i - 1].distanceMeters &&
-//                               segs[i].durrationSeconds == segs[i - 1].durrationSeconds))
-//                             _SegmentTimelineTile(
-//                               segment: segs[i],
-//                               isFirst: false,
-//                               isLast: false,
-//                             ),
-//                         _RouteEndpointTile(
-//                           label: 'End',
-//                           location: deriveEndName(data),
-//                           isFirst: false,
-//                           isLast: true,
-//                         ),
-//                       ],
-//                     );
-//                   },
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }

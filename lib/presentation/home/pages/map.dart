@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:auth_app/presentation/widgets/route_timeline.dart';
 import 'package:wkt_parser/wkt_parser.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/find_scooter_route_response.dart';
@@ -55,6 +56,8 @@ import 'package:auth_app/domain/entities/favourite.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/add_favourite.dart';
 import 'package:auth_app/data/models/add_favourite_req_params.dart';
+
+import 'route_timeline_panel.dart'; // Custom widget for route timeline panel
 
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner

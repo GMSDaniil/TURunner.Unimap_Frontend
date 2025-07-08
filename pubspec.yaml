@@ -31,7 +31,7 @@ dependencies:
   drag_and_drop_lists: ^0.4.2
   sunrise_sunset_calc: 
   shimmer: ^3.0.0
-
+  timelines_plus: ^1.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter
