@@ -111,148 +111,151 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
       child: SafeArea(
         top: false,
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 320), // Set your minimal height here
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Route options',
-                          style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.close, size: 18),
-                          splashRadius: 18,
-                          onPressed: widget.onClose,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const SizedBox(height: 20),
-                  _ModeSelector(
-                    selected: _mode,
-                    onChanged: (m) {
-                      setState(() {
-                        _mode = m;
-                        _loading = widget.routesNotifier.value[m] == null;
-                      });
-                      widget.onModeChanged(m);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  // Always show the summary box, but with shimmer if loading
-                  _loading
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: ShimmerLoading(height: 80, width: double.infinity),
-                        )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: _routeError != null
-                              ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      _routeError!,
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                            color: Colors.black87,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.timer, size: 22),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _prettyDuration,
-                                          style: Theme.of(context).textTheme.titleMedium,
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.social_distance_rounded,
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _prettyDistance,
-                                          style: Theme.of(context).textTheme.titleMedium,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Theme.of(context).colorScheme.primary,
-                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      ),
-                                      onPressed: widget.onShowDetails,
-                                      icon: const Icon(Icons.expand_circle_down_outlined),
-                                      label: const Text('Show details'),
-                                    ),
-                                  ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Route options',
+                            style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                                  fontWeight: FontWeight.w700,
                                 ),
+                          ),
                         ),
-                  // Removed timeline/segment tiles below the Show details button
-                ],
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.close, size: 18),
+                            splashRadius: 18,
+                            onPressed: widget.onClose,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const SizedBox(height: 20),
+                    _ModeSelector(
+                      selected: _mode,
+                      onChanged: (m) {
+                        setState(() {
+                          _mode = m;
+                          _loading = widget.routesNotifier.value[m] == null;
+                        });
+                        widget.onModeChanged(m);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Always show the summary box, but with shimmer if loading
+                    _loading
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: ShimmerLoading(height: 80, width: double.infinity),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: _routeError != null
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _routeError!,
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              color: Colors.black87,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.timer, size: 22),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _prettyDuration,
+                                            style: Theme.of(context).textTheme.titleMedium,
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.social_distance_rounded,
+                                            size: 22,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _prettyDistance,
+                                            style: Theme.of(context).textTheme.titleMedium,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 12),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Theme.of(context).colorScheme.primary,
+                                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                        onPressed: widget.onShowDetails,
+                                        icon: const Icon(Icons.expand_circle_down_outlined),
+                                        label: const Text('Show details'),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                    // Removed timeline/segment tiles below the Show details button
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

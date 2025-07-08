@@ -31,116 +31,70 @@ class RouteDetailsPanel extends StatelessWidget {
       child: SafeArea(
         top: false,
         bottom: false,
-        child: ScrollConfiguration(
-          behavior: const _NoGlowScrollBehavior(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Route details',
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 320), // Match route options sheet min height
+          child: ScrollConfiguration(
+            behavior: const _NoGlowScrollBehavior(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Route details',
+                          style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
                       ),
-                    ),
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        shape: BoxShape.circle,
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.arrow_back, size: 18),
+                          splashRadius: 18,
+                          onPressed: onClose,
+                        ),
                       ),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.close, size: 18),
-                        splashRadius: 18,
-                        onPressed: onClose,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification is OverscrollNotification &&
-                        notification.overscroll < 0 &&
-                        scrollController.position.pixels <= 0) {
-                      onClose();
-                      return true;
-                    }
-                    return false;
-                  },
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                    child: Builder(
-                      builder: (ctx) {
-                        if (segs.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            child: Center(
-                              child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
-                            ),
-                          );
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 32,
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          border: Border.all(
-                                            color: Colors.grey.shade400,
-                                            width: 3,
-                                          ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 4,
-                                        height: 32,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceVariant,
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Text(
-                                      deriveStartName(data),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            for (int i = 0; i < segs.length; i++)
-                              // Inline copy of _SegmentTimelineTile to avoid import issues
+                const SizedBox(height: 24),
+                Expanded(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification is OverscrollNotification &&
+                          notification.overscroll < 0 &&
+                          scrollController.position.pixels <= 0) {
+                        onClose();
+                        return true;
+                      }
+                      return false;
+                    },
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                      child: Builder(
+                        builder: (ctx) {
+                          if (segs.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: Text('No route segments', style: Theme.of(ctx).textTheme.bodyMedium),
+                              ),
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -148,67 +102,26 @@ class RouteDetailsPanel extends StatelessWidget {
                                     width: 32,
                                     child: Column(
                                       children: [
-                                        if (i != 0)
-                                          Container(
-                                            width: 4,
-                                            height: 16,
-                                        color: segs[i].transportType == 'bus'
-                                            ? Theme.of(context).colorScheme.primary
-                                            : segs[i].transportType == 'subway'
-                                                ? Colors.blue.shade700
-                                                : segs[i].transportType == 'suburban'
-                                                    ? Color(0xFF388E3C)
-                                                    : Colors.grey.shade400,
-                                          ),
                                         Container(
                                           width: 20,
                                           height: 20,
                                           decoration: BoxDecoration(
-                                        color: segs[i].transportType == 'bus'
-                                            ? Theme.of(context).colorScheme.primary
-                                            : segs[i].transportType == 'subway'
-                                                ? Colors.blue.shade700
-                                                : segs[i].transportType == 'suburban'
-                                                    ? Color(0xFF388E3C)
-                                                    : Colors.white,
-                                        border: Border.all(
-                                          color: segs[i].transportType == 'bus'
-                                              ? Theme.of(context).colorScheme.primary
-                                              : segs[i].transportType == 'subway'
-                                                  ? Colors.blue.shade700
-                                                  : segs[i].transportType == 'suburban'
-                                                      ? Color(0xFF388E3C)
-                                                      : Colors.grey.shade400,
-                                          width: 3,
-                                        ),
+                                            color: Colors.white,
+                                            border: Border.all(
+                                              color: Colors.grey.shade400,
+                                              width: 3,
+                                            ),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Center(
-                                        child: segs[i].transportType == 'bus'
-                                            ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
-                                            : segs[i].transportType == 'subway'
-                                                ? Icon(Icons.subway, size: 12, color: Colors.white)
-                                                : segs[i].transportType == 'suburban'
-                                                    ? Icon(Icons.train, size: 12, color: Colors.white)
-                                                    : Icon(Icons.directions_walk, size: 12, color: segs[i].transportType == 'bus'
-                                                        ? Theme.of(context).colorScheme.primary
-                                                        : segs[i].transportType == 'subway'
-                                                            ? Colors.blue.shade700
-                                                            : segs[i].transportType == 'suburban'
-                                                                ? Color(0xFF388E3C)
-                                                                : Colors.grey.shade400),
+                                            child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
                                           ),
                                         ),
-                                        if (i != segs.length - 1)
-                                          Container(
-                                            width: 4,
-                                            height: 32,
-                                            color: segs[i].transportType == 'bus'
-                                                ? Theme.of(context).colorScheme.primary
-                                                : segs[i].transportType == 'subway'
-                                                    ? Colors.blue.shade700
-                                                    : Colors.grey.shade400,
-                                          ),
+                                        Container(
+                                          width: 4,
+                                          height: 32,
+                                          color: Colors.grey.shade400,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -220,149 +133,240 @@ class RouteDetailsPanel extends StatelessWidget {
                                         color: Theme.of(context).colorScheme.surfaceVariant,
                                         borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: (() {
-                                        final segment = segs[i];
-                                        final isBus = segment.transportType == 'bus';
-                                        final isSubway = segment.transportType == 'subway';
-                                        final isSuburban = segment.transportType == 'suburban';
-                                        final Color pillColor = isBus
-                                            ? Theme.of(context).colorScheme.primary
-                                            : isSubway
-                                                ? Colors.blue.shade700
-                                                : isSuburban
-                                                    ? Color(0xFF388E3C)
-                                                    : Colors.grey.shade400;
-                                        if (isBus || isSubway || isSuburban) {
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  if (segment.transportLine != null)
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                      margin: const EdgeInsets.only(right: 8),
-                                                      decoration: BoxDecoration(
-                                                        color: pillColor,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                      child: Text(
-                                                        segment.transportLine!,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 13,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  Expanded(
-                                                    child: Text(
-                                                      segment.toStop ?? (isBus ? 'Bus segment' : isSubway ? 'Subway segment' : isSuburban ? 'S-Bahn segment' : ''),
-                                                      style: const TextStyle(
-                                                        fontWeight: FontWeight.w600,
-                                                        fontSize: 15,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    ((segment.durrationSeconds / 60).round()).toString() + ' min',
-                                                    style: TextStyle(
-                                                      color: pillColor,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              if (segment.fromStop != null)
-                                                Padding(
-                                                  padding: const EdgeInsets.only(top: 2.0),
-                                                  child: Text(
-                                                    'From:  {segment.fromStop}',
-                                                    style: TextStyle(
-                                                      color: Colors.grey.shade700,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          );
-                                        } else {
-                                          return Row(
-                                            children: [
-                                              Icon(Icons.directions_walk, size: 16, color: Colors.grey.shade700),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  'Walk ' + ((segment.durrationSeconds / 60).round()).toString() + ' min (' + (segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m') + ')',
-                                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                      })(),
+                                      child: Text(
+                                        deriveStartName(data),
+                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 32,
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: 4,
-                                        height: 32,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
+                              for (int i = 0; i < segs.length; i++)
+                                // Inline copy of _SegmentTimelineTile to avoid import issues
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      child: Column(
+                                        children: [
+                                          if (i != 0)
+                                            Container(
+                                              width: 4,
+                                              height: 16,
+                                          color: segs[i].transportType == 'bus'
+                                              ? Theme.of(context).colorScheme.primary
+                                              : segs[i].transportType == 'subway'
+                                                  ? Colors.blue.shade700
+                                                  : segs[i].transportType == 'suburban'
+                                                      ? Color(0xFF388E3C)
+                                                      : Colors.grey.shade400,
+                                            ),
+                                          Container(
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                          color: segs[i].transportType == 'bus'
+                                              ? Theme.of(context).colorScheme.primary
+                                              : segs[i].transportType == 'subway'
+                                                  ? Colors.blue.shade700
+                                                  : segs[i].transportType == 'suburban'
+                                                      ? Color(0xFF388E3C)
+                                                      : Colors.white,
                                           border: Border.all(
-                                            color: Colors.grey.shade400,
+                                            color: segs[i].transportType == 'bus'
+                                                ? Theme.of(context).colorScheme.primary
+                                                : segs[i].transportType == 'subway'
+                                                    ? Colors.blue.shade700
+                                                    : segs[i].transportType == 'suburban'
+                                                        ? Color(0xFF388E3C)
+                                                        : Colors.grey.shade400,
                                             width: 3,
                                           ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
-                                        ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Center(
+                                          child: segs[i].transportType == 'bus'
+                                              ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
+                                              : segs[i].transportType == 'subway'
+                                                  ? Icon(Icons.subway, size: 12, color: Colors.white)
+                                                  : segs[i].transportType == 'suburban'
+                                                      ? Icon(Icons.train, size: 12, color: Colors.white)
+                                                      : Icon(Icons.directions_walk, size: 12, color: segs[i].transportType == 'bus'
+                                                          ? Theme.of(context).colorScheme.primary
+                                                          : segs[i].transportType == 'subway'
+                                                              ? Colors.blue.shade700
+                                                              : segs[i].transportType == 'suburban'
+                                                                  ? Color(0xFF388E3C)
+                                                                  : Colors.grey.shade400),
+                                            ),
+                                          ),
+                                          if (i != segs.length - 1)
+                                            Container(
+                                              width: 4,
+                                              height: 32,
+                                              color: segs[i].transportType == 'bus'
+                                                  ? Theme.of(context).colorScheme.primary
+                                                  : segs[i].transportType == 'subway'
+                                                      ? Colors.blue.shade700
+                                                      : Colors.grey.shade400,
+                                            ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceVariant,
-                                      borderRadius: BorderRadius.circular(14),
                                     ),
-                                    child: Text(
-                                      deriveEndName(data),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                    Expanded(
+                                      child: Container(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.surfaceVariant,
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: (() {
+                                          final segment = segs[i];
+                                          final isBus = segment.transportType == 'bus';
+                                          final isSubway = segment.transportType == 'subway';
+                                          final isSuburban = segment.transportType == 'suburban';
+                                          final Color pillColor = isBus
+                                              ? Theme.of(context).colorScheme.primary
+                                              : isSubway
+                                                  ? Colors.blue.shade700
+                                                  : isSuburban
+                                                      ? Color(0xFF388E3C)
+                                                      : Colors.grey.shade400;
+                                          if (isBus || isSubway || isSuburban) {
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    if (segment.transportLine != null)
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        margin: const EdgeInsets.only(right: 8),
+                                                        decoration: BoxDecoration(
+                                                          color: pillColor,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          segment.transportLine!,
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 13,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    Expanded(
+                                                      child: Text(
+                                                        segment.toStop ?? (isBus ? 'Bus segment' : isSubway ? 'Subway segment' : isSuburban ? 'S-Bahn segment' : ''),
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 15,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      ((segment.durrationSeconds / 60).round()).toString() + ' min',
+                                                      style: TextStyle(
+                                                        color: pillColor,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                if (segment.fromStop != null && segment.fromStop!.trim().isNotEmpty)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 2.0),
+                                                    child: Text(
+                                                      'Board at: ${segment.fromStop}',
+                                                      style: TextStyle(
+                                                        color: Colors.grey.shade700,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            );
+                                          } else {
+                                            return Row(
+                                              children: [
+                                                Icon(Icons.directions_walk, size: 16, color: Colors.grey.shade700),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Walk ' + ((segment.durrationSeconds / 60).round()).toString() + ' min (' + (segment.distanceMeters >= 1000 ? (segment.distanceMeters / 1000).toStringAsFixed(1) + ' km' : segment.distanceMeters.round().toString() + ' m') + ')',
+                                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }
+                                        })(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          width: 4,
+                                          height: 32,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                        Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            border: Border.all(
+                                              color: Colors.grey.shade400,
+                                              width: 3,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
+                                  Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.surfaceVariant,
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Text(
+                                        deriveEndName(data),
+                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+    
   }
 }
 
