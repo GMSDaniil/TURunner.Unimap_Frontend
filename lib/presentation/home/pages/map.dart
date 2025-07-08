@@ -471,7 +471,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         double minAllowed = 180.0;
         maxHeight = total.clamp(minAllowed, maxAllowed);
       } else {
-        maxHeight = MediaQuery.of(context).size.height * 0.31;
+        maxHeight = MediaQuery.of(context).size.height * 0.40;
       }
 
       // ────────────────────────────────────────────────────────────────
