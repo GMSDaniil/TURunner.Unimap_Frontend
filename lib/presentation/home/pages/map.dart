@@ -91,6 +91,8 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  // Flag to indicate we want to show route details after closing options panel
+  bool _pendingShowRouteDetails = false;
   // Camera state for building highlight/zoom restoration
   mb.CameraOptions? _previousCameraOptions;
   bool _isBuildingZoomed = false;
@@ -735,7 +737,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       return 'Destination';
                     },
                     onClose: () {
-                      setState(() => _showRouteDetails = false);
+                      setState(() {
+                        _showRouteDetails = false;
+                        _pendingShowRouteDetails = false;
+                      });
+                      // Close the details panel, then open options after close
+                      _pendingShowRouteDetails = false; // Defensive, but not strictly needed
+                      _panelController.close();
                     },
                   ),
                 );
@@ -751,7 +759,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     _notifyNavBar(false);
                   },
                   onShowDetails: () {
-                    setState(() => _showRouteDetails = true);
+                    setState(() {
+                      _pendingShowRouteDetails = true;
+                    });
+                    _panelController.close();
                   },
                 );
               }
@@ -893,6 +904,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             return const SizedBox.shrink();
           },
           onPanelClosed: () async {
+            // If we just closed details and want to go back to options
+            if (!_showRouteDetails && _panelRoutes != null && !_pendingShowRouteDetails) {
+              setState(() {
+                _showRouteDetails = false;
+                _pendingShowRouteDetails = false;
+              });
+              // Open the options panel after closing details
+              _panelController.open();
+              return;
+            }
+            if (_pendingShowRouteDetails) {
+              setState(() {
+                _showRouteDetails = true;
+                _pendingShowRouteDetails = false;
+              });
+              _panelController.open();
+              return;
+            }
             if (_panelController.panelPosition == 0.0) {
               // Always clear building highlight when panel closes
               if (_clearBuildingHighlight != null) {
