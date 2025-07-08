@@ -4,7 +4,6 @@
 // -------------------------------------------------------------
 
 import 'dart:async';
-import 'package:auth_app/domain/entities/searchable_item.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
@@ -428,53 +427,42 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
   late final TextEditingController _searchCtl =
       TextEditingController(text: widget.initialText);
 
-  late List<SearchableItem> _suggestions;
-  // late List<_Cand> _suggestions;
+      
+  late List<_Cand> _suggestions;
   final FocusNode _focusNode = FocusNode();
 
-  List<SearchableItem> _createSearchableItems() {
-    List<SearchableItem> items = [];
+  List<_Cand> _getSuggestions(String q) {
+    final l = q.toLowerCase();
+    List<_Cand> suggestions = [];
     
-    // Add regular locations from pool
-    for (final cand in widget.pool) {
-      items.add(SearchableItem(
-        name: cand.label,
-        category: cand.label == 'Current location' ? 'Location' : 'Building',
-        lat: cand.pos.latitude,
-        lng: cand.pos.longitude,
-        type: SearchItemType.point,
-      ));
-    }
+    // Add regular pool items (current location + existing buildings)
+    suggestions.addAll(
+      widget.pool.where((c) =>
+          !widget.isTaken(c) && (l.isEmpty || c.label.toLowerCase().contains(l)))
+    );
     
-    // ✅ Add rooms from all pointers
-    for (final pointer in widget.allPointers) {
-      if (pointer.rooms.isNotEmpty) {
-        for (final room in pointer.rooms) {
-          items.add(SearchableItem(
-            name: '$room (${pointer.name})',
-            category: 'Room',
-            lat: pointer.lat,
-            lng: pointer.lng,
-            type: SearchItemType.room,
-            parentPointer: pointer,
-            roomName: room,
-          ));
+    // ✅ Add buildings that have rooms matching the query
+    if (l.isNotEmpty) {
+      for (final pointer in widget.allPointers) {
+        // Check if any room in this pointer matches
+        final roomMatches = pointer.rooms.any((room) => 
+            room.toLowerCase().contains(l));
+        
+        // Check if pointer name matches
+        final nameMatches = pointer.name.toLowerCase().contains(l);
+        
+        if (roomMatches || nameMatches) {
+          final cand = _Cand(pointer.name, LatLng(pointer.lat, pointer.lng));
+          
+          // Only add if not already in suggestions and not taken
+          if (!suggestions.contains(cand) && !widget.isTaken(cand)) {
+            suggestions.add(cand);
+          }
         }
       }
     }
     
-    return items;
-  }
-
-  List<SearchableItem> _getSuggestions(String q) {
-    final l = q.toLowerCase();
-    final allItems = _createSearchableItems();
-    
-    return allItems
-        .where((item) => 
-            l.isEmpty || item.name.toLowerCase().contains(l))
-        .take(40)
-        .toList();
+    return suggestions.take(40).toList();
   }
 
   @override
@@ -505,10 +493,11 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                 searchController: _searchCtl,
                 suggestions: _suggestions
                     .map((c) => Pointer(
-                          name: c.name,
-                          lat: c.lat,
-                          lng: c.lng,
-                          category: c.category,
+                          name: c.label,
+                          lat: c.pos.latitude,
+                          lng: c.pos.longitude,
+                          category: '',
+                          rooms: _getRoomsForPointer(c.label),
                         ))
                     .toList(),
                 onClear: () => _searchCtl.clear(),
@@ -530,6 +519,13 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
         ),
       ),
     );
+  }
+  List<String> _getRoomsForPointer(String pointerName) {
+    final pointer = widget.allPointers.firstWhere(
+      (p) => p.name == pointerName,
+      orElse: () => Pointer(name: '', lat: 0, lng: 0, category: '', rooms: []),
+    );
+    return pointer.rooms;
   }
 
   @override

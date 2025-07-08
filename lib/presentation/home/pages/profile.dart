@@ -139,11 +139,29 @@ class _ProfilePageState extends State<ProfilePage> {
     // Use UserProvider to check login state. listen: true ensures UI rebuilds on logout.
     final user = Provider.of<UserProvider>(context).user;
 
-    return Scaffold(
-      body: SafeArea(
-        child: user == null
-            ? _buildGuestView(context)
-            : _buildUserView(context, user),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ButtonStateCubit()),
+      ],
+      child: SafeArea(
+        child: Scaffold(
+          body: BlocListener<ButtonStateCubit, ButtonState>(
+            listener: (context, state) {
+              if (state is ButtonSuccessState) {
+                // On successful logout, clear the user from the provider
+                Provider.of<UserProvider>(context, listen: false).clearUser();
+                // Navigate to welcome page
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WelcomePage()),
+                );
+              }
+            },
+          child: user != null
+              ? _buildUserView(context, user)
+              : _buildGuestView(context),
+          ),
+        ),
       ),
     );
   }
@@ -151,39 +169,56 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildUserView(BuildContext context, UserEntity user) {
     // Wrap the user view with the BlocProvider and BlocListener for the logout button
     return BlocProvider(
-      create: (context) => ButtonStateCubit(),
-      child: BlocListener<ButtonStateCubit, ButtonState>(
+      create: (_) => UserDisplayCubit()..displayUser(),
+      child: BlocListener<UserDisplayCubit, UserDisplayState>(
         listener: (context, state) {
-          if (state is ButtonSuccessState) {
-            // On successful logout, clear the user from the provider
-            Provider.of<UserProvider>(context, listen: false).clearUser();
-            // No need for setState, Provider will handle the rebuild
+          if (state is UserLoaded) {
+            Provider.of<UserProvider>(context, listen: false).setUser(state.userEntity);
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 32),
-              _buildProfilePicture(context),
-              const SizedBox(height: 24),
-              _buildUsername(user),
-              const SizedBox(height: 8),
-              _buildEmail(user),
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildScheduleSection(),
-                      const SizedBox(height: 24),
-                      _buildLogoutButton(context),
-                    ],
-                  ),
+        child: Center(
+          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+            builder: (context, state) {
+              if(state is UserLoading) {
+                return const CircularProgressIndicator();
+              } 
+              if (state is UserLoaded) {
+                return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 32),
+                    _buildProfilePicture(context),
+                    const SizedBox(height: 24),
+                    _buildUsername(user),
+                    const SizedBox(height: 8),
+                    _buildEmail(user),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildScheduleSection(),
+                            const SizedBox(height: 24),
+                            _buildLogoutButton(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              );
+              }  
+              if (state is LoadUserFailure) {
+                return Center(child: Text(state.errorMessage));
+              }
+
+              return const Center(
+                child: Text('No user data available.'),
+              );
+              
+            }
           ),
         ),
       ),
