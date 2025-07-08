@@ -4,6 +4,7 @@
 // -------------------------------------------------------------
 
 import 'dart:async';
+import 'package:auth_app/domain/entities/searchable_item.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
@@ -268,6 +269,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         initialText: '',
         hint: hint,
         pool: _pool,
+        allPointers: widget.allPointers,
         isTaken: (c) => _chosen.contains(c),
         onPicked: (c) {
           _overlay?.remove();
@@ -394,6 +396,7 @@ class _RouteSearchOverlay extends StatefulWidget {
     required this.initialText,
     required this.pool,
     required this.isTaken,
+    required this.allPointers,
     required this.onPicked,
     required this.onCancel,
     required this.hint,
@@ -401,6 +404,7 @@ class _RouteSearchOverlay extends StatefulWidget {
 
   final String initialText;
   final List<_Cand> pool;
+  final List<Pointer> allPointers;
   final bool Function(_Cand) isTaken;
   final void Function(_Cand) onPicked;
   final VoidCallback onCancel;
@@ -423,14 +427,52 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
 
   late final TextEditingController _searchCtl =
       TextEditingController(text: widget.initialText);
-  late List<_Cand> _suggestions;
+
+  late List<SearchableItem> _suggestions;
+  // late List<_Cand> _suggestions;
   final FocusNode _focusNode = FocusNode();
 
-  List<_Cand> _getSuggestions(String q) {
+  List<SearchableItem> _createSearchableItems() {
+    List<SearchableItem> items = [];
+    
+    // Add regular locations from pool
+    for (final cand in widget.pool) {
+      items.add(SearchableItem(
+        name: cand.label,
+        category: cand.label == 'Current location' ? 'Location' : 'Building',
+        lat: cand.pos.latitude,
+        lng: cand.pos.longitude,
+        type: SearchItemType.point,
+      ));
+    }
+    
+    // ✅ Add rooms from all pointers
+    for (final pointer in widget.allPointers) {
+      if (pointer.rooms.isNotEmpty) {
+        for (final room in pointer.rooms) {
+          items.add(SearchableItem(
+            name: '$room (${pointer.name})',
+            category: 'Room',
+            lat: pointer.lat,
+            lng: pointer.lng,
+            type: SearchItemType.room,
+            parentPointer: pointer,
+            roomName: room,
+          ));
+        }
+      }
+    }
+    
+    return items;
+  }
+
+  List<SearchableItem> _getSuggestions(String q) {
     final l = q.toLowerCase();
-    return widget.pool
-        .where((c) =>
-            !widget.isTaken(c) && (l.isEmpty || c.label.toLowerCase().contains(l)))
+    final allItems = _createSearchableItems();
+    
+    return allItems
+        .where((item) => 
+            l.isEmpty || item.name.toLowerCase().contains(l))
         .take(40)
         .toList();
   }
@@ -463,10 +505,10 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                 searchController: _searchCtl,
                 suggestions: _suggestions
                     .map((c) => Pointer(
-                          name: c.label,
-                          lat: c.pos.latitude,
-                          lng: c.pos.longitude,
-                          category: '',
+                          name: c.name,
+                          lat: c.lat,
+                          lng: c.lng,
+                          category: c.category,
                         ))
                     .toList(),
                 onClear: () => _searchCtl.clear(),
