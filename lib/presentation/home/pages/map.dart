@@ -261,7 +261,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           height: 4,
           margin: const EdgeInsets.only(top: 12, bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -274,7 +274,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   '${_activeCategory}',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
               Container(
@@ -282,7 +285,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey.shade200,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.close, size: 18),
@@ -316,11 +319,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -738,6 +744,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           maxHeight: maxHeight, // our dynamic max height
           snapPoint: 0.29, // when you drag up, snaps at 29% if release early
           isDraggable: true, // allow dragging
+          color: Theme.of(context).colorScheme.surface,
           onPanelSlide: (pos) {
             // Removed auto‐dismiss on slight downward drag
             // if (!_panelClosingStarted &&
