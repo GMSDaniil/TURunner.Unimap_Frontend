@@ -806,7 +806,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               final latlng = _coordinatePanelLatLng!;
               return ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
+                  top: Radius.circular(28), // Match route options sheet
                 ),
                 child: Material(
                   color: Colors.white,
@@ -815,9 +815,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       20,
                       12,
                       20,
-                      MediaQuery.of(
-                        context,
-                      ).padding.bottom, // dynamic bottom padding
+                      MediaQuery.of(context).padding.bottom,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -833,7 +831,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -844,7 +842,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                   const Text(
                                     'Coordinates',
                                     style: TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -861,16 +859,24 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               ),
                             ),
                             Container(
-                              width: 24,
-                              height: 28,
+                              width: 36,
+                              height: 36,
+                              margin: const EdgeInsets.only(left: 8, top: 0),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.grey.shade200,
+                                // boxShadow: [
+                                //   BoxShadow(
+                                //     color: Colors.black.withOpacity(0.06),
+                                //     blurRadius: 4,
+                                //     offset: const Offset(0, 2),
+                                //   ),
+                                // ],
                               ),
                               child: IconButton(
-                                icon: const Icon(Icons.close, size: 16),
-                                splashRadius: 16,
-                                padding: const EdgeInsets.all(4),
+                                icon: const Icon(Icons.close, size: 18),
+                                splashRadius: 18,
+                                padding: const EdgeInsets.all(0),
                                 onPressed: () {
                                   setState(() => _coordinatePanelLatLng = null);
                                   _panelController.close();
@@ -880,18 +886,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         Row(
                           children: [
                             Expanded(
                               child: SizedBox(
-                                height:
-                                    56, // ← bump this to whatever Y-axis thickness you want
+                                height: 56,
                                 child: GradientActionButton(
                                   onPressed: () {
-                                    setState(
-                                      () => _coordinatePanelLatLng = null,
-                                    );
+                                    setState(() => _coordinatePanelLatLng = null);
                                     _panelController.close();
                                     _startRouteFlow(latlng);
                                   },
@@ -2141,7 +2144,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   color: Colors.grey.shade200,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.close, size: 16),
+                  icon: const Icon(Icons.close, size: 18),
                   splashRadius: 16,
                   padding: const EdgeInsets.all(4),
                   onPressed: () {
