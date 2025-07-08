@@ -87,7 +87,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
           child: Container(
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey[300]!),
             ),
@@ -193,7 +193,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
       decoration: InputDecoration(
         hintText: widget.hintText,
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,

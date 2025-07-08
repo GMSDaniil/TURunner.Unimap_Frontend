@@ -344,7 +344,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -411,7 +411,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         decoration: InputDecoration(
                           hintText: 'e.g., 2, 4, 6',
                           filled: true,
-                          fillColor: Colors.grey[100],
+                          fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,

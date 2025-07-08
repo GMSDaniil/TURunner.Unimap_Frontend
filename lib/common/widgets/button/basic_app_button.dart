@@ -53,7 +53,10 @@ class BasicAppButton extends StatelessWidget {
         width: width ?? MediaQuery.of(context).size.width,
         height: height ?? 60,
         decoration: BoxDecoration(
-          gradient: isEnabled ? Theme.of(context).primaryGradient : null,
+          gradient: LinearGradient(colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
+          ]),
           color: isEnabled ? null : Colors.grey,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
