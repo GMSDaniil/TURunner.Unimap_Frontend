@@ -1,3 +1,5 @@
+/// Utility to compute the best position for a line rectangle between two stops.
+// Place all imports at the top
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -5,6 +7,40 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart'; // if needed
+
+LatLng getLineRectanglePosition(LatLng stopA, LatLng stopB, {double minDistance = 20.0}) {
+  final Distance distance = const Distance();
+  final double totalDist = distance(stopA, stopB);
+  // If the stops are too close, just return the midpoint
+  if (totalDist < minDistance * 2) {
+    return LatLng(
+      (stopA.latitude + stopB.latitude) / 2,
+      (stopA.longitude + stopB.longitude) / 2,
+    );
+  }
+  // Find the midpoint
+  final double midLat = (stopA.latitude + stopB.latitude) / 2;
+  final double midLng = (stopA.longitude + stopB.longitude) / 2;
+  LatLng midPoint = LatLng(midLat, midLng);
+  // Check distance from midpoint to each stop
+  final double distToA = distance(midPoint, stopA);
+  final double distToB = distance(midPoint, stopB);
+  // If too close to either stop, nudge along the segment
+  if (distToA < minDistance || distToB < minDistance) {
+    // Move the rectangle towards the farther stop
+    final double nudgeRatio = minDistance / totalDist;
+    final double nudgeLat = (stopB.latitude - stopA.latitude) * nudgeRatio;
+    final double nudgeLng = (stopB.longitude - stopA.longitude) * nudgeRatio;
+    if (distToA < distToB) {
+      // Nudge towards B
+      midPoint = LatLng(stopA.latitude + nudgeLat, stopA.longitude + nudgeLng);
+    } else {
+      // Nudge towards A
+      midPoint = LatLng(stopB.latitude - nudgeLat, stopB.longitude - nudgeLng);
+    }
+  }
+  return midPoint;
+}
 
 /// A widget that builds the FlutterMap with given configuration.
 class MapWidget extends StatelessWidget {
@@ -61,6 +97,66 @@ class MapWidget extends StatelessWidget {
     final allPoints = <LatLng>[];
     for (final seg in segments) {
       allPoints.addAll(seg.path);
+    }
+
+    // --- Track zoom level for hiding stops ---
+    double currentZoom = mapController.camera.zoom;
+    // --- Compute rectangle positions for each segment (between stops) ---
+    final List<Marker> lineRectMarkers = [];
+    for (final seg in segments) {
+      if (seg.path.length >= 2 && seg.transportLine != null && seg.transportLine!.isNotEmpty) {
+        // 1. Take the midpoint of the segment path
+        final LatLng mid = LatLng(
+          (seg.path.first.latitude + seg.path.last.latitude) / 2,
+          (seg.path.first.longitude + seg.path.last.longitude) / 2,
+        );
+
+        // 2. Find the two closest stops to the midpoint
+        List<LatLng> stops = [seg.path.first, seg.path.last];
+        if (seg.path.length > 2) {
+          stops = [for (final p in seg.path) p];
+        }
+        stops.sort((a, b) => const Distance()(mid, a).compareTo(const Distance()(mid, b)));
+        final LatLng stopA = stops[0];
+        final LatLng stopB = stops[1];
+
+        // 3. Place the label at the midpoint between those two stops
+        final LatLng rectPos = LatLng(
+          (stopA.latitude + stopB.latitude) / 2,
+          (stopA.longitude + stopB.longitude) / 2,
+        );
+
+        lineRectMarkers.add(
+          Marker(
+            point: rectPos,
+            width: 48,
+            height: 28,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.black26, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                seg.transportLine!,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
     }
 
     return FlutterMap(
@@ -123,11 +219,13 @@ class MapWidget extends StatelessWidget {
           ],
         ),
         // Marker layer for various markers
+        // --- Markers: stops, scooters, user, and line rectangles ---
         MarkerLayer(
           markers: [
             ...markers,
-            ...busStopMarkers,
+            if (currentZoom >= 15) ...busStopMarkers,
             ...scooterMarkers,
+            ...lineRectMarkers,
             if (currentLocation != null)
               Marker(
                 point: currentLocation!,
