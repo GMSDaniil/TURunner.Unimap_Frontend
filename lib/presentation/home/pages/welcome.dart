@@ -25,7 +25,7 @@ class WelcomePage extends StatelessWidget {
                 width: 340,
                 height: 340,
                 child: Image.asset(
-                  'assets/images/logo__.jpeg',
+                  'assets/images/logo__.png',
                   fit: BoxFit.contain,
                 ),
               ),
@@ -73,8 +73,8 @@ class WelcomePage extends StatelessWidget {
                     height: 48,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        backgroundColor: Colors.grey[200],
+                        foregroundColor: Theme.of(context).colorScheme.onSurface,
+                        backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                         side: const BorderSide(color: Colors.grey),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),

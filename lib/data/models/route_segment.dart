@@ -1,6 +1,8 @@
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:latlong2/latlong.dart';
 
+
+
 class RouteSegment {
   final TravelMode mode;
   final List<LatLng> path;
@@ -11,6 +13,13 @@ class RouteSegment {
   final String? transportLine;
   final String? fromStop;
   final String? toStop;
+  // Added fields for timeline UI
+  final DateTime? departureTime;
+  final DateTime? arrivalTime;
+  final int? numStops;
+  /// List of stop names or codes for this segment (if available)
+  final List<String>? stops;
+  final String? headsign;
 
   RouteSegment({
     required this.mode,
@@ -22,5 +31,47 @@ class RouteSegment {
     this.transportLine,
     this.fromStop,
     this.toStop,
+    this.departureTime,
+    this.arrivalTime,
+    this.numStops,
+    this.headsign,
+    this.stops,
   });
+}
+
+/// Extension to get the number of stops for a segment, falling back to numStops, or inferring from stops list.
+extension RouteSegmentStopCount on RouteSegment {
+  /// Returns the number of stops for this segment, or a reasonable default if not available.
+  int get stopCount {
+    if (numStops != null) return numStops!;
+    if (stops != null) return stops!.length;
+    
+    // For public transport segments, provide a reasonable default
+    if (transportType != null && transportType != 'walk') {
+      // If we have from and to stops, assume at least 1 stop (the destination)
+      if (fromStop != null && toStop != null) return 1;
+    }
+    
+    return 0;
+  }
+}
+
+extension RouteSegmentTime on RouteSegment {
+  String? get departureTimeFormatted =>
+      departureTime != null ? _formatTime(departureTime!) : null;
+  String? get arrivalTimeFormatted =>
+      arrivalTime != null ? _formatTime(arrivalTime!) : null;
+}
+
+String _formatTime(DateTime dt) {
+  // Use basic formatting to avoid DateFormat dependency issues
+  final h = dt.hour.toString().padLeft(2, '0');
+  final m = dt.minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
+
+/// Provide a correctly spelled getter for duration
+extension RouteSegmentDuration on RouteSegment {
+  /// Returns the segment duration in seconds
+  int get durationSeconds => durrationSeconds;
 }

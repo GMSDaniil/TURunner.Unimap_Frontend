@@ -22,6 +22,21 @@ class RouteData {
   int get totalDuration => segments.fold(0, (sum, s) => sum + s.durrationSeconds);
 }
 
+extension RouteDataTime on RouteData {
+  String? get departureTimeFormatted {
+    if (segments.isNotEmpty) {
+      return segments.first.departureTimeFormatted;
+    }
+    return null;
+  }
+  String? get arrivalTimeFormatted {
+    if (segments.isNotEmpty) {
+      return segments.last.arrivalTimeFormatted;
+    }
+    return null;
+  }
+}
+
 extension RouteDataLabels on RouteData {
   /// Returns the real "start" label (first segment’s fromStop), or a sensible default.
   String get startName {
