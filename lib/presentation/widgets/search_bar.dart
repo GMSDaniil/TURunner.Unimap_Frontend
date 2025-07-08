@@ -122,7 +122,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: borderRadius,
                           boxShadow: [
                             BoxShadow(
@@ -143,7 +143,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                             prefixIcon: _leadingIcon,
                             suffixIcon: const SizedBox.shrink(),
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Theme.of(context).colorScheme.surface,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 16,
@@ -179,7 +179,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                           height: 36,
                           margin: const EdgeInsets.only(right: 10),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: Theme.of(context).colorScheme.surface,
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -239,7 +239,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
   Widget _buildSuggestionsDropdown() {
     return Container(
       margin: const EdgeInsets.only(top: 4),
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: ListView.separated(
         itemCount: widget.suggestions.length,
         separatorBuilder: (_, __) => Divider(

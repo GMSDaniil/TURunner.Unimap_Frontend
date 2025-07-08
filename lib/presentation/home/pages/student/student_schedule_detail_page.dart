@@ -18,11 +18,11 @@ class StudentScheduleDetailPage extends StatelessWidget {
         backgroundColor: const Color(0xFF9C27B0),
         foregroundColor: Colors.white,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFF9C27B0), // Purple
-                Color(0xFFEF4136), // Red
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.secondary,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -91,7 +91,7 @@ class StudentScheduleDetailPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text('Close', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
         ],
       ),

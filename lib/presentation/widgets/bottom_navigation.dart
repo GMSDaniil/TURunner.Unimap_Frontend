@@ -123,7 +123,14 @@ class AnimatedBottomNavigationBar extends StatelessWidget {
           elevation: 10, // no shadow line
           child: Ink(
             decoration: BoxDecoration(
-              gradient: Theme.of(context).primaryGradient,
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
             ),
             child: SizedBox(
               height: 88, // ▲ taller bar

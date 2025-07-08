@@ -71,11 +71,11 @@ class SignupPage extends StatelessWidget {
                       _signup(),
                       const Spacer(),
                       const SizedBox(height: 50),
-                      _userNameField(),
+                      _userNameField(context),
                       const SizedBox(height: 20),
-                      _emailField(),
+                      _emailField(context),
                       const SizedBox(height: 20),
-                      _passwordField(),
+                      _passwordField(context),
                       const SizedBox(height: 60),
                       _createAccountButton(context),
                       const SizedBox(height: 20),
@@ -95,20 +95,19 @@ class SignupPage extends StatelessWidget {
     return const Text(
       'Sign Up',
       style: TextStyle(
-        color: Colors.black,
         fontWeight: FontWeight.bold,
         fontSize: 32,
       ),
     );
   }
 
-  Widget _userNameField() {
+  Widget _userNameField(BuildContext context) {
     return TextField(
       controller: _usernameCon,
       decoration: InputDecoration(
         hintText: 'Username',
         filled: true,
-        fillColor: Color(0xFFF5F6FA),
+        fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
           horizontal: 20,
@@ -119,13 +118,13 @@ class SignupPage extends StatelessWidget {
         ),
         
       ),
-      style: const TextStyle(
-        color: Colors.black, 
-      ),
+      // style: const TextStyle(
+      //   color: Colors.black, 
+      // ),
     );
   }
 
-  Widget _emailField() {
+  Widget _emailField(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: _emailError,
       builder: (context, error, child) {
@@ -135,7 +134,7 @@ class SignupPage extends StatelessWidget {
             hintText: 'Email',
             errorText: error,
             filled: true,
-            fillColor: Color(0xFFF5F6FA),
+            fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
             contentPadding: const EdgeInsets.symmetric(
               vertical: 16,
               horizontal: 20,
@@ -145,9 +144,9 @@ class SignupPage extends StatelessWidget {
               borderSide: BorderSide.none,
             ),
           ),
-          style: const TextStyle(
-            color: Colors.black, 
-          ),
+          // style: const TextStyle(
+          //   color: Colors.black, 
+          // ),
           onChanged: (value) {
             if (!_emailRegex.hasMatch(value)) {
               _emailError.value = 'Invalid email format';
@@ -168,7 +167,7 @@ class SignupPage extends StatelessWidget {
     _isFormValid.value = isEmailValid && isPasswordValid;
   }
 
-  Widget _passwordField() {
+  Widget _passwordField(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: _passwordError,
       builder: (context, error, child) {
@@ -182,7 +181,7 @@ class SignupPage extends StatelessWidget {
                 hintText: 'Password',
                 errorText: error,
                 filled: true,
-                fillColor: Color(0xFFF5F6FA),
+                fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 16,
                   horizontal: 20,
@@ -192,9 +191,9 @@ class SignupPage extends StatelessWidget {
                   borderSide: BorderSide.none,
                 ),
               ),
-              style: const TextStyle(
-                color: Colors.black, 
-              ),
+              // style: const TextStyle(
+              //   color: Colors.black, 
+              // ),
               onChanged: (value) {
                 _hasUppercase.value =
                     PasswordRules.requireUppercase
@@ -262,10 +261,10 @@ class SignupPage extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          const TextSpan(
+          TextSpan(
             text: 'Do you have account?',
             style: TextStyle(
-              color: Color(0xff3B4054),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -318,7 +317,7 @@ class SignupPage extends StatelessWidget {
           children: [
             Icon(
               isValid ? Icons.check_circle : Icons.cancel,
-              color: isValid ? Theme.of(context).colorScheme.secondary : Colors.grey,
+              color: isValid ? Theme.of(context).colorScheme.primary : Colors.grey,
               size: 16,
             ),
             const SizedBox(width: 8),

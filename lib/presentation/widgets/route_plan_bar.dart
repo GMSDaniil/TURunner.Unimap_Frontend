@@ -268,6 +268,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         initialText: '',
         hint: hint,
         pool: _pool,
+        allPointers: widget.allPointers,
         isTaken: (c) => _chosen.contains(c),
         onPicked: (c) {
           _overlay?.remove();
@@ -394,6 +395,7 @@ class _RouteSearchOverlay extends StatefulWidget {
     required this.initialText,
     required this.pool,
     required this.isTaken,
+    required this.allPointers,
     required this.onPicked,
     required this.onCancel,
     required this.hint,
@@ -401,6 +403,7 @@ class _RouteSearchOverlay extends StatefulWidget {
 
   final String initialText;
   final List<_Cand> pool;
+  final List<Pointer> allPointers;
   final bool Function(_Cand) isTaken;
   final void Function(_Cand) onPicked;
   final VoidCallback onCancel;
@@ -423,16 +426,43 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
 
   late final TextEditingController _searchCtl =
       TextEditingController(text: widget.initialText);
+
+      
   late List<_Cand> _suggestions;
   final FocusNode _focusNode = FocusNode();
 
   List<_Cand> _getSuggestions(String q) {
     final l = q.toLowerCase();
-    return widget.pool
-        .where((c) =>
-            !widget.isTaken(c) && (l.isEmpty || c.label.toLowerCase().contains(l)))
-        .take(40)
-        .toList();
+    List<_Cand> suggestions = [];
+    
+    // Add regular pool items (current location + existing buildings)
+    suggestions.addAll(
+      widget.pool.where((c) =>
+          !widget.isTaken(c) && (l.isEmpty || c.label.toLowerCase().contains(l)))
+    );
+    
+    // ✅ Add buildings that have rooms matching the query
+    if (l.isNotEmpty) {
+      for (final pointer in widget.allPointers) {
+        // Check if any room in this pointer matches
+        final roomMatches = pointer.rooms.any((room) => 
+            room.toLowerCase().contains(l));
+        
+        // Check if pointer name matches
+        final nameMatches = pointer.name.toLowerCase().contains(l);
+        
+        if (roomMatches || nameMatches) {
+          final cand = _Cand(pointer.name, LatLng(pointer.lat, pointer.lng));
+          
+          // Only add if not already in suggestions and not taken
+          if (!suggestions.contains(cand) && !widget.isTaken(cand)) {
+            suggestions.add(cand);
+          }
+        }
+      }
+    }
+    
+    return suggestions.take(40).toList();
   }
 
   @override
@@ -467,6 +497,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
                           lat: c.pos.latitude,
                           lng: c.pos.longitude,
                           category: '',
+                          rooms: _getRoomsForPointer(c.label),
                         ))
                     .toList(),
                 onClear: () => _searchCtl.clear(),
@@ -488,6 +519,13 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
         ),
       ),
     );
+  }
+  List<String> _getRoomsForPointer(String pointerName) {
+    final pointer = widget.allPointers.firstWhere(
+      (p) => p.name == pointerName,
+      orElse: () => Pointer(name: '', lat: 0, lng: 0, category: '', rooms: []),
+    );
+    return pointer.rooms;
   }
 
   @override

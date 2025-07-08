@@ -7,6 +7,7 @@ class SearchableDropdown extends StatefulWidget {
   final Function(StudyProgramEntity) onChanged;
   final String hintText;
   final bool isLoading;
+  final void Function(bool)? onFocusChanged;
 
   const SearchableDropdown({
     Key? key,
@@ -15,13 +16,14 @@ class SearchableDropdown extends StatefulWidget {
     required this.onChanged,
     this.hintText = 'Search study programs...',
     this.isLoading = false,
+    this.onFocusChanged,
   }) : super(key: key);
 
   @override
-  State<SearchableDropdown> createState() => _SearchableDropdownState();
+  SearchableDropdownState createState() => SearchableDropdownState();
 }
 
-class _SearchableDropdownState extends State<SearchableDropdown> {
+class SearchableDropdownState extends State<SearchableDropdown> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   List<StudyProgramEntity> _filteredItems = [];
@@ -52,6 +54,8 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
     } else if (!_focusNode.hasFocus && _isOpen) {
       _closeDropdown();
     }
+    // Notify parent about focus change
+    widget.onFocusChanged?.call(_focusNode.hasFocus);
   }
 
   void _openDropdown() {
@@ -87,7 +91,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
           child: Container(
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey[300]!),
             ),
@@ -193,7 +197,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
       decoration: InputDecoration(
         hintText: widget.hintText,
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -217,6 +221,11 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
               ),
       ),
     );
+  }
+
+  void closeDropdown() {
+    _focusNode.unfocus();
+    _closeDropdown();
   }
 
   @override

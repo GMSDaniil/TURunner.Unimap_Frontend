@@ -6,6 +6,10 @@ import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/service_locator.dart';
 
+import 'package:provider/provider.dart';
+import 'package:auth_app/common/providers/user.dart';
+import 'package:auth_app/domain/entities/favourite.dart';
+
 /// Re-usable gradient pill button used throughout the bottom sheet.
 class GradientActionButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -89,10 +93,12 @@ class BuildingSlideWindow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final favourites = Provider.of<UserProvider>(context).favourites;
+    final isFavourite = favourites.any((f) => f.name == title);
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: Material(
-        color: Colors.white, // explicit white background
+        color: Theme.of(context).colorScheme.surface, // explicit white background
         child: SafeArea(
           top: false,
           // child: SingleChildScrollView(
@@ -111,7 +117,7 @@ class BuildingSlideWindow extends StatelessWidget {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -144,14 +150,14 @@ class BuildingSlideWindow extends StatelessWidget {
 
                     // smaller circular close button, no top margin
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.grey.shade200,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.close, size: 18),
+                        icon: const Icon(Icons.close, size: 16),
                         splashRadius: 16,
                         padding: const EdgeInsets.all(4),
                         onPressed: onClose,
@@ -176,9 +182,13 @@ class BuildingSlideWindow extends StatelessWidget {
                     Expanded(
                       child: GradientActionButton(
                         onPressed: onAddToFavourites,
-                        icon: Icons.favorite_border,
-                        label: 'Add to Favourites',
-                        colors: const [_deepOrange, _orange],
+                        icon: isFavourite ? Icons.check : Icons.favorite_border,
+                        label: isFavourite
+                            ? 'Saved in Favourites'
+                            : 'Add to Favourites',
+                        colors: isFavourite
+                            ? const [Color(0xFFFFC1A1), Color(0xFFFF8C94)]
+                            : const [_deepOrange, _orange],
                       ),
                     ),
                   ],

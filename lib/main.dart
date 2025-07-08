@@ -1,4 +1,5 @@
 import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
+import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
@@ -34,6 +35,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "config.env");
   MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN']!);
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // --- Mapbox Offline Caching using TileStore/OfflineManager ---
   // This will prefetch the style and tiles for the campus region for offline use.
@@ -115,26 +121,33 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (context) => AuthStateCubit()..appStarted()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: MaterialApp(
-        theme: AppTheme.appTheme,
-        debugShowCheckedModeBanner: false,
-        home: BlocBuilder<AuthStateCubit, AuthState>(
-          builder: (context, state) {
-            if (state is Authenticated || state is GuestAuthenticated) {
-              return const HomePage(); // Show MapPage for both Authenticated and Guest users
-            }
-            if (state is UnAuthenticated) {
-              return const WelcomePage();
-            }
-            return const Center(child: CircularProgressIndicator());
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child){
+        return MaterialApp(
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          debugShowCheckedModeBanner: false,
+          home: BlocBuilder<AuthStateCubit, AuthState>(
+            builder: (context, state) {
+              if (state is Authenticated || state is GuestAuthenticated) {
+                return const HomePage(); // Show MapPage for both Authenticated and Guest users
+              }
+              if (state is UnAuthenticated) {
+                return const WelcomePage();
+              }
+              return const Center(child: CircularProgressIndicator());
+            },
+          ),
+          routes: {
+            '/signup': (_) => SignupPage(),
+            '/signin': (_) => SigninPage(),
+            '/home': (_) => const HomePage(), // Add this route for HomePage
           },
-        ),
-        routes: {
-          '/signup': (_) => SignupPage(),
-          '/signin': (_) => SigninPage(),
-          '/home': (_) => const HomePage(), // Add this route for HomePage
-        },
+        );
+      }
       ),
     );
   }

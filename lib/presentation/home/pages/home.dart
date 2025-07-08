@@ -66,7 +66,11 @@ class _HomePageState extends State<HomePage> {
         navBarHeight: effectiveNavBarHeight,
       ),
       FavouritesPage(),
-      ProfilePage(),
+      ProfilePage(
+        onSearchFocusChanged: (active) {
+          if (_hideNav != active) setState(() => _hideNav = active);
+        },
+      ),
     ];
   }
 
@@ -79,7 +83,7 @@ class _HomePageState extends State<HomePage> {
     }
     return Scaffold(
       key: _scaffoldKey,
-      // ── BODY ───────────────────────────────────────────────────────
+      resizeToAvoidBottomInset: false,
       body: Scaffold(
         body: Stack(
           children: [
@@ -117,7 +121,6 @@ class _HomePageState extends State<HomePage> {
               left: 0,
               right: 0,
               bottom: 0,
-
               child: safeAreaBottom > 0 ? SafeArea(child: navBar()) : navBar(),
             ),
           ],

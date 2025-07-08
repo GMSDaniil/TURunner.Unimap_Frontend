@@ -41,28 +41,34 @@ class MapMarkerManager {
 
   /// Search logic: filter markers by name
   static List<Marker> searchMarkersByName({
-    required List<Pointer> allPointers,
-    required String query,
-    required Function(Pointer) onMarkerTap,
-  }) {
-    final filtered = allPointers
-        .where(
-          (pointer) => pointer.name.toLowerCase().contains(query.toLowerCase()),
-        )
-        .toList();
+  required List<Pointer> allPointers,
+  required String query,
+  required Function(Pointer) onMarkerTap,
+}) {
+  final q = query.toLowerCase();
+  
+  final filtered = allPointers.where((p) {
+    // Check if pointer name matches
+    final nameMatches = p.name.toLowerCase().contains(q);
+    
+    // Check if any room in this pointer matches
+    final roomMatches = p.rooms.any((room) => 
+        room.toLowerCase().contains(q));
+    
+    // Include pointer if either name or any room matches
+    return nameMatches || roomMatches;
+  }).toList();
 
-    return filtered.map((pointer) {
-      return Marker(
-        point: LatLng(pointer.lat, pointer.lng),
-        width: 40,
-        height: 40,
-        child: GestureDetector(
-          onTap: () => onMarkerTap(pointer),
-          child: const Icon(Icons.location_on, color: Colors.deepPurple),
-        ),
-      );
-    }).toList();
-  }
+  return filtered.map((pointer) => Marker(
+    point: LatLng(pointer.lat, pointer.lng),
+    width: 40,
+    height: 40,
+    child: GestureDetector(
+      onTap: () => onMarkerTap(pointer),
+      child: const Icon(Icons.location_on, color: Colors.deepPurple, size: 32),
+    ),
+  )).toList();
+}
 
   /// Returns all markers, optionally highlighting a specific category.
   static List<Marker> allMarkersWithHighlight({

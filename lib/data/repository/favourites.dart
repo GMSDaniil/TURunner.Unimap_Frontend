@@ -36,8 +36,20 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
   Future<Either<String, void>> addFavourite(
     AddFavouriteReqParams params,
   ) async {
+    final getResult = await getFavourites();
+    if (getResult.isRight()) {
+      final favourites = getResult.getOrElse(() => []);
+      final alreadyExists = favourites.any(
+        (f) =>
+            f.name == params.name &&
+            f.lat == params.latitude &&
+            f.lng == params.longitude,
+      );
+      if (alreadyExists) {
+        return Left('Building is already in your favourites.');
+      }
+    }
     final result = await sl<FavouritesApiService>().addFavourite(params);
-
     return result.fold((errorMessage) => Left(errorMessage), (response) {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return const Right(null);

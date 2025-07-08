@@ -120,10 +120,10 @@ class _WeatherWidgetState extends State<WeatherWidget> {
           const SizedBox(width: 6),
           Text(
             '${weather.temperature.toStringAsFixed(0)}°',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(width: 8),
@@ -159,7 +159,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   Widget _weatherBox({required Widget child}) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(

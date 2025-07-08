@@ -25,7 +25,9 @@ import 'package:auth_app/domain/entities/study_program.dart';
 import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final void Function(bool)? onSearchFocusChanged;
+
+  const ProfilePage({Key? key, this.onSearchFocusChanged}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -37,11 +39,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _scheduleError;
   bool _showScheduleSection = false;
   
-  // Updated controller names
-  final _studyProgramController = TextEditingController();
   final _semesterController = TextEditingController();
 
-  // Add these new fields
   List<StudyProgramEntity> _studyPrograms = [];
   StudyProgramEntity? _selectedStudyProgram;
   bool _isLoadingStudyPrograms = false;
@@ -49,13 +48,16 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // User-friendly default values
-    _studyProgramController.text = 'Computer Science';
     _semesterController.text = '2';
     _loadStudyPrograms();
   }
 
-  // Update _loadStudyPrograms method to remove test data fallback
+  @override
+  void dispose() {
+    _semesterController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadStudyPrograms() async {
     setState(() => _isLoadingStudyPrograms = true);
     
@@ -136,20 +138,30 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        body: BlocProvider(
-          create: (context) => UserDisplayCubit()..displayUser(),
-          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-            builder: (context, state) {
-              if (state is UserLoading) {
-                return const Center(child: CircularProgressIndicator());
+    // Use UserProvider to check login state. listen: true ensures UI rebuilds on logout.
+    final user = Provider.of<UserProvider>(context).user;
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => ButtonStateCubit()),
+      ],
+      child: SafeArea(
+        child: Scaffold(
+          body: BlocListener<ButtonStateCubit, ButtonState>(
+            listener: (context, state) {
+              if (state is ButtonSuccessState) {
+                // On successful logout, clear the user from the provider
+                Provider.of<UserProvider>(context, listen: false).clearUser();
+                // Navigate to welcome page
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WelcomePage()),
+                );
               }
-              if (state is UserLoaded) {
-                return _buildUserView(context, state.userEntity);
-              }
-              return _buildGuestView(context);
             },
+          child: user != null
+              ? _buildUserView(context, user)
+              : _buildGuestView(context),
           ),
         ),
       ),
@@ -157,39 +169,60 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildUserView(BuildContext context, UserEntity user) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 32),
-          _buildProfilePicture(context),
-          const SizedBox(height: 24),
-          _buildUsername(user),
-          const SizedBox(height: 8),
-          _buildEmail(user),
-          const SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildScheduleSection(),
-                  const SizedBox(height: 24),
-                  BlocListener<ButtonStateCubit, ButtonState>(
-                    listener: (context, state) {
-                      if (state is ButtonSuccessState) {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => const WelcomePage()),
-                        );
-                      }
-                    },
-                    child: _buildLogoutButton(context),
-                  ),
-                ],
-              ),
-            ),
+    // Wrap the user view with the BlocProvider and BlocListener for the logout button
+    return BlocProvider(
+      create: (_) => UserDisplayCubit()..displayUser(),
+      child: BlocListener<UserDisplayCubit, UserDisplayState>(
+        listener: (context, state) {
+          if (state is UserLoaded) {
+            Provider.of<UserProvider>(context, listen: false).setUser(state.userEntity);
+          }
+        },
+        child: Center(
+          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
+            builder: (context, state) {
+              if(state is UserLoading) {
+                return const CircularProgressIndicator();
+              } 
+              if (state is UserLoaded) {
+                return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 32),
+                    _buildProfilePicture(context),
+                    const SizedBox(height: 24),
+                    _buildUsername(user),
+                    const SizedBox(height: 8),
+                    _buildEmail(user),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildScheduleSection(),
+                            const SizedBox(height: 24),
+                            _buildLogoutButton(context),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              }  
+              if (state is LoadUserFailure) {
+                return Center(child: Text(state.errorMessage));
+              }
+
+              return const Center(
+                child: Text('No user data available.'),
+              );
+              
+            }
           ),
-        ],
+        ),
       ),
     );
   }
@@ -220,15 +253,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
-    return Builder(
-      builder: (innerContext) {
-        return BasicAppButton(
-          title: 'Logout',
-          onPressed: () {
-            innerContext.read<ButtonStateCubit>().execute(
-              usecase: sl<LogoutUseCase>(),
-            );
-          },
+    // Use the context from the BlocProvider to find the ButtonStateCubit
+    return BasicAppButton(
+      title: 'Logout',
+      onPressed: () {
+        context.read<ButtonStateCubit>().execute(
+          usecase: sl<LogoutUseCase>(),
         );
       },
     );
@@ -316,7 +346,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -383,7 +413,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         decoration: InputDecoration(
                           hintText: 'e.g., 2, 4, 6',
                           filled: true,
-                          fillColor: Colors.grey[100],
+                          fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
@@ -562,12 +592,4 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _studyProgramController.dispose();
-    _semesterController.dispose();
-    super.dispose();
-  }
-
 }

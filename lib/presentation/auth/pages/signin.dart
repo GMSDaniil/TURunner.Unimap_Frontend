@@ -84,9 +84,9 @@ class SigninPage extends StatelessWidget {
                 _signin(),
                 const Spacer(),
                 const SizedBox(height: 50),
-                _usernameField(),
+                _usernameField(context),
                 const SizedBox(height: 20),
-                _passwordField(),
+                _passwordField(context),
                 const SizedBox(height: 60),
                 _loginButton(context),
                 const SizedBox(height: 20),
@@ -128,14 +128,13 @@ class SigninPage extends StatelessWidget {
     return Text(
       'Sign In',
       style: TextStyle(
-        color: Colors.black,
         fontWeight: FontWeight.bold,
         fontSize: 32,
       ),
     );
   }
 
-  Widget _usernameField() {
+  Widget _usernameField(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: _usernameError,
       builder: (context, error, child) {
@@ -147,7 +146,7 @@ class SigninPage extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Username',
                 filled: true,
-                fillColor: const Color(0xFFF5F6FA),
+                fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 16,
                   horizontal: 20,
@@ -170,7 +169,7 @@ class SigninPage extends StatelessWidget {
                       : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
                 ),
               ),
-              style: const TextStyle(color: Colors.black),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               onChanged: (value) {
                 // Clear error when user starts typing
                 if (error != null) {
@@ -192,7 +191,7 @@ class SigninPage extends StatelessWidget {
     );
   }
 
-  Widget _passwordField() {
+  Widget _passwordField(BuildContext context) {
     return ValueListenableBuilder<String?>(
       valueListenable: _passwordError,
       builder: (context, error, child) {
@@ -205,7 +204,7 @@ class SigninPage extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Password',
                 filled: true,
-                fillColor: const Color(0xFFF5F6FA),
+                fillColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                 contentPadding: const EdgeInsets.symmetric(
                   vertical: 16,
                   horizontal: 20,
@@ -228,7 +227,7 @@ class SigninPage extends StatelessWidget {
                       : const BorderSide(color: Color(0xFF7B61FF), width: 2.0),
                 ),
               ),
-              style: const TextStyle(color: Colors.black),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               onChanged: (value) {
                 // Clear error when user starts typing
                 if (error != null) {
@@ -281,10 +280,10 @@ class SigninPage extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          const TextSpan(
+          TextSpan(
             text: "Don't you have account?",
             style: TextStyle(
-              color: Color(0xff3B4054),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
               fontWeight: FontWeight.w500,
             ),
           ),
