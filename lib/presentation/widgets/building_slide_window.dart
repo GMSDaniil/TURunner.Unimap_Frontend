@@ -144,14 +144,14 @@ class BuildingSlideWindow extends StatelessWidget {
 
                     // smaller circular close button, no top margin
                     Container(
-                      width: 28,
-                      height: 28,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.grey.shade200,
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.close, size: 16),
+                        icon: const Icon(Icons.close, size: 18),
                         splashRadius: 16,
                         padding: const EdgeInsets.all(4),
                         onPressed: onClose,

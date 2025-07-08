@@ -258,28 +258,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                                     ],
                                   ),
                           ),
-                    const SizedBox(height: 28),
-                    // Always show the segments area, but with shimmer if loading
-                    _loading
-                        ? Column(
-                            children: [
-                              for (int i = 0; i < 2; i++)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 4),
-                                  child: ShimmerLoading(height: 56, width: double.infinity),
-                                ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              for (final entry in (widget.routesNotifier.value[_mode]?.segments ?? []).asMap().entries)
-                                _SegmentTimelineTile(
-                                  segment: entry.value,
-                                  isFirst: entry.key == 0,
-                                  isLast: entry.key == (widget.routesNotifier.value[_mode]?.segments.length ?? 0) - 1,
-                                ),
-                            ],
-                          ),
+                    // Removed timeline/segment tiles below the Show details button
                   ],
                 ),
               ),
