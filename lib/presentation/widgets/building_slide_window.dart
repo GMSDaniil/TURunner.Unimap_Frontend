@@ -98,7 +98,7 @@ class BuildingSlideWindow extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: Material(
-        color: Colors.white, // explicit white background
+        color: Theme.of(context).colorScheme.surface, // explicit white background
         child: SafeArea(
           top: false,
           // child: SingleChildScrollView(
@@ -117,7 +117,7 @@ class BuildingSlideWindow extends StatelessWidget {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -154,7 +154,7 @@ class BuildingSlideWindow extends StatelessWidget {
                       height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.grey.shade200,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       ),
                       child: IconButton(
                         icon: const Icon(Icons.close, size: 16),

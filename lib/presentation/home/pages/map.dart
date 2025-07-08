@@ -1,28 +1,18 @@
-import 'dart:convert';
-import 'package:wkt_parser/wkt_parser.dart';
+
+import 'package:auth_app/common/providers/theme.dart';
+import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'dart:async';
-import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_data.dart';
-import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/data/theme_manager.dart';
-import 'package:auth_app/domain/usecases/find_bus_route.dart';
-import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
-import 'package:auth_app/domain/usecases/find_walking_route.dart';
 //import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/domain/usecases/find_building_at_point.dart';
-import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:auth_app/data/models/pointer.dart';
-import 'package:auth_app/data/favourites_manager.dart';
-import 'package:auth_app/presentation/widgets/building_popup_manager.dart';
-import 'package:auth_app/presentation/widgets/category_navigation.dart'
-    show CategoryNavigationBar;
 import 'package:auth_app/presentation/widgets/gradient_widget.dart';
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
-import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/mapbox_map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
@@ -39,8 +29,6 @@ import 'package:flutter/animation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
@@ -200,11 +188,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _navBarHeight = widget.navBarHeight;
     _initializeMap(); // Create separate initialization method
     _currentMapTheme = ThemeManager.getCurrentTheme();
-    print(_currentMapTheme.toString());
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+      themeProvider.updateMapTheme(_currentMapTheme);
+    });
+
     _searchCtl.addListener(_onSearchChanged);
-    _cachedTiles = FMTC.FMTCTileProvider(
-      stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
-    );
     _searchFocusNode.addListener(() {
       final active = _searchFocusNode.hasFocus;
       if (mounted && _searchActive != active) {
@@ -213,6 +203,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       }
     });
     _startThemeTimer();
+    _loadFavouriteIcon();
   }
 
   void _startThemeTimer() {
@@ -228,6 +219,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         setState(() {
           _currentMapTheme = newTheme;
         });
+
+        if (mounted) {
+          final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+          themeProvider.updateMapTheme(newTheme);
+        }
       }
       _updateThemeTimer(); // Schedule next update
     });
@@ -254,6 +250,162 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final byteData = await rootBundle.load(assetPath);
       _categoryImageCache[cat] = byteData.buffer.asUint8List();
     }
+  }
+
+  Widget _buildCategoryListPanel(ScrollController sc) {
+    return Column(
+      children: [
+        // Panel handle for dragging
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(top: 12, bottom: 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_activeCategory}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  splashRadius: 16,
+                  padding: const EdgeInsets.all(4),
+                  onPressed: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Scrollable list of category items
+        Expanded(
+          child: ListView.builder(
+            controller: sc,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _activeCategoryPointers.length,
+            itemBuilder: (context, i) {
+              final p = _activeCategoryPointers[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Image.asset(
+                    getPinAssetForCategory(p.category),
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Builder(
+                        builder: (_) {
+                          if (_currentLocation == null) {
+                            return const Text(
+                              'None of places can be loaded',
+                              style: TextStyle(color: Colors.red),
+                            );
+                          }
+                          final distInMeters = Distance().as(
+                            LengthUnit.Meter,
+                            _currentLocation!,
+                            LatLng(p.lat, p.lng),
+                          );
+                          return Text('${distInMeters.toStringAsFixed(0)} m');
+                        },
+                      ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.directions, color: Colors.blue),
+                    onPressed: () {
+                      setState(() {
+                        _activeCategory = null;
+                        _activeCategoryColor = null;
+                        _activeCategoryPointers = [];
+                      });
+                      _panelController.close();
+                      _startRouteFlow(LatLng(p.lat, p.lng));
+                    },
+                  ),
+                  onTap: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+
+                    _showBuildingPanel(p);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _loadFavouriteIcon() async {
+    final bytes = await rootBundle.load('assets/icons/pin_favourite_64.png');
+    setState(() {
+      _categoryImageCache['favourite'] = bytes.buffer.asUint8List();
+    });
   }
 
   Future<LatLng?> getCurrentLocation() async {
@@ -592,6 +744,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           maxHeight: maxHeight, // our dynamic max height
           snapPoint: 0.29, // when you drag up, snaps at 29% if release early
           isDraggable: true, // allow dragging
+          color: Theme.of(context).colorScheme.surface,
           onPanelSlide: (pos) {
             // Removed auto‐dismiss on slight downward drag
             // if (!_panelClosingStarted &&
@@ -863,7 +1016,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   top: Radius.circular(28), // Match route options sheet
                 ),
                 child: Material(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       20,
@@ -880,7 +1033,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                             width: 40,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.3),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -918,7 +1074,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                               margin: const EdgeInsets.only(left: 8, top: 0),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.grey.shade200,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.1),
                                 // boxShadow: [
                                 //   BoxShadow(
                                 //     color: Colors.black.withOpacity(0.06),
@@ -1045,7 +1204,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     child: GestureDetector(
                       onTap: () {},
                       child: Container(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         width: double.infinity,
                         height: double.infinity,
                       ),
@@ -1338,19 +1497,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // 1. Favourites & Icon aus Provider/Cache holen
     final favourites = Provider.of<UserProvider>(context).favourites;
     final favouriteIcon = _categoryImageCache['favourite'];
-    if (favouriteIcon == null) {
-      // Show loading indicator while icon is loading
-      return const Center(child: CircularProgressIndicator());
-    }
+    final favouriteAnnotations = favouriteIcon == null
+        ? []
+        : buildFavouriteAnnotations(favourites, favouriteIcon);
 
-    // 2. Marker-Annotations
-    final allAnnotations = [
-      ..._interactiveAnnotations, // normal POIs
-      ...buildFavouriteAnnotations(favourites, favouriteIcon), // Favourites!
-    ];
+    final favouritePositions = favourites
+        .map((f) => '${f.lat},${f.lng}')
+        .toSet();
+    final normalAnnotations = _interactiveAnnotations.where((a) {
+      final coords = a.options.geometry.coordinates;
+      return !favouritePositions.contains('${coords.lat},${coords.lng}');
+    }).toList();
+
+    final showOnlyCategory =
+        _activeCategory != null && _activeCategoryPointers.isNotEmpty;
+    final allAnnotations = showOnlyCategory
+        ? _activeCategoryPointers.map(mapBoxMarker).toList()
+        : [...normalAnnotations, ...favouriteAnnotations];
 
     return MapboxMapWidget(
-      markerAnnotations: _interactiveAnnotations,
+      markerAnnotations: allAnnotations.cast<InteractiveAnnotation>(),
       navBarHeight: _navBarHeight,
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
@@ -1409,11 +1575,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         opacity: _searchActive ? 0 : 1,
         duration: _animDuration,
         child: FloatingActionButton(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () => _goToCurrentLocation(moveMap: true),
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: const Icon(Icons.my_location, color: Colors.white, size: 24),
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Icon(Icons.my_location, size: 24),
           ),
         ),
       ),
@@ -1434,13 +1603,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton.extended(
           heroTag: 'toggle3d',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           label: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
             child: Text(
               _is3D ? '2D' : '3D',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -1474,13 +1645,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton(
           heroTag: 'rain_toggle',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () {
             setState(() => _isRaining = !_isRaining);
           },
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: Icon(Icons.thunderstorm, color: Colors.white, size: 22),
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Icon(Icons.thunderstorm, size: 22),
           ),
         ),
       ),
@@ -1501,7 +1675,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton(
           heroTag: 'theme_toggle',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () {
             // Cycle through themes manually
             final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
@@ -1509,12 +1683,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             setState(() {
               _currentMapTheme = MapTheme.values[nextIndex];
             });
+            final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+            themeProvider.updateMapTheme(MapTheme.values[nextIndex]);
           },
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
             child: Icon(
               _getThemeIcon(_currentMapTheme),
-              color: Colors.white,
               size: 22,
             ),
           ),
@@ -1535,13 +1713,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton.extended(
           heroTag: 'tubutton',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           label: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: const Text(
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Text(
               'TU',
               style: TextStyle(
-                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -1750,9 +1930,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           image: favouriteIcon,
           iconAnchor: mb.IconAnchor.BOTTOM,
         ),
-        onTap: () {
-          // Optional: open Panel or display info
-        },
+        onTap: () => _onMarkerTap(
+          Pointer(
+            name: fav.name,
+            lat: fav.lat,
+            lng: fav.lng,
+            category: 'Building',
+          ),
+        ),
         category: 'favourite',
       );
     }).toList();
@@ -2081,6 +2266,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   //   _startRouteFlow(dest);
   // }
 
+  void _updateMapConfig() {
+    if (_mapConfig == null || _mapboxMap == null) return;
+    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
+  }
+
   /*───────────────────────────────────────────────────────────────
    * Route-Plan bar teardown animation (fade & slide out)
    *──────────────────────────────────────────────────────────────*/
@@ -2188,157 +2378,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       setState: setState,
       updateCurrentMode: (m) => setState(() => _currentMode = m),
     );
-  }
 
-  void _updateMapConfig() {
-    if (_mapConfig == null || _mapboxMap == null) return;
-    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
-  }
-
-  Widget _buildCategoryListPanel(ScrollController sc) {
-    //print('Build Category List Panel called');
-    return Column(
-      children: [
-        // Panel handle for dragging
-        Container(
-          width: 40,
-          height: 4,
-          margin: const EdgeInsets.only(top: 12, bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_activeCategory}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey.shade200,
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  splashRadius: 16,
-                  padding: const EdgeInsets.all(4),
-                  onPressed: () {
-                    setState(() {
-                      _activeCategory = null;
-                      _activeCategoryColor = null;
-                      _activeCategoryPointers = [];
-                    });
-                    _filterMarkersByCategory(null);
-                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
-                    _panelController.close();
-                    _notifyNavBar(false);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 20),
-
-        // Scrollable list of category items
-        Expanded(
-          child: ListView.builder(
-            controller: sc,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _activeCategoryPointers.length,
-            itemBuilder: (context, i) {
-              final p = _activeCategoryPointers[i];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: Image.asset(
-                    getPinAssetForCategory(p.category),
-                    width: 32,
-                    height: 32,
-                  ),
-                  title: Text(
-                    p.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Builder(
-                        builder: (_) {
-                          if (_currentLocation == null) {
-                            return const Text(
-                              'None of places can be loaded',
-                              style: TextStyle(color: Colors.red),
-                            );
-                          }
-                          final distInMeters = Distance().as(
-                            LengthUnit.Meter,
-                            _currentLocation!,
-                            LatLng(p.lat, p.lng),
-                          );
-                          return Text('${distInMeters.toStringAsFixed(0)} m');
-                        },
-                      ),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.directions, color: Colors.blue),
-                    onPressed: () {
-                      setState(() {
-                        _activeCategory = null;
-                        _activeCategoryColor = null;
-                        _activeCategoryPointers = [];
-                      });
-                      _panelController.close();
-                      _startRouteFlow(LatLng(p.lat, p.lng));
-                    },
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _activeCategory = null;
-                      _activeCategoryColor = null;
-                      _activeCategoryPointers = [];
-                    });
-                    _filterMarkersByCategory(null);
-                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
-                    _panelController.close();
-                    _notifyNavBar(false);
-
-                    _showBuildingPanel(p);
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 }
