@@ -141,7 +141,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<Marker> _markers = [];
   List<InteractiveAnnotation> _interactiveAnnotations = [];
 
-  
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation;
@@ -632,6 +631,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   _startRouteFlow(LatLng(p.lat, p.lng));
                 },
                 onAddToFavourites: () async {
+                  final user = Provider.of<UserProvider>(
+                    context,
+                    listen: false,
+                  ).user;
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to use favourites!'),
+                      ),
+                    );
+                    return;
+                  }
                   final favourites = Provider.of<UserProvider>(
                     context,
                     listen: false,
@@ -1267,19 +1278,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     setState(() {
       _suggestions = q.isEmpty
           ? []
-          : _allPointers
-              .where((p) {
-                // Check if pointer name matches
-                final nameMatches = p.name.toLowerCase().contains(q);
-                
-                // Check if any room in this pointer matches
-                final roomMatches = p.rooms.any((room) => 
-                    room.toLowerCase().contains(q));
-                
-                // Include pointer if either name or any room matches
-                return nameMatches || roomMatches;
-              })
-              .toList();
+          : _allPointers.where((p) {
+              // Check if pointer name matches
+              final nameMatches = p.name.toLowerCase().contains(q);
+
+              // Check if any room in this pointer matches
+              final roomMatches = p.rooms.any(
+                (room) => room.toLowerCase().contains(q),
+              );
+
+              // Include pointer if either name or any room matches
+              return nameMatches || roomMatches;
+            }).toList();
     });
   }
 
@@ -1625,19 +1635,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _searchMarkers(String q) {
-    final filtered = _allPointers
-        .where((p) {
-          // Check if pointer name matches
-          final nameMatches = p.name.toLowerCase().contains(q);
-          
-          // Check if any room in this pointer matches
-          final roomMatches = p.rooms.any((room) => 
-              room.toLowerCase().contains(q));
-          
-          // Include pointer if either name or any room matches
-          return nameMatches || roomMatches;
-        })
-        .toList();
+    final filtered = _allPointers.where((p) {
+      // Check if pointer name matches
+      final nameMatches = p.name.toLowerCase().contains(q);
+
+      // Check if any room in this pointer matches
+      final roomMatches = p.rooms.any((room) => room.toLowerCase().contains(q));
+
+      // Include pointer if either name or any room matches
+      return nameMatches || roomMatches;
+    }).toList();
 
     setState(() {
       _markers = MapMarkerManager.searchMarkersByName(
