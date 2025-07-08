@@ -258,29 +258,145 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildCategoryListPanel(ScrollController sc) {
-    return ListView.builder(
-      controller: sc,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      itemCount: _activeCategoryPointers.length,
-      itemBuilder: (context, index) {
-        final pointer = _activeCategoryPointers[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            leading: Image.asset(
-              getPinAssetForCategory(pointer.category),
-              width: 32,
-              height: 32,
-            ),
-            title: Text(pointer.name),
-            subtitle: Text(pointer.category),
-            onTap: () {
-              _animatedMapboxMove(LatLng(pointer.lat, pointer.lng), 18.0);
-              _onMarkerTap(pointer);
+    return Column(
+      children: [
+        // Panel handle for dragging
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(top: 12, bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_activeCategory}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey.shade200,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  splashRadius: 16,
+                  padding: const EdgeInsets.all(4),
+                  onPressed: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Scrollable list of category items
+        Expanded(
+          child: ListView.builder(
+            controller: sc,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _activeCategoryPointers.length,
+            itemBuilder: (context, i) {
+              final p = _activeCategoryPointers[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Image.asset(
+                    getPinAssetForCategory(p.category),
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Builder(
+                        builder: (_) {
+                          if (_currentLocation == null) {
+                            return const Text(
+                              'None of places can be loaded',
+                              style: TextStyle(color: Colors.red),
+                            );
+                          }
+                          final distInMeters = Distance().as(
+                            LengthUnit.Meter,
+                            _currentLocation!,
+                            LatLng(p.lat, p.lng),
+                          );
+                          return Text('${distInMeters.toStringAsFixed(0)} m');
+                        },
+                      ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.directions, color: Colors.blue),
+                    onPressed: () {
+                      setState(() {
+                        _activeCategory = null;
+                        _activeCategoryColor = null;
+                        _activeCategoryPointers = [];
+                      });
+                      _panelController.close();
+                      _startRouteFlow(LatLng(p.lat, p.lng));
+                    },
+                  ),
+                  onTap: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+
+                    _showBuildingPanel(p);
+                  },
+                ),
+              );
             },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
