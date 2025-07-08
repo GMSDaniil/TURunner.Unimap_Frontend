@@ -64,6 +64,36 @@ class MapboxMapWidget extends StatefulWidget {
 
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
+
+  /// Helper to get color for a transport type
+  int _lineColor(String? transportType) {
+    switch (transportType) {
+      case 'bus':
+        return const Color(0xFF9C27B0).value;
+      case 'subway':
+        return const Color(0xFF1565C0).value;
+      case 'tram':
+        return const Color(0xFF43A047).value;
+      default:
+        return Colors.black.value;
+    }
+  }
+
+  /// Removes all changeover circles and labels from the map
+  Future<void> removeChangeoverMarkers() async {
+    final layers = await mapboxMap.style.getStyleLayers();
+    final sources = await mapboxMap.style.getStyleSources();
+    for (final layer in [...layers]) {
+      if (layer != null && (layer.id.startsWith('changeover-layer-') || layer.id.startsWith('changeover-label-layer-'))) {
+        await mapboxMap.style.removeStyleLayer(layer.id);
+      }
+    }
+    for (final src in [...sources]) {
+      if (src != null && (src.id.startsWith('changeover-source-') || src.id.startsWith('changeover-label-source-'))) {
+        await mapboxMap.style.removeStyleSource(src.id);
+      }
+    }
+  }
   var _currentTheme = MapTheme.day;
   /// Draws small white points for all bus stops along the bus segments
   Future<void> drawBusStopMarkers(List<LatLng> busMarkers) async {
@@ -220,15 +250,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
 
     if(widget.segments != oldWidget.segments) {
+      // Remove old changeover markers before drawing new ones
+      removeChangeoverMarkers();
       drawStyledRouteSegments(widget.segments);
       if (widget.busStopMarkers != null) {
         drawBusStopMarkers(widget.busStopMarkers!);
       }
-      
       print("Updated polylines");
-      
-      // Draw bus stop markers if provided
-      
     }
 
     if (widget.destinationLatLng != oldWidget.destinationLatLng) {
@@ -426,15 +454,19 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     }
   }
 
-  // ── 3) Add a little circle at each changeover ─────────────────
+  // ── 3) Add a label at each changeover ─────────────────
   for (int i = 1; i < segments.length; i++) {
     if (segments[i].mode != segments[i - 1].mode) {
-      // pick the exact coord where you switch
-      final LatLng switchPoint = segments[i].path.first;
-      final srcId = 'change-source-$i';
-      final lyrId = 'change-layer-$i';
+      final prevSeg = segments[i - 1];
+      final nextSeg = segments[i];
+      final LatLng switchPoint = nextSeg.path.first;
+      final srcId = 'changeover-source-$i';
+      final lyrId = 'changeover-layer-$i';
 
-      // GeoJSON source for that single point
+      // Always add a big circle at every changeover
+      int strokeColor = _lineColor(nextSeg.transportType);
+      if (strokeColor == Colors.black.value) strokeColor = Colors.grey.value;
+
       await mapboxMap.style.addSource(GeoJsonSource(
         id: srcId,
         data: jsonEncode({
@@ -452,16 +484,77 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         }),
       ));
 
-      // tiny white circle with gray outline
       await mapboxMap.style.addLayer(CircleLayer(
         id: lyrId,
         sourceId: srcId,
         circleEmissiveStrength: 1.0,
-        circleRadius: 6.0,                      // adjust as needed
+        circleRadius: 5,
         circleColor: Colors.white.value,
-        circleStrokeColor: Colors.grey.value,
-        circleStrokeWidth: 2.0,
+        circleStrokeColor: strokeColor,
+        circleStrokeWidth: 3.0,
       ));
+
+      // Show label if both previous and next are public transport
+      final prevIsTransport = prevSeg.transportType == 'bus' || prevSeg.transportType == 'subway' || prevSeg.transportType == 'tram';
+      final nextIsTransport = nextSeg.transportType == 'bus' || nextSeg.transportType == 'subway' || nextSeg.transportType == 'tram';
+      if (prevIsTransport && nextIsTransport) {
+        final prevLine = prevSeg.transportLine?.toString() ?? '';
+        final nextLine = nextSeg.transportLine?.toString() ?? '';
+        // Always show label, even if one is empty
+        String label;
+        if (prevLine.isNotEmpty && nextLine.isNotEmpty) {
+          label = '$prevLine > $nextLine';
+        } else if (prevLine.isNotEmpty) {
+          label = prevLine;
+        } else if (nextLine.isNotEmpty) {
+          label = nextLine;
+        } else {
+          label = '';
+        }
+        if (label.isNotEmpty) {
+          final labelSrcId = 'changeover-label-source-$i';
+          final labelLyrId = 'changeover-label-layer-$i';
+
+          await mapboxMap.style.addSource(GeoJsonSource(
+            id: labelSrcId,
+            data: jsonEncode({
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Point",
+                    "coordinates": [switchPoint.longitude, switchPoint.latitude]
+                  },
+                  "properties": {
+                    "changeLabel": label
+                  }
+                }
+              ]
+            }),
+          ));
+
+          int haloColor = _lineColor(nextSeg.transportType);
+          await mapboxMap.style.addLayerAt(SymbolLayer(
+            id: labelLyrId,
+            sourceId: labelSrcId,
+            textField: '{changeLabel}',
+            textSize: 15.0,
+            iconEmissiveStrength: 1.0,
+            textEmissiveStrength: 1.0,
+            textColor: Colors.white.value,
+            textHaloColor: haloColor,
+            textHaloWidth: 6.0,
+            textHaloBlur: 1.0,
+            textRotationAlignment: TextRotationAlignment.VIEWPORT,
+            textPitchAlignment: TextPitchAlignment.VIEWPORT,
+            textKeepUpright: true,
+            textAnchor: TextAnchor.CENTER,
+            textJustify: TextJustify.CENTER,
+            textFont: ["Open Sans Bold", "Arial Unicode MS Bold"],
+          ), LayerPosition(above: lyrId));
+        }
+      }
     }
   }
 
