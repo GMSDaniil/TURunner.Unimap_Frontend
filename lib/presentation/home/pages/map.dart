@@ -2124,6 +2124,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   //   _startRouteFlow(dest);
   // }
 
+  void _updateMapConfig() {
+    if (_mapConfig == null || _mapboxMap == null) return;
+    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
+  }
+
   /*───────────────────────────────────────────────────────────────
    * Route-Plan bar teardown animation (fade & slide out)
    *──────────────────────────────────────────────────────────────*/
