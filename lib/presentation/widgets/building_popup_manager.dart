@@ -115,18 +115,11 @@ class BuildingPopupManager {
             : null,
         onCreateRoute: onCreateRoute ?? () {},
         onAddToFavourites: () async {
-          print('[DEBUG] Add to Favourites button pressed');
           showDialog(
             context: ctx,
             barrierDismissible: false,
             builder: (_) => const Center(child: CircularProgressIndicator()),
           );
-
-          print(
-            '[DEBUG] Calling AddFavouriteUseCase with: '
-            'name=${pointer.name}, lat=${pointer.lat}, lng=${pointer.lng}',
-          );
-
           final result = await sl<AddFavouriteUseCase>().call(
             param: AddFavouriteReqParams(
               name: pointer.name,
@@ -134,21 +127,14 @@ class BuildingPopupManager {
               longitude: pointer.lng,
             ),
           );
-          print('[DEBUG] AddFavouriteUseCase result: $result');
-
           Navigator.of(ctx).pop();
           result.fold(
             (error) {
-              print('[DEBUG] Failed to add favourite: $error');
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(content: Text('Failed to add favourite: $error')),
               );
             },
             (_) async {
-              print(
-                '[DEBUG] Favourite added successfully, reloading favourites...',
-              );
-
               final updated = await sl<GetFavouritesUseCase>().call();
               updated.fold(
                 (error) => print('[DEBUG] Failed to reload favourites: $error'),
@@ -161,9 +147,6 @@ class BuildingPopupManager {
                     listen: false,
                   ).setFavourites(favs);
                 },
-              );
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(content: Text('${pointer.name} added to favourites!')),
               );
               _closeSheet();
               onClose();
@@ -315,8 +298,7 @@ class _SimpleBuildingSheet extends StatelessWidget {
               // Add to favourites
               ElevatedButton.icon(
                 onPressed: () async {
-                  print('DEBUG: Add to Favourites button pressed');
-                  // Show loading indicator while adding
+                  // Show loading indicator while adding (shows modal progress)
                   showDialog(
                     context: context,
                     barrierDismissible: false,
@@ -324,13 +306,6 @@ class _SimpleBuildingSheet extends StatelessWidget {
                         const Center(child: CircularProgressIndicator()),
                   );
 
-                  print('DEBUG: About to call AddFavouriteUseCase');
-
-                  print(
-                    'AddFavouriteUseCase wird aufgerufen mit: ${pointer.name}, ${pointer.lat}, ${pointer.lng}',
-                  );
-
-                  // Call AddFavouriteUseCase with real pointer data
                   final result = await sl<AddFavouriteUseCase>().call(
                     param: AddFavouriteReqParams(
                       name: pointer.name,
@@ -338,14 +313,10 @@ class _SimpleBuildingSheet extends StatelessWidget {
                       longitude: pointer.lng,
                     ),
                   );
-                  print('AddFavouriteUseCase result: $result');
-
-                  // Remove loading indicator
                   Navigator.of(context).pop();
 
                   result.fold(
                     (error) {
-                      // Show error message if adding failed
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Failed to add favourite: $error'),
@@ -353,7 +324,6 @@ class _SimpleBuildingSheet extends StatelessWidget {
                       );
                     },
                     (_) async {
-                      // Reload favourites from backend and update UserProvider
                       final updated = await sl<GetFavouritesUseCase>().call();
                       updated.fold(
                         (error) {},
@@ -362,13 +332,6 @@ class _SimpleBuildingSheet extends StatelessWidget {
                           listen: false,
                         ).setFavourites(favs),
                       );
-                      // Show success message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${pointer.name} added to favourites!'),
-                        ),
-                      );
-                      // Optionally close the popup
                       onClose();
                     },
                   );

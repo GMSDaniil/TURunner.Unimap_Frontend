@@ -31,10 +31,8 @@ class DioClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Token aus SharedPreferences holen und setzen
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('accessToken');
-          //print('DioClient: Set token2: $token');
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -131,7 +129,7 @@ class DioClient {
         options: options,
         cancelToken: cancelToken,
       );
-      return response.data;
+      return response;
     } catch (e) {
       rethrow;
     }
