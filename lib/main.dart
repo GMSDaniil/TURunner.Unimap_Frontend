@@ -35,6 +35,11 @@ Future<void> main() async {
   await dotenv.load(fileName: "config.env");
   MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN']!);
 
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   // --- Mapbox Offline Caching using TileStore/OfflineManager ---
   // This will prefetch the style and tiles for the campus region for offline use.
   // Requires mapbox_maps_flutter >= 0.4.0 and native SDK support.
