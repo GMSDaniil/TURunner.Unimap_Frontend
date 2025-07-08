@@ -203,6 +203,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       }
     });
     _startThemeTimer();
+    _loadFavouriteIcon();
   }
 
   void _startThemeTimer() {
@@ -249,6 +250,156 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final byteData = await rootBundle.load(assetPath);
       _categoryImageCache[cat] = byteData.buffer.asUint8List();
     }
+  }
+
+  Widget _buildCategoryListPanel(ScrollController sc) {
+    return Column(
+      children: [
+        // Panel handle for dragging
+        Container(
+          width: 40,
+          height: 4,
+          margin: const EdgeInsets.only(top: 12, bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_activeCategory}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey.shade200,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  splashRadius: 16,
+                  padding: const EdgeInsets.all(4),
+                  onPressed: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Scrollable list of category items
+        Expanded(
+          child: ListView.builder(
+            controller: sc,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _activeCategoryPointers.length,
+            itemBuilder: (context, i) {
+              final p = _activeCategoryPointers[i];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Image.asset(
+                    getPinAssetForCategory(p.category),
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(
+                    p.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Builder(
+                        builder: (_) {
+                          if (_currentLocation == null) {
+                            return const Text(
+                              'None of places can be loaded',
+                              style: TextStyle(color: Colors.red),
+                            );
+                          }
+                          final distInMeters = Distance().as(
+                            LengthUnit.Meter,
+                            _currentLocation!,
+                            LatLng(p.lat, p.lng),
+                          );
+                          return Text('${distInMeters.toStringAsFixed(0)} m');
+                        },
+                      ),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.directions, color: Colors.blue),
+                    onPressed: () {
+                      setState(() {
+                        _activeCategory = null;
+                        _activeCategoryColor = null;
+                        _activeCategoryPointers = [];
+                      });
+                      _panelController.close();
+                      _startRouteFlow(LatLng(p.lat, p.lng));
+                    },
+                  ),
+                  onTap: () {
+                    setState(() {
+                      _activeCategory = null;
+                      _activeCategoryColor = null;
+                      _activeCategoryPointers = [];
+                    });
+                    _filterMarkersByCategory(null);
+                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
+                    _panelController.close();
+                    _notifyNavBar(false);
+
+                    _showBuildingPanel(p);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _loadFavouriteIcon() async {
+    final bytes = await rootBundle.load('assets/icons/pin_favourite_64.png');
+    setState(() {
+      _categoryImageCache['favourite'] = bytes.buffer.asUint8List();
+    });
   }
 
   Future<LatLng?> getCurrentLocation() async {
@@ -1339,19 +1490,22 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // 1. Favourites & Icon aus Provider/Cache holen
     final favourites = Provider.of<UserProvider>(context).favourites;
     final favouriteIcon = _categoryImageCache['favourite'];
-    if (favouriteIcon == null) {
-      // Show loading indicator while icon is loading
-      return const Center(child: CircularProgressIndicator());
-    }
+    final favouriteAnnotations = favouriteIcon == null
+        ? []
+        : buildFavouriteAnnotations(favourites, favouriteIcon);
 
-    // 2. Marker-Annotations
-    final allAnnotations = [
-      ..._interactiveAnnotations, // normal POIs
-      ...buildFavouriteAnnotations(favourites, favouriteIcon), // Favourites!
-    ];
+    final favouritePositions = favourites
+        .map((f) => '${f.lat},${f.lng}')
+        .toSet();
+    final normalAnnotations = _interactiveAnnotations.where((a) {
+      final coords = a.options.geometry.coordinates;
+      return !favouritePositions.contains('${coords.lat},${coords.lng}');
+    }).toList();
+
+    final allAnnotations = [...normalAnnotations, ...favouriteAnnotations];
 
     return MapboxMapWidget(
-      markerAnnotations: _interactiveAnnotations,
+      markerAnnotations: allAnnotations.cast<InteractiveAnnotation>(),
       navBarHeight: _navBarHeight,
       destinationLatLng: _coordinatePanelLatLng,
       markerImageCache: _categoryImageCache,
@@ -1765,9 +1919,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           image: favouriteIcon,
           iconAnchor: mb.IconAnchor.BOTTOM,
         ),
-        onTap: () {
-          // Optional: open Panel or display info
-        },
+        onTap: () => _onMarkerTap(
+          Pointer(
+            name: fav.name,
+            lat: fav.lat,
+            lng: fav.lng,
+            category: 'Building',
+          ),
+        ),
         category: 'favourite',
       );
     }).toList();
@@ -2096,6 +2255,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   //   _startRouteFlow(dest);
   // }
 
+  void _updateMapConfig() {
+    if (_mapConfig == null || _mapboxMap == null) return;
+    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
+  }
+
   /*───────────────────────────────────────────────────────────────
    * Route-Plan bar teardown animation (fade & slide out)
    *──────────────────────────────────────────────────────────────*/
@@ -2203,163 +2367,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       setState: setState,
       updateCurrentMode: (m) => setState(() => _currentMode = m),
     );
-  }
 
-  void _updateMapConfig() {
-    if (_mapConfig == null || _mapboxMap == null) return;
-    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
-  }
-
-  Widget _buildCategoryListPanel(ScrollController sc) {
-    //print('Build Category List Panel called');
-    return Column(
-      children: [
-        // Panel handle for dragging
-        Container(
-          width: 40,
-          height: 4,
-          margin: const EdgeInsets.only(top: 12, bottom: 16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_activeCategory}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface , size: 18),
-                  splashRadius: 16,
-                  padding: const EdgeInsets.all(4),
-                  onPressed: () {
-                    setState(() {
-                      _activeCategory = null;
-                      _activeCategoryColor = null;
-                      _activeCategoryPointers = [];
-                    });
-                    _filterMarkersByCategory(null);
-                    _animatedMapboxMove(LatLng(52.5125, 13.3256), 15.0);
-                    _panelController.close();
-                    _notifyNavBar(false);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 20),
-
-        // Scrollable list of category items
-        Expanded(
-          child: ListView.builder(
-            controller: sc,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _activeCategoryPointers.length,
-            itemBuilder: (context, i) {
-              final p = _activeCategoryPointers[i];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  leading: Image.asset(
-                    getPinAssetForCategory(p.category),
-                    width: 32,
-                    height: 32,
-                  ),
-                  title: Text(
-                    p.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Builder(
-                        builder: (_) {
-                          if (_currentLocation == null) {
-                            return const Text(
-                              'None of places can be loaded',
-                              style: TextStyle(color: Colors.red),
-                            );
-                          }
-                          final distInMeters = Distance().as(
-                            LengthUnit.Meter,
-                            _currentLocation!,
-                            LatLng(p.lat, p.lng),
-                          );
-                          return Text('${distInMeters.toStringAsFixed(0)} m');
-                        },
-                      ),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.directions, color: Colors.blue),
-                    onPressed: () {
-                      setState(() {
-                        _activeCategory = null;
-                        _activeCategoryColor = null;
-                        _activeCategoryPointers = [];
-                      });
-                      _panelController.close();
-                      _startRouteFlow(LatLng(p.lat, p.lng));
-                    },
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _activeCategory = null;
-                      _activeCategoryColor = null;
-                      _activeCategoryPointers = [];
-                    });
-                    _filterMarkersByCategory(null);
-                    _animatedMapboxMove(LatLng(p.lat, p.lng), 15.0);
-                    _panelController.close();
-                    _notifyNavBar(false);
-
-                    _showBuildingPanel(p);
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 }
