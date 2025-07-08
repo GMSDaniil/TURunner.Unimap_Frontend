@@ -80,7 +80,7 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         elevation: 2,
         shadowColor: Colors.black12,
@@ -102,8 +102,8 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface ,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Nunito',
                   ),

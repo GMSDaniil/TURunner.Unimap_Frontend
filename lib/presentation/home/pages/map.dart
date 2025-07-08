@@ -1,28 +1,18 @@
-import 'dart:convert';
-import 'package:wkt_parser/wkt_parser.dart';
+
+import 'package:auth_app/common/providers/theme.dart';
+import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'dart:async';
-import 'package:auth_app/data/models/find_scooter_route_response.dart';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_data.dart';
-import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/data/theme_manager.dart';
-import 'package:auth_app/domain/usecases/find_bus_route.dart';
-import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
-import 'package:auth_app/domain/usecases/find_walking_route.dart';
 //import 'package:auth_app/domain/usecases/find_route.dart';
 import 'package:auth_app/domain/usecases/find_building_at_point.dart';
-import 'package:auth_app/data/models/findroute_req_params.dart';
 import 'package:auth_app/data/models/pointer.dart';
-import 'package:auth_app/data/favourites_manager.dart';
-import 'package:auth_app/presentation/widgets/building_popup_manager.dart';
-import 'package:auth_app/presentation/widgets/category_navigation.dart'
-    show CategoryNavigationBar;
 import 'package:auth_app/presentation/widgets/gradient_widget.dart';
 import 'package:auth_app/presentation/widgets/map_marker_manager.dart';
-import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/mapbox_map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
@@ -39,8 +29,6 @@ import 'package:flutter/animation.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/flutter_map.dart' show StrokePattern, PatternFit;
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:auth_app/service_locator.dart';
@@ -199,11 +187,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _navBarHeight = widget.navBarHeight;
     _initializeMap(); // Create separate initialization method
     _currentMapTheme = ThemeManager.getCurrentTheme();
-    print(_currentMapTheme.toString());
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+      themeProvider.updateMapTheme(_currentMapTheme);
+    });
+
     _searchCtl.addListener(_onSearchChanged);
-    _cachedTiles = FMTC.FMTCTileProvider(
-      stores: {'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate},
-    );
     _searchFocusNode.addListener(() {
       final active = _searchFocusNode.hasFocus;
       if (mounted && _searchActive != active) {
@@ -227,6 +217,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         setState(() {
           _currentMapTheme = newTheme;
         });
+
+        if (mounted) {
+          final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+          themeProvider.updateMapTheme(newTheme);
+        }
       }
       _updateThemeTimer(); // Schedule next update
     });
@@ -822,7 +817,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   top: Radius.circular(28), // Match route options sheet
                 ),
                 child: Material(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       20,
@@ -1002,7 +997,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     child: GestureDetector(
                       onTap: () {},
                       child: Container(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         width: double.infinity,
                         height: double.infinity,
                       ),
@@ -1364,11 +1359,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         opacity: _searchActive ? 0 : 1,
         duration: _animDuration,
         child: FloatingActionButton(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () => _goToCurrentLocation(moveMap: true),
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: const Icon(Icons.my_location, color: Colors.white, size: 24),
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Icon(Icons.my_location, size: 24),
           ),
         ),
       ),
@@ -1389,13 +1387,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton.extended(
           heroTag: 'toggle3d',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           label: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
             child: Text(
               _is3D ? '2D' : '3D',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -1429,13 +1429,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton(
           heroTag: 'rain_toggle',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () {
             setState(() => _isRaining = !_isRaining);
           },
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: Icon(Icons.thunderstorm, color: Colors.white, size: 22),
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Icon(Icons.thunderstorm, size: 22),
           ),
         ),
       ),
@@ -1456,7 +1459,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton(
           heroTag: 'theme_toggle',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           onPressed: () {
             // Cycle through themes manually
             final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
@@ -1464,12 +1467,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             setState(() {
               _currentMapTheme = MapTheme.values[nextIndex];
             });
+            final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+            themeProvider.updateMapTheme(MapTheme.values[nextIndex]);
           },
           child: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
             child: Icon(
               _getThemeIcon(_currentMapTheme),
-              color: Colors.white,
               size: 22,
             ),
           ),
@@ -1490,13 +1497,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         duration: _animDuration,
         child: FloatingActionButton.extended(
           heroTag: 'tubutton',
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           label: GradientWidget(
-            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-            child: const Text(
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
+            child: Text(
               'TU',
               style: TextStyle(
-                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -2221,7 +2230,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
