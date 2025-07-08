@@ -246,6 +246,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       'mensa',
       'cafe',
       'library',
+      'building',
       'default',
       'destination',
       'favourite',
@@ -1787,7 +1788,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'canteen':
       case 'mensa':
         return _categoryImageCache['mensa']!;
-      default:
+      case 'building':  // ✅ Only actual buildings
+        return _categoryImageCache['building']!;
+      default:          // ✅ Everything else (gym, shops, restaurants, etc.)
         return _categoryImageCache['default']!;
     }
   }
@@ -2309,8 +2312,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return 'assets/icons/pin_destination_64.png';
       case 'favourite':
         return 'assets/icons/pin_favourite_64.png';
-      default:
+      case 'building':  // ✅ Only actual buildings get building pin
         return 'assets/icons/pin_building_64.png';
+      default:          // ✅ Everything else (gym, shops, etc.) gets default pin
+        return 'assets/icons/pin_default_64.png';
     }
   }
 
