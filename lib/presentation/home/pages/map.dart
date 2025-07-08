@@ -93,6 +93,10 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // Flag to indicate we want to show route details after closing options panel
   bool _pendingShowRouteDetails = false;
+  // Flag to indicate we want to show route options after closing details panel (option C)
+  bool _pendingShowRouteOptions = false;
+  // Flag to indicate we want to show route details after closing options panel
+  //bool _pendingShowRouteDetails = false;
   // Camera state for building highlight/zoom restoration
   mb.CameraOptions? _previousCameraOptions;
   bool _isBuildingZoomed = false;
@@ -739,10 +743,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     onClose: () {
                       setState(() {
                         _showRouteDetails = false;
-                        _pendingShowRouteDetails = false;
+                        _pendingShowRouteOptions = true;
                       });
-                      // Close the details panel, then open options after close
-                      _pendingShowRouteDetails = false; // Defensive, but not strictly needed
                       _panelController.close();
                     },
                   ),
@@ -904,13 +906,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             return const SizedBox.shrink();
           },
           onPanelClosed: () async {
-            // If we just closed details and want to go back to options
-            if (!_showRouteDetails && _panelRoutes != null && !_pendingShowRouteDetails) {
+            // Option C: If we just closed details and want to go back to options
+            if (_pendingShowRouteOptions) {
               setState(() {
                 _showRouteDetails = false;
-                _pendingShowRouteDetails = false;
+                _pendingShowRouteOptions = false;
               });
-              // Open the options panel after closing details
               _panelController.open();
               return;
             }
