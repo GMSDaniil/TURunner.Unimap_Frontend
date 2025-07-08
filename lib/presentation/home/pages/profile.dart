@@ -37,11 +37,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _scheduleError;
   bool _showScheduleSection = false;
   
-  // Updated controller names
-  final _studyProgramController = TextEditingController();
   final _semesterController = TextEditingController();
 
-  // Add these new fields
   List<StudyProgramEntity> _studyPrograms = [];
   StudyProgramEntity? _selectedStudyProgram;
   bool _isLoadingStudyPrograms = false;
@@ -49,13 +46,16 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    // User-friendly default values
-    _studyProgramController.text = 'Computer Science';
     _semesterController.text = '2';
     _loadStudyPrograms();
   }
 
-  // Update _loadStudyPrograms method to remove test data fallback
+  @override
+  void dispose() {
+    _semesterController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadStudyPrograms() async {
     setState(() => _isLoadingStudyPrograms = true);
     
@@ -136,60 +136,56 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        body: BlocProvider(
-          create: (context) => UserDisplayCubit()..displayUser(),
-          child: BlocBuilder<UserDisplayCubit, UserDisplayState>(
-            builder: (context, state) {
-              if (state is UserLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (state is UserLoaded) {
-                return _buildUserView(context, state.userEntity);
-              }
-              return _buildGuestView(context);
-            },
-          ),
-        ),
+    // Use UserProvider to check login state. listen: true ensures UI rebuilds on logout.
+    final user = Provider.of<UserProvider>(context).user;
+
+    return Scaffold(
+      body: SafeArea(
+        child: user == null
+            ? _buildGuestView(context)
+            : _buildUserView(context, user),
       ),
     );
   }
 
   Widget _buildUserView(BuildContext context, UserEntity user) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 32),
-          _buildProfilePicture(context),
-          const SizedBox(height: 24),
-          _buildUsername(user),
-          const SizedBox(height: 8),
-          _buildEmail(user),
-          const SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildScheduleSection(),
-                  const SizedBox(height: 24),
-                  BlocListener<ButtonStateCubit, ButtonState>(
-                    listener: (context, state) {
-                      if (state is ButtonSuccessState) {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (context) => const WelcomePage()),
-                        );
-                      }
-                    },
-                    child: _buildLogoutButton(context),
+    // Wrap the user view with the BlocProvider and BlocListener for the logout button
+    return BlocProvider(
+      create: (context) => ButtonStateCubit(),
+      child: BlocListener<ButtonStateCubit, ButtonState>(
+        listener: (context, state) {
+          if (state is ButtonSuccessState) {
+            // On successful logout, clear the user from the provider
+            Provider.of<UserProvider>(context, listen: false).clearUser();
+            // No need for setState, Provider will handle the rebuild
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 32),
+              _buildProfilePicture(context),
+              const SizedBox(height: 24),
+              _buildUsername(user),
+              const SizedBox(height: 8),
+              _buildEmail(user),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildScheduleSection(),
+                      const SizedBox(height: 24),
+                      _buildLogoutButton(context),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -220,15 +216,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
-    return Builder(
-      builder: (innerContext) {
-        return BasicAppButton(
-          title: 'Logout',
-          onPressed: () {
-            innerContext.read<ButtonStateCubit>().execute(
-              usecase: sl<LogoutUseCase>(),
-            );
-          },
+    // Use the context from the BlocProvider to find the ButtonStateCubit
+    return BasicAppButton(
+      title: 'Logout',
+      onPressed: () {
+        context.read<ButtonStateCubit>().execute(
+          usecase: sl<LogoutUseCase>(),
         );
       },
     );
@@ -562,12 +555,4 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _studyProgramController.dispose();
-    _semesterController.dispose();
-    super.dispose();
-  }
-
 }
