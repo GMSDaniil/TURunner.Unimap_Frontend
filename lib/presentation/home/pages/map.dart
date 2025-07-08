@@ -2115,7 +2115,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'favourite':
         return 'assets/icons/pin_favourite_64.png';
       default:
-        return 'assets/icons/pin_default_64.png';
+        return 'assets/icons/pin_building_64.png';
     }
   }
 
