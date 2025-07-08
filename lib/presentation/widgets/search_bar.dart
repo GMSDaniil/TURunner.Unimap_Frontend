@@ -14,8 +14,8 @@ class MapSearchBar extends StatefulWidget {
   final Function(Pointer) onSuggestionSelected;
   final FocusNode? focusNode;
   final bool showCategories; // ← NEW
-  final VoidCallback? onBack;           // ← NEW optional callback
-  final bool includeBottomSafeArea;     // ← NEW  (defaults to true)
+  final VoidCallback? onBack; // ← NEW optional callback
+  final bool includeBottomSafeArea; // ← NEW  (defaults to true)
 
   const MapSearchBar({
     Key? key,
@@ -27,8 +27,8 @@ class MapSearchBar extends StatefulWidget {
     required this.onSuggestionSelected,
     this.focusNode,
     this.showCategories = true, // ← NEW
-    this.onBack,                           // ← NEW
-    this.includeBottomSafeArea = true,     // ← NEW
+    this.onBack, // ← NEW
+    this.includeBottomSafeArea = true, // ← NEW
   }) : super(key: key);
 
   @override
@@ -88,15 +88,16 @@ class _MapSearchBarState extends State<MapSearchBar> {
     // 1) figure out where our suggestions area starts dynamically
     final ctx = _suggestionsKey.currentContext;
     final double topY = ctx != null
-      // get global Y of the padded search area
-      ? (ctx.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy + 24
-      : 0.0;
+        // get global Y of the padded search area
+        ? (ctx.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy +
+              24
+        : 0.0;
 
-     // 2) compute exactly how much vertical space remains
-     //     • we *always* subtract the safe-area inset so the list never
-     //       spills under the gesture / nav bar
-     //     • optionally we *pad* the column with it (SafeArea bottom: …)
-     final bottomInset = MediaQuery.of(context).padding.bottom;
+    // 2) compute exactly how much vertical space remains
+    //     • we *always* subtract the safe-area inset so the list never
+    //       spills under the gesture / nav bar
+    //     • optionally we *pad* the column with it (SafeArea bottom: …)
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
     final availableHeight =
         MediaQuery.of(context).size.height -
@@ -190,7 +191,7 @@ class _MapSearchBarState extends State<MapSearchBar> {
                               // × only clears the field, keeps focus
                               widget.searchController.clear();
                               widget.onClear();
-                              setState(() {});   // rebuild to hide button
+                              setState(() {}); // rebuild to hide button
                             },
                           ),
                         ),
@@ -251,26 +252,61 @@ class _MapSearchBarState extends State<MapSearchBar> {
         ),
         itemBuilder: (context, index) {
           final suggestion = widget.suggestions[index];
-          return ListTile(
-            leading: const Icon(
-              Icons.location_on_outlined,
-              size: 22,
-              color: Colors.grey,
-            ),
-            title: Text(
-              suggestion.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            onTap: () {
-              widget.searchController.clear();
-              widget.onClear();
-              _focusNode.unfocus();
-              setState(() {});
-              widget.onSuggestionSelected(suggestion);
-            },
-          );
+          return _buildSuggestionTile(suggestion);
         },
       ),
+    );
+  }
+
+  Widget _buildSuggestionTile(Pointer suggestion) {
+    // Check if this is a room (assuming rooms have a specific format or category)
+    final isRoom =
+        suggestion.category == 'Room' ||
+        suggestion.name.contains('(') && suggestion.name.contains(')');
+
+    // Extract room name and building name for rooms
+    String displayName = suggestion.name;
+    String? subtitle;
+
+    if (isRoom && suggestion.name.contains('(')) {
+      final parts = suggestion.name.split(' (');
+      displayName = parts[0]; // Room name
+      subtitle = parts[1].replaceAll(')', ''); // Building name
+    }
+
+    return ListTile(
+      leading: Icon(
+        isRoom ? Icons.meeting_room_outlined : Icons.location_on_outlined,
+        size: 22,
+        color: isRoom ? Colors.orange : Colors.grey,
+      ),
+      title: Text(
+        displayName,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              'Room in $subtitle',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            )
+          : (suggestion.category != 'Room'
+                ? Text(
+                    suggestion.category,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  )
+                : null),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: Colors.grey[400],
+      ),
+      onTap: () {
+        widget.searchController.clear();
+        widget.onClear();
+        _focusNode.unfocus();
+        setState(() {});
+        widget.onSuggestionSelected(suggestion);
+      },
     );
   }
 }

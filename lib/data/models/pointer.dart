@@ -6,6 +6,7 @@ class Pointer {
   final double lng;
   final String category;
   final String? description;
+  List<String> rooms = [];
   final List<LatLng>? contourWKT;
   
 
@@ -14,6 +15,7 @@ class Pointer {
     required this.lat,
     required this.lng,
     required this.category,
+    this.rooms = const [],
     this.description,
     this.contourWKT,
   });
@@ -30,6 +32,10 @@ class Pointer {
       lng: (lng as num).toDouble(),
       category: json['category'] ?? '',
       description: json['description'] ,
+      rooms: (json['rooms'] as List<dynamic>?)
+              ?.map((room) => room.toString())
+              .toList() ??
+          [],
       contourWKT: json['contourWKT'] != null
           ? parsePolygonOrMultiPolygonFromWKT(json['contourWKT'])
           : null,

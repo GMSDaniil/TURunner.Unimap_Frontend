@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:auth_app/domain/entities/searchable_item.dart';
 import 'package:wkt_parser/wkt_parser.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/find_scooter_route_response.dart';
@@ -138,8 +139,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng? _routeDestination; // Field to store the route destination
   List<Marker> _markers = [];
   List<InteractiveAnnotation> _interactiveAnnotations = [];
+
+  List<SearchableItem> _searchableItems = [];
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
+  
   LatLng? _currentLocation;
 
   bool _markerTapJustHandled = false;
@@ -274,12 +278,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _themeTimer?.cancel();
+    _buildingZoomTimer?.cancel();
+
+    if (_plannerOverlay != null) {
+      try {
+        _plannerOverlay?.remove();
+        _plannerOverlay = null;
+      } catch (e) {
+        print('Overlay removal error during dispose: $e');
+      }
+    }
+
+    if (_panelController.isPanelOpen && mounted) {
+      try {
+        _panelController.close();
+      } catch (e) {
+        // Ignore errors during disposal
+        print('Panel close error during dispose: $e');
+      }
+    }
+
     _mapAnimController?.dispose();
     _plannerAnimCtr?.dispose(); // ← tidy up Route-Plan bar anim
-    _panelController.close();
+
     _searchCtl.dispose();
     _searchFocusNode.dispose();
-    _themeTimer?.cancel();
+
     super.dispose();
   }
 
@@ -471,7 +496,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         double minAllowed = 180.0;
         maxHeight = total.clamp(minAllowed, maxAllowed);
       } else {
-        maxHeight = MediaQuery.of(context).size.height * 0.40;
+        maxHeight = MediaQuery.of(context).size.height * 0.31;
       }
 
       // ────────────────────────────────────────────────────────────────
@@ -1205,14 +1230,32 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── search listener ──────────────────────────────────────────────
   void _onSearchChanged() {
-    final q = _searchCtl.text.trim().toLowerCase();
-    setState(() {
-      _suggestions = q.isEmpty
-          ? []
-          : _allPointers
-                .where((p) => p.name.toLowerCase().contains(q))
-                .toList();
-    });
+  final q = _searchCtl.text.trim().toLowerCase();
+  
+    
+    // ✅ Search both buildings and rooms
+    final matchingItems = _searchableItems
+        .where((item) => item.name.toLowerCase().contains(q))
+        .toList();
+    
+    // Convert back to Pointer format for compatibility with existing UI
+    final suggestions = matchingItems.map((item) {
+      if (item.type == SearchItemType.point) {
+        return _allPointers.firstWhere((p) => p.name == item.name);
+      } else {
+        // For rooms, create a virtual pointer with room info
+        return Pointer(
+          name: item.name,
+          lat: item.lat,
+          lng: item.lng,
+          category: 'Room',
+          rooms: [], // Empty for individual room items
+          // Add any other required fields
+        );
+      }
+    }).toList();
+    
+    setState(() => _suggestions = suggestions);
   }
 
   // ── map widget + helpers ─────────────────────────────────────────
@@ -1538,6 +1581,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       },
       (pointers) async {
         _allPointers = pointers;
+
+        _searchableItems = _createSearchableItems(pointers);
+
         final m = _allPointers.map((p) {
           return mapMarker(p);
         }).toList();
@@ -1556,23 +1602,71 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
+  List<SearchableItem> _createSearchableItems(List<Pointer> pointers) {
+    List<SearchableItem> items = [];
+    
+    for (final pointer in pointers) {
+      // Add the building/pointer itself
+      items.add(SearchableItem(
+        name: pointer.name,
+        category: pointer.category,
+        lat: pointer.lat,
+        lng: pointer.lng,
+        type: SearchItemType.point,
+      ));
+      
+      // Add all rooms in this building
+      if (pointer.rooms.isNotEmpty) {
+        for (final room in pointer.rooms) {
+          items.add(SearchableItem(
+            name: '$room (${pointer.name})', // e.g. "Room 101 (Main Building)"
+            category: 'Room',
+            lat: pointer.lat, // Same coordinates as parent building
+            lng: pointer.lng,
+            type: SearchItemType.room,
+            parentPointer: pointer,
+            roomName: room,
+          ));
+        }
+      }
+    }
+    
+    return items;
+  }
+
   void _searchMarkers(String q) {
-    final filtered = _allPointers
-        .where((p) => p.name.toLowerCase().contains(q))
+    if (q.isEmpty) {
+      setState(() {
+        _markers = _allPointers.map((p) => mapMarker(p)).toList();
+      });
+      return;
+    }
+    
+    final matchingItems = _searchableItems
+        .where((item) => item.name.toLowerCase().contains(q))
         .toList();
-
+    
+    // Show markers for buildings that contain matching rooms or match themselves
+    final buildingsToShow = <Pointer>{};
+    
+    for (final item in matchingItems) {
+      if (item.type == SearchItemType.point) {
+        buildingsToShow.add(_allPointers.firstWhere((p) => p.name == item.name));
+      } else if (item.parentPointer != null) {
+        buildingsToShow.add(item.parentPointer!);
+      }
+    }
+    
     setState(() {
-      _markers = MapMarkerManager.searchMarkersByName(
-        allPointers: _allPointers,
-        query: q,
-        onMarkerTap: _onMarkerTap,
-      );
+      _markers = buildingsToShow.map((p) => mapMarker(p)).toList();
     });
-
-    MapMarkerManager.centerMapOnFilteredResults(
-      mapController: _mapController,
-      filtered: filtered,
-    );
+    
+    // Center map on results
+    if (buildingsToShow.isNotEmpty) {
+      final coords = buildingsToShow.map((p) => LatLng(p.lat, p.lng)).toList();
+      final bounds = LatLngBounds.fromPoints(coords);
+      _animatedMapboxMove(bounds.center, 16.0);
+    }
   }
 
   void _filterMarkersByCategory(String? category) {
