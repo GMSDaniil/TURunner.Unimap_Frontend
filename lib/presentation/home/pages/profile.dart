@@ -395,6 +395,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         },
                         hintText: 'Search study programs...',
                         isLoading: _isLoadingStudyPrograms,
+                        onFocusChanged: (focused) {
+                          widget.onSearchFocusChanged?.call(focused);
+                        },
                       ),
                       const SizedBox(height: 16),
                       const Text(
