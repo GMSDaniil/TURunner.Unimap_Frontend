@@ -74,6 +74,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         return const Color(0xFF1565C0).value;
       case 'tram':
         return const Color(0xFF43A047).value;
+      case 'suburban':
+        return const Color(0xFF388E3C).value; // Green for S-Bahn
       default:
         return Colors.black.value;
     }
@@ -369,6 +371,9 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     } else if (seg.transportType == 'subway') {
       color = const Color(0xFF1565C0).toARGB32(); // blue for subway (U-Bahn)
       dashArray = null;
+    } else if (seg.transportType == 'suburban') {
+      color = const Color(0xFF388E3C).toARGB32(); // green for S-Bahn
+      dashArray = null;
     } else if (seg.mode == TravelMode.scooter) {
       color = const Color(0xFFFFA500).toARGB32();
       dashArray = null;
@@ -401,7 +406,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       // ── Add line label as a horizontal rectangle ──
       final isBus = seg.transportType == 'bus';
       final isSubway = seg.transportType == 'subway';
-      if ((isBus || isSubway) && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
+      final isSuburban = seg.transportType == 'suburban';
+      if ((isBus || isSubway || isSuburban) && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
         // Find a good label point (midpoint of the polyline)
         final labelPoint = points[points.length ~/ 2];
         final labelSourceId = 'bus-label-source-$i';
@@ -424,6 +430,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
             ]
           }),
         ));
+        int haloColor = isBus
+            ? const Color(0xFF9C27B0).value
+            : isSubway
+                ? const Color(0xFF1565C0).value
+                : isSuburban
+                    ? const Color(0xFF388E3C).value
+                    : Colors.black.value;
         await mapboxMap.style.addLayerAt(SymbolLayer(
           id: labelLayerId,
           sourceId: labelSourceId,
@@ -432,11 +445,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
           iconEmissiveStrength: 1.0,
           textEmissiveStrength: 1.0,
           textColor: Colors.white.value,
-          textHaloColor: isBus
-              ? const Color(0xFF9C27B0).value // purple for bus
-              : isSubway
-                  ? const Color(0xFF1565C0).value // blue for subway
-                  : Colors.black.value,
+          textHaloColor: haloColor,
           textHaloWidth: 6.0,
           textHaloBlur: 1.0,
           textRotationAlignment: TextRotationAlignment.VIEWPORT,

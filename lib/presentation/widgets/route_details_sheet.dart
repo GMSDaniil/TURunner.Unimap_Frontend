@@ -152,41 +152,51 @@ class RouteDetailsPanel extends StatelessWidget {
                                           Container(
                                             width: 4,
                                             height: 16,
-                                            color: segs[i].transportType == 'bus'
-                                                ? Theme.of(context).colorScheme.primary
-                                                : segs[i].transportType == 'subway'
-                                                    ? Colors.blue.shade700
+                                        color: segs[i].transportType == 'bus'
+                                            ? Theme.of(context).colorScheme.primary
+                                            : segs[i].transportType == 'subway'
+                                                ? Colors.blue.shade700
+                                                : segs[i].transportType == 'suburban'
+                                                    ? Color(0xFF388E3C)
                                                     : Colors.grey.shade400,
                                           ),
                                         Container(
                                           width: 20,
                                           height: 20,
                                           decoration: BoxDecoration(
-                                            color: segs[i].transportType == 'bus'
-                                                ? Theme.of(context).colorScheme.primary
-                                                : segs[i].transportType == 'subway'
-                                                    ? Colors.blue.shade700
+                                        color: segs[i].transportType == 'bus'
+                                            ? Theme.of(context).colorScheme.primary
+                                            : segs[i].transportType == 'subway'
+                                                ? Colors.blue.shade700
+                                                : segs[i].transportType == 'suburban'
+                                                    ? Color(0xFF388E3C)
                                                     : Colors.white,
-                                            border: Border.all(
-                                              color: segs[i].transportType == 'bus'
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : segs[i].transportType == 'subway'
-                                                      ? Colors.blue.shade700
+                                        border: Border.all(
+                                          color: segs[i].transportType == 'bus'
+                                              ? Theme.of(context).colorScheme.primary
+                                              : segs[i].transportType == 'subway'
+                                                  ? Colors.blue.shade700
+                                                  : segs[i].transportType == 'suburban'
+                                                      ? Color(0xFF388E3C)
                                                       : Colors.grey.shade400,
-                                              width: 3,
-                                            ),
+                                          width: 3,
+                                        ),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Center(
-                                            child: segs[i].transportType == 'bus'
-                                                ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
-                                                : segs[i].transportType == 'subway'
-                                                    ? Icon(Icons.subway, size: 12, color: Colors.white)
+                                        child: segs[i].transportType == 'bus'
+                                            ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
+                                            : segs[i].transportType == 'subway'
+                                                ? Icon(Icons.subway, size: 12, color: Colors.white)
+                                                : segs[i].transportType == 'suburban'
+                                                    ? Icon(Icons.train, size: 12, color: Colors.white)
                                                     : Icon(Icons.directions_walk, size: 12, color: segs[i].transportType == 'bus'
                                                         ? Theme.of(context).colorScheme.primary
                                                         : segs[i].transportType == 'subway'
                                                             ? Colors.blue.shade700
-                                                            : Colors.grey.shade400),
+                                                            : segs[i].transportType == 'suburban'
+                                                                ? Color(0xFF388E3C)
+                                                                : Colors.grey.shade400),
                                           ),
                                         ),
                                         if (i != segs.length - 1)
@@ -214,12 +224,15 @@ class RouteDetailsPanel extends StatelessWidget {
                                         final segment = segs[i];
                                         final isBus = segment.transportType == 'bus';
                                         final isSubway = segment.transportType == 'subway';
+                                        final isSuburban = segment.transportType == 'suburban';
                                         final Color pillColor = isBus
                                             ? Theme.of(context).colorScheme.primary
                                             : isSubway
                                                 ? Colors.blue.shade700
-                                                : Colors.grey.shade400;
-                                        if (isBus || isSubway) {
+                                                : isSuburban
+                                                    ? Color(0xFF388E3C)
+                                                    : Colors.grey.shade400;
+                                        if (isBus || isSubway || isSuburban) {
                                           return Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
@@ -244,7 +257,7 @@ class RouteDetailsPanel extends StatelessWidget {
                                                     ),
                                                   Expanded(
                                                     child: Text(
-                                                      segment.toStop ?? (isBus ? 'Bus segment' : 'Subway segment'),
+                                                      segment.toStop ?? (isBus ? 'Bus segment' : isSubway ? 'Subway segment' : isSuburban ? 'S-Bahn segment' : ''),
                                                       style: const TextStyle(
                                                         fontWeight: FontWeight.w600,
                                                         fontSize: 15,
