@@ -39,13 +39,15 @@ class RouteOptionsPanel extends StatefulWidget {
 class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
   String? _routeError;
   late TravelMode _mode;
-  bool _loading = false;
+  // Always start in loading state so shimmer is shown immediately
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _mode = widget.currentMode;
-    _loading = widget.routesNotifier.value[_mode] == null;
+    // Always show shimmer/loading until route data arrives
+    _loading = true;
     widget.routesNotifier.addListener(_onRoutesChanged);
   }
 
@@ -177,6 +179,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 24),
+                    // Always show the summary box, but with shimmer if loading
                     _loading
                         ? const Padding(
                             padding: EdgeInsets.symmetric(vertical: 4),
@@ -256,17 +259,27 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                                   ),
                           ),
                     const SizedBox(height: 28),
-                    ...(() {
-                      final segments = widget.routesNotifier.value[_mode]?.segments ?? [];
-                      return List.generate(
-                        segments.length,
-                        (i) => _SegmentTimelineTile(
-                          segment: segments[i],
-                          isFirst: i == 0,
-                          isLast: i == segments.length - 1,
-                        ),
-                      );
-                    })(),
+                    // Always show the segments area, but with shimmer if loading
+                    _loading
+                        ? Column(
+                            children: [
+                              for (int i = 0; i < 2; i++)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  child: ShimmerLoading(height: 56, width: double.infinity),
+                                ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              for (final entry in (widget.routesNotifier.value[_mode]?.segments ?? []).asMap().entries)
+                                _SegmentTimelineTile(
+                                  segment: entry.value,
+                                  isFirst: entry.key == 0,
+                                  isLast: entry.key == (widget.routesNotifier.value[_mode]?.segments.length ?? 0) - 1,
+                                ),
+                            ],
+                          ),
                   ],
                 ),
               ),

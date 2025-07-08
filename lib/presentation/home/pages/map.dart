@@ -594,10 +594,19 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               return BuildingSlideWindow(
                 title: p.name,
                 category: p.category,
-                onCreateRoute: () {
+                onCreateRoute: () async {
+                  // Slide down the panel, then open route options with slide up
                   setState(() => _buildingPanelPointer = null);
-                  _panelController.close();
-                  _startRouteFlow(LatLng(p.lat, p.lng));
+                  await Future.delayed(_animDuration);
+                  setState(() {
+                    _creatingRoute = true;
+                    _currentMode = TravelMode.walk;
+                    _routesNotifier.value = {};
+                    _panelRoutes = _routesNotifier;
+                    _panelMode = TravelMode.walk;
+                    _routeDestination = LatLng(p.lat, p.lng);
+                  });
+                  _startRouteFlow(LatLng(p.lat, p.lng), skipPanelOpen: false);
                 },
                 onAddToFavourites: () async {
                   //print('[DEBUG] Add to Favourites button pressed');
@@ -1094,7 +1103,13 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ───────────────────────────────────────────────────────────
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
-  Future<void> _startRouteFlow(LatLng destination) async {
+  Future<void> _startRouteFlow(LatLng destination, {bool skipPanelOpen = false}) async {
+    // Optionally skip opening the panel if already open (for swap animation)
+    if (!skipPanelOpen) {
+      _panelController.open();
+      _notifyNavBar(true); // Hide nav bar when opening
+    }
+
     _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
 
@@ -1103,6 +1118,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _creatingRoute = true;
       _currentMode = TravelMode.walk; // reset to walking
       _routesNotifier.value = {}; // drop any old routes
+      // Ensure the panel is never blank: always set these immediately
+      _panelRoutes = _routesNotifier;
+      _panelMode = TravelMode.walk;
     });
 
     /* ────────────────────────────────────────────────────────────
@@ -2233,17 +2251,4 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       ],
     );
   }
-}
-
-/// Prevents any inner scrolling or overscroll glow
-class _NoScrollBehavior extends ScrollBehavior {
-  @override
-  Widget buildViewportDecoration(
-    BuildContext _,
-    Widget child,
-    AxisDirection __,
-  ) => child;
-  @override
-  ScrollPhysics getScrollPhysics(BuildContext _) =>
-      const NeverScrollableScrollPhysics();
 }
