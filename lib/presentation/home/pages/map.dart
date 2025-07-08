@@ -597,6 +597,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 onCreateRoute: () async {
                   // Slide down the panel, then open route options with slide up
                   setState(() => _buildingPanelPointer = null);
+                  _panelController.close();
                   await Future.delayed(_animDuration);
                   setState(() {
                     _creatingRoute = true;
@@ -606,7 +607,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     _panelMode = TravelMode.walk;
                     _routeDestination = LatLng(p.lat, p.lng);
                   });
-                  _startRouteFlow(LatLng(p.lat, p.lng), skipPanelOpen: false);
+                  _startRouteFlow(LatLng(p.lat, p.lng));
                 },
                 onAddToFavourites: () async {
                   //print('[DEBUG] Add to Favourites button pressed');
