@@ -6,31 +6,26 @@ import 'package:auth_app/domain/repository/favourites.dart';
 import 'package:auth_app/data/source/favourites_api_service.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 import 'package:auth_app/data/models/favourite_response.dart';
 
 class FavouritesRepositoryImpl implements FavouritesRepository {
   @override
   Future<Either<String, List<FavouriteEntity>>> getFavourites() async {
-    print('getFavourites() called');
     final result = await sl<FavouritesApiService>().getFavourites();
 
     return result.fold(
       (errorMessage) {
-        print('❌ Error in getFavourites: $errorMessage');
         return Left(errorMessage);
       },
       (response) {
-        print('getFavourites() response received');
         try {
           final data = response.data is String
               ? jsonDecode(response.data)
               : response.data;
-          print('!!Favourites raw data: $data');
           final favouriteResponse = FavouriteResponse.fromJson(data);
-          print('✅ Parsed ${favouriteResponse.favourites.length} favourites');
           return Right(favouriteResponse.favourites);
         } catch (e) {
-          print('❌ Exception in parsing favourites: $e');
           return Left('Failed to parse favourites');
         }
       },
@@ -59,13 +54,6 @@ class FavouritesRepositoryImpl implements FavouritesRepository {
     final result = await sl<FavouritesApiService>().deleteFavourite(params);
 
     return result.fold((errorMessage) => Left(errorMessage), (response) {
-      // prüfung, ob response wirklich ein response-objekt ist.
-
-      // Wenn response ein string ist, dann hat der server keinen inhalt geliefert
-      if (response is String) {
-        // Backend hat keinen Content geliefert, aber Status ist trzm ok
-        return const Right(null);
-      }
       if (response.statusCode == 200 || response.statusCode == 204) {
         return const Right(null);
       } else {

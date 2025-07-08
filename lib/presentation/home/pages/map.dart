@@ -152,10 +152,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   mb.MapboxMap? _mapboxMap;
   Map<String, Object>? _mapConfig;
 
-
   MapTheme _currentMapTheme = MapTheme.day;
   Timer? _themeTimer;
-  
+
   VoidCallback? _clearBuildingHighlight;
 
   final ValueNotifier<Map<TravelMode, RouteData>> _routesNotifier =
@@ -178,16 +177,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     location: const LatLng(matheLat, matheLon),
     onWeatherChanged: (weather) {
       print('[DEBUG] Weather changed: ${weather.description}');
-      if(weather.description.toLowerCase().contains('rain') ||
-         weather.description.toLowerCase().contains('drizzle')) {
+      if (weather.description.toLowerCase().contains('rain') ||
+          weather.description.toLowerCase().contains('drizzle')) {
         setState(() => _isRaining = true);
       } else {
         setState(() => _isRaining = false);
       }
     },
   );
-
-  
 
   String? _activeCategory;
   Color? _activeCategoryColor;
@@ -218,10 +215,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   void _startThemeTimer() {
     _updateThemeTimer();
   }
-  
+
   void _updateThemeTimer() {
     _themeTimer?.cancel();
-    
+
     _themeTimer = Timer(Duration(minutes: 5), () {
       final newTheme = ThemeManager.getCurrentTheme();
       if (_currentMapTheme != newTheme) {
@@ -610,18 +607,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   _startRouteFlow(LatLng(p.lat, p.lng));
                 },
                 onAddToFavourites: () async {
-                  //print('[DEBUG] Add to Favourites button pressed');
                   showDialog(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) =>
                         const Center(child: CircularProgressIndicator()),
                   );
-
-                  /*print(
-                    '[DEBUG] Calling AddFavouriteUseCase with: '
-                    'name=${p.name}, lat=${p.lat}, lng=${p.lng}',
-                  );*/
 
                   final result = await sl<AddFavouriteUseCase>().call(
                     param: AddFavouriteReqParams(
@@ -630,8 +621,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       longitude: p.lng,
                     ),
                   );
-                  //print('[DEBUG] AddFavouriteUseCase result: $result');
-
                   Navigator.of(context).pop();
 
                   result.fold(
@@ -645,7 +634,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                     },
                     (_) async {
                       if (!mounted) return;
-                      //print('[DEBUG] Favourite added successfully, reloading favourites...');
                       final updated = await sl<GetFavouritesUseCase>().call();
                       if (!mounted) return;
                       updated.fold(
@@ -661,11 +649,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         },
                       );
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      /*ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${p.name} added to favourites!'),
                         ),
-                      );
+                      );*/
                       setState(() => _buildingPanelPointer = null);
                       _panelController.close();
                     },
@@ -723,7 +711,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 final data = _panelRoutes!.value[_panelMode ?? TravelMode.walk];
                 // Make the Route Details panel taller than the options panel
                 return SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.75, // 75% of screen height
+                  height:
+                      MediaQuery.of(context).size.height *
+                      0.75, // 75% of screen height
                   child: RouteDetailsPanel(
                     data: data,
                     deriveStartName: (data) {
@@ -1040,10 +1030,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                 ),
               ),
               _build3DButton(),
-              
+
               _buildThemesButton(),
               _buildRainButton(),
-
 
               if (!_panelActive) _buildTUButton(),
               if (!_panelActive) _buildCurrentLocationButton(),
@@ -1199,17 +1188,17 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   IconData _getThemeIcon(MapTheme theme) {
-  switch (theme) {
-    case MapTheme.dawn:
-      return Icons.wb_twilight;
-    case MapTheme.day:
-      return Icons.wb_sunny;
-    case MapTheme.dusk:
-      return Icons.wb_twilight;
-    case MapTheme.night:
-      return Icons.nightlight;
+    switch (theme) {
+      case MapTheme.dawn:
+        return Icons.wb_twilight;
+      case MapTheme.day:
+        return Icons.wb_sunny;
+      case MapTheme.dusk:
+        return Icons.wb_twilight;
+      case MapTheme.night:
+        return Icons.nightlight;
+    }
   }
-}
 
   // ── search listener ──────────────────────────────────────────────
   void _onSearchChanged() {
@@ -1351,112 +1340,107 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   );
 
   Widget _build3DButton() => Positioned(
-                top: 180,
-                right: 20,
-                child: AnimatedSlide(
-                  offset: _searchActive
-                      ? const Offset(0, -1)
-                      : Offset.zero, // Slide up when search is active
-                  duration: _animDuration,
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _searchActive
-                        ? 0
-                        : 1, // Fade out when search is active
-                    duration: _animDuration,
-                    child: FloatingActionButton.extended(
-                      heroTag: 'toggle3d',
-                      backgroundColor: Colors.white,
-                      label: GradientWidget(
-                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-                        child: Text(
-                          _is3D ? '2D' : '3D',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() => _is3D = !_is3D);
-                        if (_mapboxMap != null) {
-                          _mapboxMap!.easeTo(
-                            mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
-                            mb.MapAnimationOptions(
-                              duration: 600,
-                              startDelay: 0,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ),
+    top: 180,
+    right: 20,
+    child: AnimatedSlide(
+      offset: _searchActive
+          ? const Offset(0, -1)
+          : Offset.zero, // Slide up when search is active
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _searchActive ? 0 : 1, // Fade out when search is active
+        duration: _animDuration,
+        child: FloatingActionButton.extended(
+          heroTag: 'toggle3d',
+          backgroundColor: Colors.white,
+          label: GradientWidget(
+            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            child: Text(
+              _is3D ? '2D' : '3D',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          onPressed: () {
+            setState(() => _is3D = !_is3D);
+            if (_mapboxMap != null) {
+              _mapboxMap!.easeTo(
+                mb.CameraOptions(pitch: _is3D ? 60.0 : 0.0),
+                mb.MapAnimationOptions(duration: 600, startDelay: 0),
               );
+            }
+          },
+        ),
+      ),
+    ),
+  );
 
   Widget _buildRainButton() => Positioned(
-                top: 320,
-                right: 20,
-                child: AnimatedSlide(
-                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
-                  duration: _animDuration,
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
-                    duration: _animDuration,
-                    child: FloatingActionButton(
-                      heroTag: 'rain_toggle',
-                      backgroundColor: Colors.white,
-                      onPressed: () {
-                        setState(() => _isRaining = !_isRaining);
-                      },
-                      child: GradientWidget(
-                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-                        child: Icon(
-                          Icons.thunderstorm,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
+    top: 320,
+    right: 20,
+    child: AnimatedSlide(
+      offset: _searchActive
+          ? const Offset(0, -1)
+          : Offset.zero, // Slide up when search is active
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _searchActive ? 0 : 1, // Fade out when search is active
+        duration: _animDuration,
+        child: FloatingActionButton(
+          heroTag: 'rain_toggle',
+          backgroundColor: Colors.white,
+          onPressed: () {
+            setState(() => _isRaining = !_isRaining);
+          },
+          child: GradientWidget(
+            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            child: Icon(Icons.thunderstorm, color: Colors.white, size: 22),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _buildThemesButton() => Positioned(
-                top: 250,
-                right: 20,
-                child: AnimatedSlide(
-                  offset: _searchActive ? const Offset(0, -1) : Offset.zero, // Slide up when search is active
-                  duration: _animDuration,
-                  curve: Curves.easeInOut,
-                  child: AnimatedOpacity(
-                    opacity: _searchActive ? 0 : 1, // Fade out when search is active
-                    duration: _animDuration,
-                    child: FloatingActionButton(
-                      heroTag: 'theme_toggle',
-                      backgroundColor: Colors.white,
-                      onPressed: () {
-                        // Cycle through themes manually
-                        final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
-                        final nextIndex = (currentIndex + 1) % MapTheme.values.length;
-                        setState(() {
-                          _currentMapTheme = MapTheme.values[nextIndex];
-                        });
-                      },
-                      child: GradientWidget(
-                        colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
-                        child: Icon(
-                          _getThemeIcon(_currentMapTheme),
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
+    top: 250,
+    right: 20,
+    child: AnimatedSlide(
+      offset: _searchActive
+          ? const Offset(0, -1)
+          : Offset.zero, // Slide up when search is active
+      duration: _animDuration,
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _searchActive ? 0 : 1, // Fade out when search is active
+        duration: _animDuration,
+        child: FloatingActionButton(
+          heroTag: 'theme_toggle',
+          backgroundColor: Colors.white,
+          onPressed: () {
+            // Cycle through themes manually
+            final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
+            final nextIndex = (currentIndex + 1) % MapTheme.values.length;
+            setState(() {
+              _currentMapTheme = MapTheme.values[nextIndex];
+            });
+          },
+          child: GradientWidget(
+            colors: const [Color(0xFF7B61FF), Color(0xFFEA5CFF)],
+            child: Icon(
+              _getThemeIcon(_currentMapTheme),
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _buildTUButton() => Positioned(
     bottom: _bottomOffset,
@@ -1484,7 +1468,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           ),
           // icon: const Icon(Icons.school, color: Colors.blue),
           onPressed: () {
-            
             _animatedMapboxMove(LatLng(52.5125, 13.3269), 15.0);
             _resetToDefaultState();
           },
@@ -1713,7 +1696,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       const double maxDistanceMeters = 20.0; // adjust as needed
       final Distance dist = Distance();
       final closePointers = _allPointers.where(
-        (ptr) => dist.as(LengthUnit.Meter, latlng, LatLng(ptr.lat, ptr.lng)) < maxDistanceMeters,
+        (ptr) =>
+            dist.as(LengthUnit.Meter, latlng, LatLng(ptr.lat, ptr.lng)) <
+            maxDistanceMeters,
       );
       p = closePointers.isNotEmpty ? closePointers.first : null;
     }
@@ -1740,8 +1725,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             coords = p.contourWKT!;
           }
           if (coords.isNotEmpty) {
-            double minLat = coords.first.latitude, maxLat = coords.first.latitude;
-            double minLng = coords.first.longitude, maxLng = coords.first.longitude;
+            double minLat = coords.first.latitude,
+                maxLat = coords.first.latitude;
+            double minLng = coords.first.longitude,
+                maxLng = coords.first.longitude;
             for (final c in coords) {
               if (c.latitude < minLat) minLat = c.latitude;
               if (c.latitude > maxLat) maxLat = c.latitude;
@@ -1756,7 +1743,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             final camera = await _mapboxMap!.cameraForCoordinateBounds(
               bounds,
               mb.MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0),
-              null, null, null, null,
+              null,
+              null,
+              null,
+              null,
             );
             await _mapboxMap!.easeTo(
               camera,
@@ -1826,11 +1816,14 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       _buildingZoomTimer?.cancel();
       // Try to fit to polygon if available
       try {
-        if (building != null && building.contourWKT != null && building.contourWKT!.isNotEmpty) {
+        if (building != null &&
+            building.contourWKT != null &&
+            building.contourWKT!.isNotEmpty) {
           final List<LatLng> coords = building.contourWKT!;
           // Calculate bounds
           double minLat = coords.first.latitude, maxLat = coords.first.latitude;
-          double minLng = coords.first.longitude, maxLng = coords.first.longitude;
+          double minLng = coords.first.longitude,
+              maxLng = coords.first.longitude;
           for (final c in coords) {
             if (c.latitude < minLat) minLat = c.latitude;
             if (c.latitude > maxLat) maxLat = c.latitude;
@@ -1844,7 +1837,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           );
           final camera = await _mapboxMap!.cameraForCoordinateBounds(
             bounds,
-            mb.MbxEdgeInsets(top: 0, left: 0, bottom: 0, right: 0), // padding (required, zero)
+            mb.MbxEdgeInsets(
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+            ), // padding (required, zero)
             null,
             null,
             null,
@@ -1964,7 +1962,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _mapAnimController!.forward();
   }
 
-  void _animatedMapboxMove(LatLng dest, double zoom, {VoidCallback? onComplete}) {
+  void _animatedMapboxMove(
+    LatLng dest,
+    double zoom, {
+    VoidCallback? onComplete,
+  }) {
     if (_mapboxMap == null) return;
     _mapboxMap!.easeTo(
       mb.CameraOptions(
@@ -2100,10 +2102,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     );
   }
 
-  void _updateMapConfig(){
+  void _updateMapConfig() {
     if (_mapConfig == null || _mapboxMap == null) return;
     _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
-
   }
 
   Widget _buildCategoryListPanel(ScrollController sc) {

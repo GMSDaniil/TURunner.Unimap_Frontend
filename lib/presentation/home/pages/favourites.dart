@@ -82,8 +82,9 @@ class _FavouritesPageState extends State<FavouritesPage> {
                                     if (!mounted) return;
 
                                     result.fold(
-                                      (error) {
+                                      (error) async {
                                         if (!mounted) return;
+                                        // error is always a String from your repository/usecase
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
@@ -93,10 +94,21 @@ class _FavouritesPageState extends State<FavouritesPage> {
                                             ),
                                           ),
                                         );
+                                        final getResult =
+                                            await sl<GetFavouritesUseCase>()
+                                                .call();
+                                        if (!mounted) return;
+                                        getResult.fold((error) {}, (
+                                          freshFavourites,
+                                        ) {
+                                          Provider.of<UserProvider>(
+                                            context,
+                                            listen: false,
+                                          ).setFavourites(freshFavourites);
+                                        });
                                       },
                                       (_) async {
                                         if (!mounted) return;
-                                        // Reload favourites from backend after successful delete
                                         final getResult =
                                             await sl<GetFavouritesUseCase>()
                                                 .call();
