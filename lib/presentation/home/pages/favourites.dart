@@ -68,6 +68,22 @@ class _FavouritesPageState extends State<FavouritesPage> {
                             onPressed: deletingIds.contains(fav.id)
                                 ? null // Button is disabled while deleting
                                 : () async {
+                                    final user = Provider.of<UserProvider>(
+                                      context,
+                                      listen: false,
+                                    ).user;
+                                    if (user == null) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Please log in to use favourites.',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
                                     setState(() {
                                       deletingIds.add(fav.id);
                                     });

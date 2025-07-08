@@ -14,7 +14,9 @@ import 'package:auth_app/service_locator.dart';
 
 import 'package:auth_app/domain/usecases/add_favourite.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/domain/usecases/delete_favourite.dart';
 import 'package:auth_app/data/models/add_favourite_req_params.dart';
+import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 import 'package:provider/provider.dart';
 import 'package:auth_app/common/providers/user.dart';
 
@@ -254,13 +256,26 @@ class BuildingPopupManager {
 // Private sheet widgets
 // ═════════════════════════════════════════════════════════════════
 
-class _SimpleBuildingSheet extends StatelessWidget {
+class _SimpleBuildingSheet extends StatefulWidget {
   final Pointer pointer;
   final VoidCallback onClose;
   const _SimpleBuildingSheet({required this.pointer, required this.onClose});
 
   @override
+  State<_SimpleBuildingSheet> createState() => _SimpleBuildingSheetState();
+}
+
+class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
+  @override
   Widget build(BuildContext context) {
+    final favourites = Provider.of<UserProvider>(context).favourites;
+    final isFavourite = favourites.any(
+      (f) =>
+          f.name == widget.pointer.name &&
+          f.lat == widget.pointer.lat &&
+          f.lng == widget.pointer.lng,
+    );
+
     return Material(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       color: Colors.white,
@@ -283,65 +298,106 @@ class _SimpleBuildingSheet extends StatelessWidget {
               ),
 
               // Building title & category
-              Text(pointer.name, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                widget.pointer.name,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 10),
-              Text(pointer.category, style: const TextStyle(fontSize: 16)),
+              Text(
+                widget.pointer.category,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 20),
 
               // Mensa menu button if applicable
-              if (pointer.category == 'Canteen')
+              if (widget.pointer.category == 'Canteen')
                 ElevatedButton(
                   onPressed: () => BuildingPopupManager._showMensaMenu(context),
                   child: const Text("Today's Meal Menu"),
                 ),
 
-              // Add to favourites
-              ElevatedButton.icon(
+              // Add/remove to favourites
+              GradientActionButton(
                 onPressed: () async {
-                  // Show loading indicator while adding (shows modal progress)
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) =>
-                        const Center(child: CircularProgressIndicator()),
-                  );
-
-                  final result = await sl<AddFavouriteUseCase>().call(
-                    param: AddFavouriteReqParams(
-                      name: pointer.name,
-                      latitude: pointer.lat,
-                      longitude: pointer.lng,
-                    ),
-                  );
-                  Navigator.of(context).pop();
-
-                  result.fold(
-                    (error) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to add favourite: $error'),
-                        ),
-                      );
-                    },
-                    (_) async {
-                      final updated = await sl<GetFavouritesUseCase>().call();
-                      updated.fold(
-                        (error) {},
-                        (favs) => Provider.of<UserProvider>(
-                          context,
-                          listen: false,
-                        ).setFavourites(favs),
-                      );
-                      onClose();
-                    },
-                  );
+                  if (isFavourite) {
+                    // Remove from favourites
+                    final fav = favourites.firstWhere(
+                      (f) => f.name == widget.pointer.name,
+                    );
+                    final result = await sl<DeleteFavouriteUseCase>().call(
+                      param: DeleteFavouriteReqParams(favouriteId: fav.id),
+                    );
+                    result.fold(
+                      (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to remove favourite: $error'),
+                          ),
+                        );
+                      },
+                      (_) async {
+                        final updated = await sl<GetFavouritesUseCase>().call();
+                        updated.fold(
+                          (error) {},
+                          (favs) => Provider.of<UserProvider>(
+                            context,
+                            listen: false,
+                          ).setFavourites(favs),
+                        );
+                      },
+                    );
+                  } else {
+                    // Add to favourites
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
+                    final result = await sl<AddFavouriteUseCase>().call(
+                      param: AddFavouriteReqParams(
+                        name: widget.pointer.name,
+                        latitude: widget.pointer.lat,
+                        longitude: widget.pointer.lng,
+                      ),
+                    );
+                    Navigator.of(context).pop();
+                    result.fold(
+                      (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to add favourite: $error'),
+                          ),
+                        );
+                      },
+                      (_) async {
+                        final updated = await sl<GetFavouritesUseCase>().call();
+                        updated.fold(
+                          (error) {},
+                          (favs) => Provider.of<UserProvider>(
+                            context,
+                            listen: false,
+                          ).setFavourites(favs),
+                        );
+                        setState(() {});
+                      },
+                    );
+                  }
                 },
-                icon: const Icon(Icons.favorite),
-                label: const Text('Add to Favourites'),
+                icon: isFavourite ? Icons.check : Icons.favorite_border,
+                label: isFavourite
+                    ? 'Saved in Favourites'
+                    : 'Add to Favourites',
+                colors: isFavourite
+                    ? const [Color(0xFFFFC1A1), Color(0xFFFF8C94)]
+                    : const [Colors.deepOrange, Colors.orange],
               ),
 
               // Close
-              ElevatedButton(onPressed: onClose, child: const Text('Close')),
+              ElevatedButton(
+                onPressed: widget.onClose,
+                child: const Text('Close'),
+              ),
             ],
           ),
         ),

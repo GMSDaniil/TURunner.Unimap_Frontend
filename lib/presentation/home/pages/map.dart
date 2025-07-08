@@ -42,7 +42,9 @@ import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/domain/entities/favourite.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/add_favourite.dart';
+import 'package:auth_app/domain/usecases/delete_favourite.dart';
 import 'package:auth_app/data/models/add_favourite_req_params.dart';
+import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
@@ -127,7 +129,6 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<Marker> _markers = [];
   List<InteractiveAnnotation> _interactiveAnnotations = [];
 
-  
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
   LatLng? _currentLocation;
@@ -625,57 +626,97 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                   _startRouteFlow(LatLng(p.lat, p.lng));
                 },
                 onAddToFavourites: () async {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) =>
-                        const Center(child: CircularProgressIndicator()),
+                  final user = Provider.of<UserProvider>(
+                    context,
+                    listen: false,
+                  ).user;
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to use favourites!'),
+                      ),
+                    );
+                    return;
+                  }
+                  final favourites = Provider.of<UserProvider>(
+                    context,
+                    listen: false,
+                  ).favourites;
+                  final isFavourite = favourites.any(
+                    (f) => f.name == p.name && f.lat == p.lat && f.lng == p.lng,
                   );
 
-                  final result = await sl<AddFavouriteUseCase>().call(
-                    param: AddFavouriteReqParams(
-                      name: p.name,
-                      latitude: p.lat,
-                      longitude: p.lng,
-                    ),
-                  );
-                  Navigator.of(context).pop();
+                  Future<void> updateFavourites() async {
+                    final updated = await sl<GetFavouritesUseCase>().call();
+                    if (!mounted) return;
+                    updated.fold(
+                      (error) =>
+                          print('[DEBUG] Failed to reload favourites: $error'),
+                      (favs) {
+                        if (!mounted) return;
+                        Provider.of<UserProvider>(
+                          context,
+                          listen: false,
+                        ).setFavourites(favs);
+                      },
+                    );
+                  }
 
-                  result.fold(
-                    (error) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to add favourite: $error'),
-                        ),
-                      );
-                    },
-                    (_) async {
-                      if (!mounted) return;
-                      final updated = await sl<GetFavouritesUseCase>().call();
-                      if (!mounted) return;
-                      updated.fold(
-                        (error) => print(
-                          '[DEBUG] Failed to reload favourites: $error',
-                        ),
-                        (favs) {
-                          if (!mounted) return;
-                          Provider.of<UserProvider>(
-                            context,
-                            listen: false,
-                          ).setFavourites(favs);
-                        },
-                      );
-                      if (!mounted) return;
-                      /*ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${p.name} added to favourites!'),
-                        ),
-                      );*/
-                      setState(() => _buildingPanelPointer = null);
-                      _panelController.close();
-                    },
-                  );
+                  if (isFavourite) {
+                    // Remove from favourites
+                    final fav = favourites.firstWhere(
+                      (f) =>
+                          f.name == p.name && f.lat == p.lat && f.lng == p.lng,
+                    );
+                    final result = await sl<DeleteFavouriteUseCase>().call(
+                      param: DeleteFavouriteReqParams(favouriteId: fav.id),
+                    );
+                    result.fold(
+                      (error) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to remove favourite: $error'),
+                          ),
+                        );
+                      },
+                      (_) async {
+                        await updateFavourites();
+                        setState(() {});
+                      },
+                    );
+                  } else {
+                    // Add to favourites
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
+                    final result = await sl<AddFavouriteUseCase>().call(
+                      param: AddFavouriteReqParams(
+                        name: p.name,
+                        latitude: p.lat,
+                        longitude: p.lng,
+                      ),
+                    );
+                    Navigator.of(context).pop();
+
+                    result.fold(
+                      (error) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to add favourite: $error'),
+                          ),
+                        );
+                      },
+                      (_) async {
+                        await updateFavourites();
+                        setState(() {});
+                      },
+                    );
+                  }
                 },
                 onClose: () {
                   setState(() => _buildingPanelPointer = null);
@@ -902,7 +943,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                                 height: 56,
                                 child: GradientActionButton(
                                   onPressed: () {
-                                    setState(() => _coordinatePanelLatLng = null);
+                                    setState(
+                                      () => _coordinatePanelLatLng = null,
+                                    );
                                     _panelController.close();
                                     _startRouteFlow(latlng);
                                   },
@@ -1114,7 +1157,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ───────────────────────────────────────────────────────────
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
-  Future<void> _startRouteFlow(LatLng destination, {bool skipPanelOpen = false}) async {
+  Future<void> _startRouteFlow(
+    LatLng destination, {
+    bool skipPanelOpen = false,
+  }) async {
     // Optionally skip opening the panel if already open (for swap animation)
     if (!skipPanelOpen) {
       _panelController.open();
@@ -1227,19 +1273,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     setState(() {
       _suggestions = q.isEmpty
           ? []
-          : _allPointers
-              .where((p) {
-                // Check if pointer name matches
-                final nameMatches = p.name.toLowerCase().contains(q);
-                
-                // Check if any room in this pointer matches
-                final roomMatches = p.rooms.any((room) => 
-                    room.toLowerCase().contains(q));
-                
-                // Include pointer if either name or any room matches
-                return nameMatches || roomMatches;
-              })
-              .toList();
+          : _allPointers.where((p) {
+              // Check if pointer name matches
+              final nameMatches = p.name.toLowerCase().contains(q);
+
+              // Check if any room in this pointer matches
+              final roomMatches = p.rooms.any(
+                (room) => room.toLowerCase().contains(q),
+              );
+
+              // Include pointer if either name or any room matches
+              return nameMatches || roomMatches;
+            }).toList();
     });
   }
 
@@ -1599,19 +1644,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _searchMarkers(String q) {
-    final filtered = _allPointers
-        .where((p) {
-          // Check if pointer name matches
-          final nameMatches = p.name.toLowerCase().contains(q);
-          
-          // Check if any room in this pointer matches
-          final roomMatches = p.rooms.any((room) => 
-              room.toLowerCase().contains(q));
-          
-          // Include pointer if either name or any room matches
-          return nameMatches || roomMatches;
-        })
-        .toList();
+    final filtered = _allPointers.where((p) {
+      // Check if pointer name matches
+      final nameMatches = p.name.toLowerCase().contains(q);
+
+      // Check if any room in this pointer matches
+      final roomMatches = p.rooms.any((room) => room.toLowerCase().contains(q));
+
+      // Include pointer if either name or any room matches
+      return nameMatches || roomMatches;
+    }).toList();
 
     setState(() {
       _markers = MapMarkerManager.searchMarkersByName(
