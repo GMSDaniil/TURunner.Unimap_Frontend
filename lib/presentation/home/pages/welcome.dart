@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../common/bloc/button/button_state_cubit.dart';
-import '../../../common/bloc/auth/auth_state_cubit.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -68,27 +67,47 @@ class WelcomePage extends StatelessWidget {
                   ),
 
                   // Guest Access Button
-                  SizedBox(
-                    width: screenWidth,
-                    height: 48,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
-                        backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-                        side: const BorderSide(color: Colors.grey),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/home',
+                        (route) => false
+                      );
+                    },
+                    child: Container(
+                      width: screenWidth,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          Theme.of(context).colorScheme.primary.withOpacity(0.9),
+                          Theme.of(context).colorScheme.secondary.withOpacity(0.9),
+                        ]),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.7),
+                          width: 1.5,
                         ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            offset: const Offset(0, 5),
+                            blurRadius: 15,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.2),
+                            offset: const Offset(0, -1),
+                            blurRadius: 3,
+                          ),
+                        ],
                       ),
-                      onPressed: () {
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                          '/home',
-                          (route) => false
-                        );
-                      },
+                      alignment: Alignment.center,
                       child: const Text(
                         'Continue as Guest',
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
