@@ -1,41 +1,28 @@
-// --- Timeline segment tile ---
-
-
-
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
 import 'shimmer_loading.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-// import 'route_details_tile.dart';
+import 'route_details_sheet.dart';
 
 /// Possible travel profiles.  Only *walk* is implemented for now but the
 /// widget is future-proof for bus / scooter.
+
+// RouteOptionsPanel and RouteDetailsPanel are now split into separate files.
+
+// Export TravelMode for use in other files
 enum TravelMode { walk, bus, scooter }
 
-/// A sleek bottom-sheet that mimics Google Maps’ route card but matches the
-/// UniMap style language (soft radius, gradient buttons, pill chips).
-///
-/// * Displays total distance & duration for the currently selected mode.
-/// * Lets the user switch mode via a pill-segment row.
-/// * Has a trailing "close" icon that dismisses the sheet and calls [onClose].
-///
-/// The sheet is **stateless** for the parent – we only report mode changes via
-/// [onModeChanged].  Everything else is handled locally.
-class RouteOptionsSheet extends StatefulWidget {
+class RouteOptionsPanel extends StatefulWidget {
   final ValueNotifier<Map<TravelMode, RouteData>> routesNotifier;
   final TravelMode currentMode;
   final VoidCallback onClose;
   final ValueChanged<TravelMode> onModeChanged;
   final VoidCallback onShowDetails;
-
-  /// If the sheet is wrapped in a `DraggableScrollableSheet`, Flutter will
-  /// hand us its internal ScrollController so the content keeps scrolling
-  /// smoothly while the panel is being dragged.
   final ScrollController? scrollController;
 
-  const RouteOptionsSheet({
+  const RouteOptionsPanel({
     super.key,
     required this.routesNotifier,
     required this.currentMode,
@@ -46,15 +33,14 @@ class RouteOptionsSheet extends StatefulWidget {
   });
 
   @override
-  State<RouteOptionsSheet> createState() => _RouteOptionsSheetState();
+  State<RouteOptionsPanel> createState() => _RouteOptionsPanelState();
 }
 
-class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
+class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
   String? _routeError;
   late TravelMode _mode;
   bool _loading = false;
 
-  /// Human-readable duration rounded to the nearest minute.
   @override
   void initState() {
     super.initState();
@@ -74,8 +60,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
       setState(() {
         final route = widget.routesNotifier.value[_mode];
         _loading = route == null;
-        // If route is present but has no segments, treat as error
-        if (route != null && (route.segments == null || route.segments.isEmpty)) {
+        if (route != null && (route.segments.isEmpty)) {
           _routeError = "No route can be found at the moment";
         } else {
           _routeError = null;
@@ -85,8 +70,7 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
   }
 
   String get _prettyDuration {
-    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60)
-        .round();
+    final mins = ((widget.routesNotifier.value[_mode]?.totalDuration ?? 0) / 60).round();
     return '$mins min';
   }
 
@@ -97,22 +81,14 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
         : '${distance.round()} m';
   }
 
-  /// Colour helpers to keep chips/glows on brand.
-  Color get _activeColor => Theme.of(context).colorScheme.primary;
-  Color get _onActive => Theme.of(context).colorScheme.onPrimary;
-
   @override
-  void didUpdateWidget(covariant RouteOptionsSheet oldWidget) {
-    print('RouteOptionsSheet didUpdateWidget');
+  void didUpdateWidget(covariant RouteOptionsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If new data for the currently selected mode arrives, stop loading
-    if (widget.routesNotifier.value[_mode] !=
-        oldWidget.routesNotifier.value[_mode]) {
+    if (widget.routesNotifier.value[_mode] != oldWidget.routesNotifier.value[_mode]) {
       setState(() {
         _loading = false;
       });
     }
-    // If parent changes the currentMode (e.g. after sheet reopens), sync local mode
     if (widget.currentMode != oldWidget.currentMode) {
       setState(() {
         _mode = widget.currentMode;
@@ -120,23 +96,6 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
       });
     }
   }
-
-  // ── Helpers to get nice labels for timeline endpoints ────────────────
-  // String _deriveStartName(RouteData? data) {
-  //   if (data == null) return 'Start';
-  //   final raw = data.customStartName;
-  //   if (raw != null && raw.trim().isNotEmpty) return raw;
-  //   return 'Start';
-  // }
-
-  // String _deriveEndName(RouteData? data) {
-  //   if (data == null) return 'Destination';
-  //   final raw = data.customEndName;
-  //   if (raw != null && raw.trim().isNotEmpty) return raw;
-  //   return 'Destination';
-  // }
-
-  // Removed: now handled by parent via onShowDetails callback.
 
   @override
   Widget build(BuildContext context) {
@@ -153,13 +112,11 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Unscrollable top section ──────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Drag-handle mimic
                   Align(
                     alignment: Alignment.topCenter,
                     child: Container(
@@ -171,7 +128,6 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                       ),
                     ),
                   ),
-                  // ── Header row ─────────────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -213,7 +169,6 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                 ],
               ),
             ),
-            // ── Scrollable section ──────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 controller: widget.scrollController,
@@ -222,7 +177,6 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 24),
-                    // ── Info card with expand button ───────────────
                     _loading
                         ? const Padding(
                             padding: EdgeInsets.symmetric(vertical: 4),
@@ -302,7 +256,6 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
                                   ),
                           ),
                     const SizedBox(height: 28),
-                    // ── Timeline/segment list ──
                     ...(() {
                       final segments = widget.routesNotifier.value[_mode]?.segments ?? [];
                       return List.generate(
@@ -322,8 +275,8 @@ class _RouteOptionsSheetState extends State<RouteOptionsSheet> {
         ),
       ),
     );
-  } // build
-} // _RouteOptionsSheetState
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Google Maps-style timeline tile for each segment

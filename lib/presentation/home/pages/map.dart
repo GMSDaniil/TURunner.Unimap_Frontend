@@ -26,6 +26,7 @@ import 'package:auth_app/presentation/widgets/map_widget.dart';
 import 'package:auth_app/presentation/widgets/mapbox_map_widget.dart';
 import 'package:auth_app/presentation/widgets/route_logic.dart';
 import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
+import 'package:auth_app/presentation/widgets/route_details_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
@@ -454,8 +455,21 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       maxHeight =
           MediaQuery.of(context).size.height * 0.25; // 35% of screen height
     } else if (_panelRoutes != null) {
-      // route sheet always up to 50% of screen height
-      maxHeight = MediaQuery.of(context).size.height * 0.31;
+      // Dynamically calculate height for route details panel
+      if (_showRouteDetails) {
+        final data = _panelRoutes!.value[_panelMode ?? TravelMode.walk];
+        // Estimate: header + (segmentHeight * segmentCount) + padding
+        const double headerHeight = 120;
+        const double segmentHeight = 80;
+        const double padding = 40;
+        final int segmentCount = data?.segments.length ?? 0;
+        double total = headerHeight + (segmentHeight * segmentCount) + padding;
+        double maxAllowed = MediaQuery.of(context).size.height * 0.85;
+        double minAllowed = 180.0;
+        maxHeight = total.clamp(minAllowed, maxAllowed);
+      } else {
+        maxHeight = MediaQuery.of(context).size.height * 0.31;
+      }
 
       // ────────────────────────────────────────────────────────────────
       // Otherwise neither sheet is active, we’ll show a small handle only
@@ -691,38 +705,43 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
               // ▒▒▒  decide which flavour to render  ▒▒▒
               if (_showRouteDetails) {
                 final data = _panelRoutes!.value[_panelMode ?? TravelMode.walk];
-                return RouteDetailsSheet(
-                  data: data,
-                  deriveStartName: (data) {
-                    if (data == null) return 'Start';
-                    final raw = data.customStartName;
-                    if (raw != null && raw.trim().isNotEmpty) return raw;
-                    final segs = data.segments;
-                    if (segs != null && segs.isNotEmpty) {
-                      return segs.first.fromStop ??
-                          segs.first.toStop ??
-                          'Start';
-                    }
-                    return 'Start';
-                  },
-                  deriveEndName: (data) {
-                    if (data == null) return 'Destination';
-                    final raw = data.customEndName;
-                    if (raw != null && raw.trim().isNotEmpty) return raw;
-                    final segs = data.segments;
-                    if (segs != null && segs.isNotEmpty) {
-                      return segs.last.toStop ??
-                          segs.last.fromStop ??
-                          'Destination';
-                    }
-                    return 'Destination';
-                  },
-                  onClose: () {
-                    setState(() => _showRouteDetails = false);
-                  },
+                // Make the Route Details panel taller than the options panel
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.75, // 75% of screen height
+                  child: RouteDetailsPanel(
+                    data: data,
+                    deriveStartName: (data) {
+                      if (data == null) return 'Start';
+                      final raw = data.customStartName;
+                      if (raw != null && raw.trim().isNotEmpty) return raw;
+                      final segs = data.segments;
+                      if (segs != null && segs.isNotEmpty) {
+                        return segs.first.fromStop ??
+                            segs.first.toStop ??
+                            'Start';
+                      }
+                      return 'Start';
+                    },
+                    deriveEndName: (data) {
+                      if (data == null) return 'Destination';
+                      final raw = data.customEndName;
+                      if (raw != null && raw.trim().isNotEmpty) return raw;
+                      final segs = data.segments;
+                      if (segs != null && segs.isNotEmpty) {
+                        return segs.last.toStop ??
+                            segs.last.fromStop ??
+                            'Destination';
+                      }
+                      return 'Destination';
+                    },
+                    onClose: () {
+                      setState(() => _showRouteDetails = false);
+                    },
+                  ),
                 );
               } else {
-                return RouteOptionsSheet(
+                // Route Options panel keeps its original height logic
+                return RouteOptionsPanel(
                   routesNotifier: _panelRoutes!,
                   currentMode: _panelMode ?? TravelMode.walk,
                   scrollController: sc,
