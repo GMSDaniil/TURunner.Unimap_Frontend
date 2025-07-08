@@ -25,7 +25,9 @@ import 'package:auth_app/domain/entities/study_program.dart';
 import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final void Function(bool)? onSearchFocusChanged;
+
+  const ProfilePage({Key? key, this.onSearchFocusChanged}) : super(key: key);
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();

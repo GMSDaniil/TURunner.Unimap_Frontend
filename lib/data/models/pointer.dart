@@ -8,7 +8,7 @@ class Pointer {
   final String? description;
   List<String> rooms = [];
   final List<LatLng>? contourWKT;
-  
+  final bool isCampusBuilding; // <-- Add this if not present
 
   Pointer({
     required this.name,
@@ -18,6 +18,7 @@ class Pointer {
     this.rooms = const [],
     this.description,
     this.contourWKT,
+    this.isCampusBuilding = false,
   });
 
   factory Pointer.fromJson(Map<String, dynamic> json) {
@@ -31,7 +32,7 @@ class Pointer {
       lat: (lat as num).toDouble(),
       lng: (lng as num).toDouble(),
       category: json['category'] ?? '',
-      description: json['description'] ,
+      description: json['description'],
       rooms: (json['rooms'] as List<dynamic>?)
               ?.map((room) => room.toString())
               .toList() ??
@@ -39,6 +40,7 @@ class Pointer {
       contourWKT: json['contourWKT'] != null
           ? parsePolygonOrMultiPolygonFromWKT(json['contourWKT'])
           : null,
+      isCampusBuilding: json['isCampusBuilding'] ?? false,
     );
   }
 }
