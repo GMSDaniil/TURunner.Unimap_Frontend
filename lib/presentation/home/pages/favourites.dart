@@ -23,7 +23,7 @@ class _FavouritesPageState extends State<FavouritesPage> {
     final favourites = Provider.of<UserProvider>(context).favourites;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Stack(
           children: [
