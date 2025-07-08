@@ -8,13 +8,13 @@ class GetFavouritesUseCase
     implements UseCase<Either<String, List<FavouriteEntity>>, void> {
   @override
   Future<Either<String, List<FavouriteEntity>>> call({void param}) async {
-    print('GetFavouritesUseCase called');
+    //print('GetFavouritesUseCase called');
     try {
       final result = await sl<FavouritesRepository>().getFavourites();
-      print('GetFavouritesUseCase repository result: $result');
+      //print('GetFavouritesUseCase repository result: $result');
       return result;
     } catch (e) {
-      print('❌ GetFavouritesUseCase exception: $e');
+      //print('❌ GetFavouritesUseCase exception: $e');
       return Left('Unexpected error: ${e.toString()}');
     }
   }
