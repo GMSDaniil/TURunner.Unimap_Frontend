@@ -79,6 +79,7 @@ class _HomePageState extends State<HomePage> {
     }
     return Scaffold(
       key: _scaffoldKey,
+      resizeToAvoidBottomInset: false, // This prevents the UI from resizing when the keyboard appears
       // ── BODY ───────────────────────────────────────────────────────
       body: Scaffold(
         body: Stack(
