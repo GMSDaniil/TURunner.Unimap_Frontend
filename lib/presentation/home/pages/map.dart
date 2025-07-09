@@ -2003,6 +2003,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     Uint8List favouriteIcon,
   ) {
     return favourites.map((fav) {
+      // ✅ Find the original pointer to get the correct category
+      final originalPointer = _allPointers.firstWhere(
+        (p) => p.id == fav.placeId,
+        orElse: () => Pointer(
+          id: fav.placeId,
+          name: fav.name,
+          lat: fav.lat,
+          lng: fav.lng,
+          category: 'Building', // fallback if not found
+        ),
+      );
+      
       return InteractiveAnnotation(
         id: fav.placeId,
         options: mb.PointAnnotationOptions(
@@ -2011,14 +2023,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           image: favouriteIcon,
           iconAnchor: mb.IconAnchor.BOTTOM,
         ),
-        onTap: () => _onMarkerTap(
-          Pointer(
-            name: fav.name,
-            lat: fav.lat,
-            lng: fav.lng,
-            category: 'Building',
-          ),
-        ),
+        onTap: () => _onMarkerTap(originalPointer), // ✅ Use original pointer with correct category
         category: 'favourite',
       );
     }).toList();
