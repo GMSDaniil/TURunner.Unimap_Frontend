@@ -190,6 +190,7 @@ class RouteLogic {
                   transportLine: seg.transportLine,
                   fromStop: seg.fromStop,
                   toStop: seg.toStop,
+                  numStops: seg.polyline.length-1
                 ),
               );
               // }
