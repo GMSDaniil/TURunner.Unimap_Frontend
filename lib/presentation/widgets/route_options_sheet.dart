@@ -86,6 +86,11 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
     return route != null && route.error == true;
   }
 
+  bool get _shouldLoading{
+    final route = widget.routesNotifier.value[_mode];
+    return route == null;
+  }
+
   @override
   void didUpdateWidget(covariant RouteOptionsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -175,7 +180,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                     ),
                     const SizedBox(height: 24),
                     // Always show the summary box, but with shimmer if loading
-                    _loading
+                    _shouldLoading
                         ? const Padding(
                             padding: EdgeInsets.symmetric(vertical: 4),
                             child: ShimmerLoading(height: 80, width: double.infinity),
