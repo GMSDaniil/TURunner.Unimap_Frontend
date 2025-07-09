@@ -130,8 +130,9 @@ class RouteDetailsPanel extends StatelessWidget {
                   if (!isLast)
                     Center(
                       child: Container(
+                        margin: EdgeInsets.only(top:30),
                         width: _railThickness,
-                        height: 80,
+                        height: 90,
                         color: nextIsWalk ? Colors.grey.shade400 : colour,
                       ),
                     ),
@@ -380,46 +381,54 @@ class RouteDetailsPanel extends StatelessWidget {
       child: SafeArea(
         top: false,
         bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text('Route details',
-                          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    ),
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1), shape: BoxShape.circle),
-                      child: IconButton(
-                        icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                        splashRadius: 20,
-                        onPressed: onClose,
+        child: Column(
+          children: [
+            Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text('Route details',
+                            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                       ),
-                    ),
-                  ],
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1), 
+                          shape: BoxShape.circle
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                          splashRadius: 20,
+                          onPressed: onClose,
+                        ),
+                      ),
+                      
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+              Expanded(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              // Timeline itself (with left padding to keep rail on screen)
+              SliverPadding(
+                padding: const EdgeInsets.only(left: 16, right: 16),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      ...tiles,
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+          ),
+        ),
 
-            // Timeline itself (with left padding to keep rail on screen)
-            SliverPadding(
-              padding: const EdgeInsets.only(left: 16, right: 16),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    ...tiles,
-                  ],
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
       ),
