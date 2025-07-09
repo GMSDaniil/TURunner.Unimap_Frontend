@@ -473,8 +473,18 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _mapAnimController?.dispose();
     _plannerAnimCtr?.dispose(); // ← tidy up Route-Plan bar anim
 
+    _categoryImageCache.clear();
+
     _searchCtl.dispose();
     _searchFocusNode.dispose();
+
+    _allPointers.clear();
+    _markers.clear();
+    _suggestions.clear();
+    _interactiveAnnotations.clear();
+    _allInteractiveAnnotations.clear();
+    _activeCategoryPointers.clear();
+    _lastFavourites.clear();
 
     super.dispose();
   }

@@ -97,13 +97,16 @@ class RouteLogic {
     final walkingResult = await sl<FindWalkingRouteUseCase>().call(param: params);
     walkingResult.fold(
       (error) {
+        if(context.mounted){
         setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
               newMap[TravelMode.walk] = RouteData(segments: [], error: true);
               routesNotifier.value = newMap;
             });
+        }
       },
       (routeResponse) {
+        if (context.mounted) {
         setState(() {
           final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
           newMap[TravelMode.walk] = RouteData(segments: routeResponse.segments.map((route) =>
@@ -118,6 +121,7 @@ class RouteLogic {
             ).toList());
           routesNotifier.value = newMap;
         });
+        }
 
         // only pop the “Create Route” sheet & open the bottom sheet on first call
         if (!rebuildOnly) {
@@ -158,13 +162,16 @@ class RouteLogic {
       }
       busResult.fold(
         (error) {
+        if(context.mounted){
           setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
               newMap[TravelMode.bus] = RouteData(segments: [], error: true);
               routesNotifier.value = newMap;
             });
+        }
         },
         (routeResponse) {
+          if (context.mounted) {
           setState(() {
             final segments = <RouteSegment>[];
             for (final seg in routeResponse.segments) {
@@ -185,13 +192,16 @@ class RouteLogic {
               );
               // }
             }
-            setState((){
+            
+            
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
               newMap[TravelMode.bus] = RouteData(segments: segments);
               routesNotifier.value = newMap;
-            });
+            
+            
             
           });
+          }
           // Note: Do not update currentMode here.
         },
       );
@@ -200,11 +210,14 @@ class RouteLogic {
     sl<FindScooterRouteUseCase>().call(param: params).then((scooterResult) {
       scooterResult.fold(
         (error) {
+        if(context.mounted){
+
           setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
               newMap[TravelMode.scooter] = RouteData(segments: [], error: true);
               routesNotifier.value = newMap;
             });
+        }
         },
         (response) {
           List<RouteSegment> scooterSegments = [];
@@ -220,11 +233,13 @@ class RouteLogic {
                 ),
               );
           }
+          if (context.mounted) {
           setState(() {
             final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
             newMap[TravelMode.scooter] = RouteData(segments: scooterSegments);
             routesNotifier.value = newMap;
           });
+          }
           // Note: Again, do not invoke updateCurrentMode here.
         },
       );
@@ -347,11 +362,13 @@ class RouteLogic {
 
       result.fold(
         (error) {
+        if(context.mounted){
           setState((){
               final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
               newMap[TravelMode.scooter] = RouteData(segments: [], error: true);
               routesNotifier.value = newMap;
             });
+        }
         },
         (response) {
           List<RouteSegment> scooterSegments = [];
@@ -367,12 +384,14 @@ class RouteLogic {
                 ),
               );
           }
+          if (context.mounted) {
           setState(() {
             final newMap = Map<TravelMode, RouteData>.from(routesNotifier.value);
             newMap[TravelMode.scooter] = RouteData(segments: scooterSegments);
             routesNotifier.value = newMap;
             updateCurrentMode(TravelMode.scooter);
           });
+          }
         },
       );
     }
