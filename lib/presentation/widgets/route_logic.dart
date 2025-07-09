@@ -20,6 +20,7 @@ class RouteLogic {
   /// [rebuildOnly] == true  → called from RoutePlanBar while the planner UI
   /// is already on-screen.  We must **not** pop any routes or auto-fit map.
   static int _busRequestToken = 0;
+  static int _modeChangeToken = 0;
   
   static Future<void> onCreateRoute({
     required BuildContext context,
@@ -221,6 +222,8 @@ class RouteLogic {
     // A callback to update the current mode in your state
     required ValueChanged<TravelMode> updateCurrentMode,
   }) async {
+
+    final currentModeToken = ++_modeChangeToken;
     if (routesNotifier.value.containsKey(mode)) {
       setState(() {
         updateCurrentMode(mode);
@@ -288,8 +291,14 @@ class RouteLogic {
         return;
       }
 
+      if (currentModeToken != _modeChangeToken) {
+        print("Mode changed after bus route loaded, not updating current mode");
+        return;
+      }
+
       //KOSTIL N2
-      if (!routesNotifier.value.containsKey(TravelMode.walk)) {
+      if (!routesNotifier.value.containsKey(TravelMode.walk) || 
+          routesNotifier.value[TravelMode.walk]!.segments.last.path.last != route.last) {
         return;
       }
 

@@ -1418,7 +1418,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       data?.segments.expand((s) => s.path).toList() ?? [];
                   if (pts.isNotEmpty) {
                     final bounds = LatLngBounds.fromPoints(pts);
-                    _animatedMapboxMove(bounds.center, 16.0);
+                    _animatedMapboxMove(bounds.center, 15.0);
                   }
                 },
               ),

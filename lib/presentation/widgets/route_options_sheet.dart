@@ -83,6 +83,11 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
         : '${distance.round()} m';
   }
 
+  bool get _hasError {
+    final route = widget.routesNotifier.value[_mode];
+    return route != null && route.error == true;
+  }
+
   @override
   void didUpdateWidget(covariant RouteOptionsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -193,14 +198,14 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                                 ),
                               ],
                             ),
-                            child: _routeError != null
+                            child: _hasError
                                 ? Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        _routeError!,
+                                        "No route can be found at the moment",
                                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                              color: Colors.black87,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                               fontWeight: FontWeight.w500,
                                             ),
                                         textAlign: TextAlign.center,
