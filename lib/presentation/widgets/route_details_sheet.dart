@@ -77,6 +77,8 @@ class RouteDetailsPanel extends StatelessWidget {
           return (Theme.of(context).colorScheme.primary, Icons.directions_bus);
         case 'subway':
           return (Colors.blue.shade700, Icons.subway);
+        case 'tram':
+          return (const Color(0xFFD32F2F), Icons.tram);
         case 'suburban':
           return (const Color(0xff388e3c), Icons.train);
         default:
