@@ -427,6 +427,18 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           isDense: true,
                         ),
+                        // ✅ Add focus handling for semester field
+                        onTap: () {
+                          widget.onSearchFocusChanged?.call(true);
+                        },
+                        onTapOutside: (_) {
+                          widget.onSearchFocusChanged?.call(false);
+                          FocusScope.of(context).unfocus();
+                        },
+                        onFieldSubmitted: (_) {
+                          widget.onSearchFocusChanged?.call(false);
+                          FocusScope.of(context).unfocus();
+                        },
                       ),
                       const SizedBox(height: 8),
                       Text(
