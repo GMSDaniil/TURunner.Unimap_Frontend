@@ -73,7 +73,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       case 'subway':
         return const Color(0xFF1565C0).value;
       case 'tram':
-        return const Color(0xFF43A047).value;
+        return const Color(0xFFD32F2F).value; // Red for tram
       case 'suburban':
         return const Color(0xFF388E3C).value; // Green for S-Bahn
       default:
@@ -378,6 +378,9 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     } else if (seg.transportType == 'subway') {
       color = const Color(0xFF1565C0).toARGB32(); // blue for subway (U-Bahn)
       dashArray = null;
+    } else if (seg.transportType == 'tram') {
+      color = const Color(0xFFD32F2F).toARGB32(); // red for tram
+      dashArray = null;
     } else if (seg.transportType == 'suburban') {
       color = const Color(0xFF388E3C).toARGB32(); // green for S-Bahn
       dashArray = null;
@@ -413,8 +416,9 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       // ── Add line label as a horizontal rectangle ──
       final isBus = seg.transportType == 'bus';
       final isSubway = seg.transportType == 'subway';
+      final isTram = seg.transportType == 'tram';
       final isSuburban = seg.transportType == 'suburban';
-      if ((isBus || isSubway || isSuburban) && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
+      if ((isBus || isSubway || isTram || isSuburban) && seg.transportLine != null && seg.transportLine.toString().isNotEmpty) {
         // Find a good label point (midpoint of the polyline)
         final labelPoint = points[points.length ~/ 2];
         final labelSourceId = 'bus-label-source-$i';
@@ -441,9 +445,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
             ? const Color(0xFF9C27B0).value
             : isSubway
                 ? const Color(0xFF1565C0).value
-                : isSuburban
-                    ? const Color(0xFF388E3C).value
-                    : Colors.black.value;
+                : isTram
+                    ? const Color(0xFFD32F2F).value
+                    : isSuburban
+                        ? const Color(0xFF388E3C).value
+                        : Colors.black.value;
         await mapboxMap.style.addLayerAt(SymbolLayer(
           id: labelLayerId,
           sourceId: labelSourceId,
@@ -511,8 +517,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       ));
 
       // Show label if both previous and next are public transport
-      final prevIsTransport = prevSeg.transportType == 'bus' || prevSeg.transportType == 'subway' || prevSeg.transportType == 'tram';
-      final nextIsTransport = nextSeg.transportType == 'bus' || nextSeg.transportType == 'subway' || nextSeg.transportType == 'tram';
+      final prevIsTransport = prevSeg.transportType == 'bus' || prevSeg.transportType == 'subway' || prevSeg.transportType == 'tram' || prevSeg.transportType == 'suburban';
+      final nextIsTransport = nextSeg.transportType == 'bus' || nextSeg.transportType == 'subway' || nextSeg.transportType == 'tram' || nextSeg.transportType == 'suburban';
       if (prevIsTransport && nextIsTransport) {
         final prevLine = prevSeg.transportLine?.toString() ?? '';
         final nextLine = nextSeg.transportLine?.toString() ?? '';
