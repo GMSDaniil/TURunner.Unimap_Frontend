@@ -1203,7 +1203,28 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           },
           body: Stack(
             children: [
-              _buildFlutterMap(),
+              Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                final currentFavourites = userProvider.favourites;
+                final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
+                
+                if (favouritesChanged) {
+                  // ✅ Use addPostFrameCallback to avoid setState during build
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      _lastFavourites = List.from(currentFavourites);
+                      Future.delayed(
+                        const Duration(milliseconds: 500),
+                        () => _updateAnnotationsWithFavourites(currentFavourites),
+                      );
+                      
+                    }
+                  });
+                }
+                
+                return _buildFlutterMap();
+              },
+            ),
               // MapboxMapWidget(routePoints: [], busStops: [], currentLocation: _currentLocation),
 
               // ── animated white sheet over the map ──────────────────────
@@ -1495,26 +1516,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       : buildFavouriteAnnotations(favourites, favouriteIcon);
 
   final favouritePositions = favourites
-      .map((f) => '${f.placeId}')
+      .map((f) => '${f.placeId ?? ''}')
       .toSet();
+
+  print('Favourite positions: $favouritePositions');
   
   final normalAnnotations = _allPointers.where((a) {
     return !favouritePositions.contains('${a.id}');
   }).map(mapBoxMarker).toList();
 
   final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
-  final allAnnotations = showOnlyCategory
-      ? _activeCategoryPointers.map(mapBoxMarker).toList()
-      : [...normalAnnotations, ...favouriteAnnotations];
+  final allAnnotations = 
+      // showOnlyCategory? _activeCategoryPointers.map(mapBoxMarker).toList(): 
+      [...normalAnnotations, ...favouriteAnnotations];
   
   setState(() {
     _interactiveAnnotations = allAnnotations;
+    // print('Updated interactive annotations: ${_interactiveAnnotations.length}');
   });
 }
 
   Widget _buildFlutterMap() {
     // return Consumer<UserProvider>(builder: (context, userProvider, child) {
-      final currentFavourites = Provider.of<UserProvider>(context).favourites;
+      // final currentFavourites = Provider.of<UserProvider>(context).favourites;
       final route = _routesNotifier.value[_currentMode];
       final segments = route?.segments ?? [];
 
@@ -1540,15 +1564,15 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
       // 1. Favourites & Icon aus Provider/Cache holen
 
-      final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
+      // final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
       
 
-      if (favouritesChanged || _allPointers.isEmpty) {
-        _lastFavourites = List.from(currentFavourites);
+      // if (favouritesChanged) {
+      //   _lastFavourites = List.from(currentFavourites);
 
-        _updateAnnotationsWithFavourites(currentFavourites);
+      //   _updateAnnotationsWithFavourites(currentFavourites);
       
-      }
+      // }
       
 
       return MapboxMapWidget(
@@ -2460,7 +2484,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Add to Favourites'),
+        // title: Text('Add to Favourites'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2487,17 +2511,29 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                Navigator.pop(context);
-                _addCoordinateToFavourites(coordinates, name);
-              }
-            },
-            child: Text('Add'),
+          SizedBox(
+            width: 80,
+            height: 40,
+            child: GradientActionButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.pop(context);
+                  _addCoordinateToFavourites(coordinates, name);
+                }
+              },
+              icon: Icons.add,
+              label: 'Add',
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.secondary,
+              ],
+            ),
           ),
         ],
       ),
@@ -2560,8 +2596,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           (favs) {
             if (!mounted) return;
             Provider.of<UserProvider>(context, listen: false).setFavourites(favs);
-            _updateAnnotationsWithFavourites(favs);
-            setState(() {});
+            // _updateAnnotationsWithFavourites(favs);
           },
         );
       },

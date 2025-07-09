@@ -25,6 +25,7 @@ class SearchableDropdown extends StatefulWidget {
 }
 
 class SearchableDropdownState extends State<SearchableDropdown> {
+  final GlobalKey _dropdownKey = GlobalKey();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   List<StudyProgramEntity> _filteredItems = [];
@@ -144,12 +145,13 @@ class SearchableDropdownState extends State<SearchableDropdown> {
         top: topPosition,
         width: size.width,
         child: Material(
+          key: _dropdownKey,
           elevation: 8,
           borderRadius: BorderRadius.circular(8),
           child: Container(
             height: dropdownHeight,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey[300]!),
             ),
@@ -268,9 +270,26 @@ class SearchableDropdownState extends State<SearchableDropdown> {
       focusNode: _focusNode,
       onTapOutside: (event) {
         if (_isOpen) {
-          _focusNode.unfocus();
-          _closeDropdown();
-          widget.onFocusChanged?.call(false);
+          // ✅ Check if the tap is on the dropdown
+          final RenderBox? dropdownRenderBox = 
+              _dropdownKey.currentContext?.findRenderObject() as RenderBox?;
+          
+          if (dropdownRenderBox != null) {
+            final dropdownBounds = dropdownRenderBox.localToGlobal(Offset.zero) & 
+                                 dropdownRenderBox.size;
+            
+            // ✅ Only close if tap is outside dropdown bounds
+            if (!dropdownBounds.contains(event.position)) {
+              _focusNode.unfocus();
+              _closeDropdown();
+              widget.onFocusChanged?.call(false);
+            }
+          } else {
+            // ✅ Dropdown not found, safe to close
+            _focusNode.unfocus();
+            _closeDropdown();
+            widget.onFocusChanged?.call(false);
+          }
         }
       },
       onChanged: _onSearchChanged,
