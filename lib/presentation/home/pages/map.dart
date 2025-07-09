@@ -1,4 +1,6 @@
 
+import 'dart:math' as math;
+
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'dart:async';
@@ -1418,7 +1420,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       data?.segments.expand((s) => s.path).toList() ?? [];
                   if (pts.isNotEmpty) {
                     final bounds = LatLngBounds.fromPoints(pts);
-                    _animatedMapboxMove(bounds.center, 15.0);
+
+                    _animatedMapboxMove(bounds.center, 15);
                   }
                 },
               ),
@@ -1436,6 +1439,8 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     // first time in → rebuildOnly=false (default)
     _handleCreateRoute([currentLocation!, _routeDestination!]);
   }
+
+
 
   IconData _getThemeIcon(MapTheme theme) {
     switch (theme) {

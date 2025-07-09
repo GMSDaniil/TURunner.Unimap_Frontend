@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,6 +16,38 @@ import 'package:flutter_map/flutter_map.dart';
 //
 // contains the functions onCreateRoute and onModeChanged to be called from the map.dart
 //
+
+  double _calculateDynamicZoom(List<LatLng> points) {
+  if (points.isEmpty) return 15.0;
+  if (points.length == 1) return 17.0;
+
+  // Calculate bounding box
+  double minLat = points.first.latitude;
+  double maxLat = points.first.latitude;
+  double minLng = points.first.longitude;
+  double maxLng = points.first.longitude;
+
+  for (final point in points) {
+    minLat = math.min(minLat, point.latitude);
+    maxLat = math.max(maxLat, point.latitude);
+    minLng = math.min(minLng, point.longitude);
+    maxLng = math.max(maxLng, point.longitude);
+  }
+
+  // Calculate the span
+  final latSpan = maxLat - minLat;
+  final lngSpan = maxLng - minLng;
+  final maxSpan = math.max(latSpan, lngSpan);
+
+  // Dynamic zoom based on span
+  // These values can be adjusted based on your needs
+  if (maxSpan > 0.05) return 12.0;      // Very wide area
+  if (maxSpan > 0.02) return 13.0;      // Large area
+  if (maxSpan > 0.01) return 14.0;      // Medium area
+  if (maxSpan > 0.005) return 15.0;     // Small area
+  if (maxSpan > 0.002) return 16.0;     // Very small area
+  return 17.0;                          // Close zoom for tiny areas
+}
 
 class RouteLogic {
   /// [rebuildOnly] == true  → called from RoutePlanBar while the planner UI
@@ -98,7 +131,7 @@ class RouteLogic {
           }
           if (walkPath.isNotEmpty) {
             final bounds = LatLngBounds.fromPoints(walkPath);
-            animatedMapMove(bounds.center, 15);
+            animatedMapMove(bounds.center, _calculateDynamicZoom(walkPath));
           }
 
           // showRouteOptionsSheet(
