@@ -1,6 +1,8 @@
 import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/common/providers/user.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/domain/usecases/get_user.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -133,7 +135,17 @@ class MyApp extends StatelessWidget {
           home: BlocBuilder<AuthStateCubit, AuthState>(
             builder: (context, state) {
               if (state is Authenticated || state is GuestAuthenticated) {
+                Future.delayed(
+                  const Duration(seconds: 2), // Delay to simulate loading
+                  () {
+                    _loadUserDataOnAuthenticated(context);
+                  },
+                );
                 return const HomePage(); // Show MapPage for both Authenticated and Guest users
+              }
+              if (state is GuestAuthenticated) {
+                // Load user data for guest
+                return const HomePage();
               }
               if (state is UnAuthenticated) {
                 return const WelcomePage();
@@ -150,5 +162,36 @@ class MyApp extends StatelessWidget {
       }
       ),
     );
+  }
+
+  void _loadUserDataOnAuthenticated(BuildContext context) async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    
+    // Only load if user is not already loaded
+    if (userProvider.user != null) return;
+    
+    try {
+      // Load user profile
+      final userResult = await sl<GetUserUseCase>().call();
+      userResult.fold(
+        (error) => print('[DEBUG] Failed to load user: $error'),
+        (user) {
+          userProvider.setUser(user);
+          print('[DEBUG] User loaded: ${user.username}');
+        },
+      );
+
+      // Load favourites
+      final favouritesResult = await sl<GetFavouritesUseCase>().call();
+      favouritesResult.fold(
+        (error) => print('[DEBUG] Failed to load favourites: $error'),
+        (favourites) {
+          userProvider.setFavourites(favourites);
+          print('[DEBUG] Loaded ${favourites.length} favourites');
+        },
+      );
+    } catch (e) {
+      print('[DEBUG] Error loading user data: $e');
+    }
   }
 }
