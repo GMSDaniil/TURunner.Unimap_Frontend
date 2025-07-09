@@ -959,6 +959,21 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     await mapboxMap.setBounds(CameraBoundsOptions(
     minPitch: 0,    // Minimum tilt angle (degrees)
     maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
+    bounds: CoordinateBounds(
+      southwest: 
+        Point(
+          coordinates: 
+            Position(
+              12.964, 
+              52.313
+            )
+          ), 
+          northeast: 
+            Point(
+              coordinates: 
+                Position(13.826, 52.727)
+            ), 
+          infiniteBounds: false),
      maxZoom: 18.0,
   ));
 
