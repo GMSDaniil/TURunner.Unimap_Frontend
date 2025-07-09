@@ -963,6 +963,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       0.75, // 75% of screen height
                   child: RouteDetailsPanel(
                     data: data,
+                    scrollController: sc,
                     deriveStartName: (data) {
                       if (data == null) return 'Start';
                       final raw = data.customStartName;

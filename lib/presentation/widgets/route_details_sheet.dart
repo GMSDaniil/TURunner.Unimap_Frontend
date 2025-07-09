@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 
+/// Custom scroll behavior that removes glow/overscroll effects
+class _NoGlowScrollBehavior extends ScrollBehavior {
+  const _NoGlowScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
+
 /// Custom painter for dashed lines
 class DashedLinePainter extends CustomPainter {
   final Color color;
@@ -52,12 +62,14 @@ class RouteDetailsPanel extends StatelessWidget {
     required this.onClose,
     required this.deriveStartName,
     required this.deriveEndName,
+    this.scrollController,
   });
 
   final RouteData? data;
   final VoidCallback onClose;
   final String Function(RouteData?) deriveStartName;
   final String Function(RouteData?) deriveEndName;
+  final ScrollController? scrollController;
 
   // Visual constants
   static const double _railThickness = 24;
@@ -524,20 +536,22 @@ class RouteDetailsPanel extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                slivers: [
-                  // Timeline itself (with left padding to keep rail on screen)
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 16, right: 16),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(children: [...tiles]),
+              child: ScrollConfiguration(
+                behavior: const _NoGlowScrollBehavior(),
+                child: CustomScrollView(
+                  controller: scrollController,
+                  physics: const ClampingScrollPhysics(),
+                  slivers: [
+                    // Timeline itself (with left padding to keep rail on screen)
+                    SliverPadding(
+                      padding: const EdgeInsets.only(left: 16, right: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(children: [...tiles]),
+                      ),
                     ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                ],
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
+                ),
               ),
             ),
           ],
