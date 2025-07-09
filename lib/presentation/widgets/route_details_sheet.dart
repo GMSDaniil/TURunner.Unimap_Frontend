@@ -61,8 +61,10 @@ class RouteDetailsPanel extends StatelessWidget {
 
   // Visual constants
   static const double _railThickness = 24;
-  static const double _indicatorSize = 34.5; // Circle + border should be bigger than rail
+  static const double _indicatorSize =
+      34.5; // Circle + border should be bigger than rail
   static const double _railAreaWidth = 50; // Fixed width for the rail area
+  static const double _contentVerticalOffset = 5.7; // Tune this value to align text with icons
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +85,7 @@ class RouteDetailsPanel extends StatelessWidget {
     }
 
     /// Vehicle (bus / train) segment tile ---------------------------------------------------
-    /// `nextIsWalk` tells us whether the **following** tile is a walk leg.  
+    /// `nextIsWalk` tells us whether the **following** tile is a walk leg.
     /// If so, we end the solid rail with a **dotted** connector so the walk
     /// section appears dotted all the way.
     Widget _vehicleTile(
@@ -93,12 +95,22 @@ class RouteDetailsPanel extends StatelessWidget {
     }) {
       final (colour, icon) = _styleFor(segment);
       // Only create pill for vehicle segments (not walking segments)
-      final pill = segment.transportType != 'walk' && segment.transportLine != null
+      final pill =
+          segment.transportType != 'walk' && segment.transportLine != null
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(8)),
-              child: Text(segment.transportLine!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.bold, fontSize: 13)),
+              decoration: BoxDecoration(
+                color: colour,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                segment.transportLine!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.surface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
             )
           : null;
       final stopCount = segment.stopCount;
@@ -121,18 +133,27 @@ class RouteDetailsPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: colour,
                         borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Theme.of(context).colorScheme.surface.withOpacity(0.3), width: 3),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surface.withOpacity(0.3),
+                          width: 3,
+                        ),
                       ),
-                    child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.surface),
+                      child: Icon(
+                        icon,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.surface,
+                      ),
                     ),
                   ),
                   // Rail connector below
                   if (!isLast)
                     Center(
                       child: Container(
-                        margin: EdgeInsets.only(top:30),
+                        margin: EdgeInsets.only(top: 34.4),
                         width: _railThickness,
-                        height: 90,
+                        height: 114,
                         color: nextIsWalk ? Colors.grey.shade400 : colour,
                       ),
                     ),
@@ -142,7 +163,10 @@ class RouteDetailsPanel extends StatelessWidget {
             // Right content area
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(
+                  left: 8,
+                  top: _contentVerticalOffset + 0.7,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -151,25 +175,44 @@ class RouteDetailsPanel extends StatelessWidget {
                         Expanded(
                           child: Text(
                             segment.fromStop ?? '',
-                            style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                            style: textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        Text(_minutes(segment.durationSeconds),
-                            style: textTheme.bodyMedium?.copyWith(color: colour)),
                       ],
                     ),
                     if (pill != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.only(top: 16),
                         child: pill,
+                      ),
+                    // Add divider line above ride stops text
+                    if (segment.transportType != 'walk')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 17, bottom: 0),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
                       ),
                     if (segment.transportType != 'walk')
                       Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.only(top: 12),
                         child: Text(
-                          'Ride ${stopCount > 0 ? stopCount : 1} stop${(stopCount > 0 ? stopCount : 1) == 1 ? '' : 's'}',
-                          style: textTheme.bodySmall?.copyWith(
-                              color: textTheme.bodySmall!.color!.withOpacity(0.6)),
+                          'Ride ${stopCount > 0 ? stopCount : 1} stop${(stopCount > 0 ? stopCount : 1) == 1 ? '' : 's'} (${_minutes(segment.durationSeconds)})',
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    // Add divider line after ride stops text
+                    if (segment.transportType != 'walk')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 12),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
                         ),
                       ),
                     // End stop moved to walking tile
@@ -183,9 +226,14 @@ class RouteDetailsPanel extends StatelessWidget {
     }
 
     /// Walk segment tile --------------------------------------------------------------------
-    Widget _walkTile(RouteSegment segment, {required bool isLast, required bool isFirst, String? previousEndStop}) {
+    Widget _walkTile(
+      RouteSegment segment, {
+      required bool isLast,
+      required bool isFirst,
+      String? previousEndStop,
+    }) {
       final (colour, icon) = _styleFor(segment);
-      
+
       return Container(
         padding: const EdgeInsets.only(bottom: 0),
         child: Row(
@@ -194,34 +242,41 @@ class RouteDetailsPanel extends StatelessWidget {
             // Left rail area with fixed width
             Container(
               width: _railAreaWidth,
-              child: Column(
+              child: Stack(
                 children: [
-                  // Walk icon circle
+                  // Rail connector below (dashed) - draw first so it's behind the icon
+                  Center(
+                    child: Container(
+                      margin: EdgeInsets.only(top: _indicatorSize / 2),
+                      width: _railThickness,
+                      height: 95,
+                      child: CustomPaint(
+                        painter: DashedLinePainter(
+                          color: colour,
+                          thickness: _railThickness / 3,
+                          dash: 3.5, // Smaller dots
+                          gap: 15, // Smaller gaps
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Walk icon circle - draw on top so it covers the dashed line
                   Center(
                     child: Container(
                       width: _indicatorSize,
                       height: _indicatorSize,
                       decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: colour, width: 3),
                       ),
-                      child: Icon(icon, size: 10, color: colour),
-                    ),
-                  ),
-                  // Rail connector below (dashed)
-                  // Always show connector except if this is the very last tile and there's no flag tile after
-                  Center(
-                    child: Container(
-                      width: _railThickness ,
-                      height: 60,
-                      child: CustomPaint(
-                        painter: DashedLinePainter(
-                          color: colour,
-                          thickness: _railThickness / 4,
-                          dash: 4, // Smaller dots
-                          gap: 15,  // Smaller gaps
-                        ),
+                      child: Icon(
+                        isFirst
+                            ? Icons.play_arrow
+                            : Icons
+                                  .logout, // Start icon for first segment, hop off icon for others
+                        size: 20,
+                        color: colour,
                       ),
                     ),
                   ),
@@ -231,7 +286,7 @@ class RouteDetailsPanel extends StatelessWidget {
             // Right content area
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(left: 8, top: _contentVerticalOffset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -240,29 +295,82 @@ class RouteDetailsPanel extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           deriveStartName(data),
-                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    // Add divider line after "Start" label for first segment
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 13, bottom: 14),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
                         ),
                       ),
                     if (previousEndStop != null)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.only(
+                          bottom: 4,
+                        ), //move walk nr 2 down
                         child: Text(
                           previousEndStop,
-                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    Row(
-                      children: [
-                        Icon(Icons.directions_walk, size: 14, color: textTheme.bodyMedium!.color),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Walk ${_minutes(segment.durationSeconds)} • ${_distance(segment.distanceMeters)}',
-                            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
+                    // Add divider line above walk row
+                    if (previousEndStop != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 20, bottom: 0),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: previousEndStop != null ? 12 : 0,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.directions_walk,
+                            size: 20,
+                            color: textTheme.bodyMedium!.color,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Walk ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
+                              style: textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    // Add divider line after walk time/distance for first segment
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 17, bottom: 12),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    // Add divider line after walk time/distance for last walk segment (not first)
+                    if (!isFirst && isLast)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 17, bottom: 12),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -275,10 +383,10 @@ class RouteDetailsPanel extends StatelessWidget {
     /// Flag tiles (end only) ----------------------------------------------------------------
     Widget _flagTile({required bool isStart}) {
       final grey = Colors.grey.shade400;
-      
+
       // Only show end content since we removed start flag
       String content = deriveEndName(data);
-      
+
       return Container(
         padding: const EdgeInsets.only(bottom: 0),
         child: Row(
@@ -295,15 +403,11 @@ class RouteDetailsPanel extends StatelessWidget {
                       width: _indicatorSize,
                       height: _indicatorSize,
                       decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: grey, width: 3),
                       ),
-                      child: Icon(
-                        Icons.flag, 
-                        size: 10, 
-                        color: grey
-                      ),
+                      child: Icon(Icons.flag, size: 20, color: grey),
                     ),
                   ),
                   // No rail connector for end tile
@@ -313,10 +417,12 @@ class RouteDetailsPanel extends StatelessWidget {
             // Right content area
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: EdgeInsets.only(left: 8, top: _contentVerticalOffset),
                 child: Text(
                   content,
-                  style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                  style: textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -327,7 +433,7 @@ class RouteDetailsPanel extends StatelessWidget {
 
     // Build list of tiles -------------------------------------------------------------------
     final tiles = <Widget>[];
-    
+
     // Debug: Add some info about the data
     if (segs.isEmpty) {
       tiles.add(
@@ -347,12 +453,12 @@ class RouteDetailsPanel extends StatelessWidget {
         final isFirst = i == 0;
 
         /// look-ahead: is the next segment a walk?
-        final nextIsWalk =
-            !isLast && segs[i + 1].transportType == 'walk';
+        final nextIsWalk = !isLast && segs[i + 1].transportType == 'walk';
 
         // Get previous segment's end stop if this is a walking segment
         String? previousEndStop;
-        if ((seg.transportType == 'walk' || seg.transportType == null) && i > 0) {
+        if ((seg.transportType == 'walk' || seg.transportType == null) &&
+            i > 0) {
           final prevSeg = segs[i - 1];
           if (prevSeg.transportType != 'walk') {
             previousEndStop = prevSeg.toStop;
@@ -361,12 +467,13 @@ class RouteDetailsPanel extends StatelessWidget {
 
         tiles.add(
           seg.transportType == 'walk' || seg.transportType == null
-              ? _walkTile(seg, isLast: isLast, isFirst: isFirst, previousEndStop: previousEndStop)
-              : _vehicleTile(
+              ? _walkTile(
                   seg,
                   isLast: isLast,
-                  nextIsWalk: nextIsWalk,
-                ),
+                  isFirst: isFirst,
+                  previousEndStop: previousEndStop,
+                )
+              : _vehicleTile(seg, isLast: isLast, nextIsWalk: nextIsWalk),
         );
       }
       tiles.add(_flagTile(isStart: false));
@@ -376,7 +483,9 @@ class RouteDetailsPanel extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surface, // Use theme surface color
       elevation: 12,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
@@ -384,51 +493,53 @@ class RouteDetailsPanel extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text('Route details',
-                            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Route details',
+                      style: textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1), 
-                          shape: BoxShape.circle
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                          splashRadius: 20,
-                          onPressed: onClose,
-                        ),
-                      ),
-                      
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-              Expanded(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            slivers: [
-              // Timeline itself (with left padding to keep rail on screen)
-              SliverPadding(
-                padding: const EdgeInsets.only(left: 16, right: 16),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      ...tiles,
-                    ],
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      splashRadius: 20,
+                      onPressed: onClose,
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-          ),
-        ),
-
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                slivers: [
+                  // Timeline itself (with left padding to keep rail on screen)
+                  SliverPadding(
+                    padding: const EdgeInsets.only(left: 16, right: 16),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(children: [...tiles]),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -440,6 +551,7 @@ class RouteDetailsPanel extends StatelessWidget {
   // ---------------------------------------------------------------------------
   String _minutes(int seconds) => '${(seconds / 60).round()} min';
 
-  String _distance(double meters) =>
-      meters >= 1000 ? '${(meters / 1000).toStringAsFixed(1)} km' : '${meters.round()} m';
+  String _distance(double meters) => meters >= 1000
+      ? '${(meters / 1000).toStringAsFixed(1)} km'
+      : '${meters.round()} m';
 }
