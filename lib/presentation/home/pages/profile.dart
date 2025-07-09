@@ -40,6 +40,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _showScheduleSection = false;
   
   final _semesterController = TextEditingController();
+  final _semesterFocusNode = FocusNode();  // ✅ Add FocusNode
 
   List<StudyProgramEntity> _studyPrograms = [];
   StudyProgramEntity? _selectedStudyProgram;
@@ -50,11 +51,17 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _semesterController.text = '2';
     _loadStudyPrograms();
+    
+    // ✅ Add focus listener
+    _semesterFocusNode.addListener(() {
+      widget.onSearchFocusChanged?.call(_semesterFocusNode.hasFocus);
+    });
   }
 
   @override
   void dispose() {
     _semesterController.dispose();
+    _semesterFocusNode.dispose();  // ✅ Dispose FocusNode
     super.dispose();
   }
 
@@ -411,6 +418,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 4),
                       TextFormField(
                         controller: _semesterController,
+                        focusNode: _semesterFocusNode,  // ✅ Add FocusNode
                         keyboardType: TextInputType.number,
                         style: const TextStyle(fontWeight: FontWeight.w500),
                         decoration: InputDecoration(
@@ -427,6 +435,11 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           isDense: true,
                         ),
+                        onChanged: (value) {
+                          if (_scheduleError != null) {
+                            setState(() => _scheduleError = null);
+                          }
+                        },
                         // ✅ Add focus handling for semester field
                         onTap: () {
                           widget.onSearchFocusChanged?.call(true);
