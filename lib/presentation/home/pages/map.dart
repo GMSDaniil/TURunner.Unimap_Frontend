@@ -146,6 +146,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Map<String, Object>? _mapConfig;
 
   MapTheme _currentMapTheme = MapTheme.day;
+  bool _userToggledTheme = false; // Track if user manually changed theme
   Timer? _themeTimer;
 
   VoidCallback? _clearBuildingHighlight;
@@ -235,9 +236,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           _currentMapTheme = newTheme;
         });
 
-        if (mounted) {
+        if (mounted && !_userToggledTheme) {
           final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
           themeProvider.updateMapTheme(newTheme);
+          
         }
       }
       _updateThemeTimer(); // Schedule next update
@@ -1735,8 +1737,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
             final nextIndex = (currentIndex + 1) % MapTheme.values.length;
             setState(() {
+              _userToggledTheme = true;
+              _themeTimer?.cancel();
               _currentMapTheme = MapTheme.values[nextIndex];
+              
             });
+
             final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
             themeProvider.updateMapTheme(MapTheme.values[nextIndex]);
           },
