@@ -346,6 +346,18 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   // ── 2) Draw each route segment as you already do ────────────────
   for (int i = 0; i < segments.length; i++) {
     final seg = segments[i];
+    List<LatLng> originalPoints;
+    if (seg.mode == TravelMode.bus && seg.precisePolyline != null) {
+      originalPoints = seg.precisePolyline!;
+    } else {
+      originalPoints = seg.path;
+    }
+    
+    // ✅ Skip if path is empty
+    if (originalPoints.isEmpty) {
+      print('Warning: Segment $i has empty path, skipping');
+      continue;
+    }
     final points = (seg.mode == TravelMode.bus && seg.precisePolyline != null)
         ? smoothPolyline(seg.precisePolyline!)
         : smoothPolyline(seg.path);
@@ -481,6 +493,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     if (segments[i].mode != segments[i - 1].mode) {
       final prevSeg = segments[i - 1];
       final nextSeg = segments[i];
+      
+      if (nextSeg.path.isEmpty) {
+        print('Warning: Next segment has empty path, skipping changeover');
+        continue;
+      }
+
       final LatLng switchPoint = nextSeg.path.first;
       final srcId = 'changeover-source-$i';
       final lyrId = 'changeover-layer-$i';
@@ -619,6 +637,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   
   // Option 2: Chaikin spline smoothing
   List<LatLng> smoothPolyline(List<LatLng> points, {int iterations = 3}) {
+    if (points.isEmpty) return points;
+    if (points.length == 1) return points;
     List<LatLng> result = List.from(points);
     for (int it = 0; it < iterations; it++) {
       List<LatLng> newPoints = [];
@@ -635,8 +655,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         );
         newPoints..add(p0)..add(q)..add(r);
       }
-      newPoints.add(result.last);
+      if (result.isNotEmpty) {
+        newPoints.add(result.last);
+      }
       result = newPoints;
+      if (result.isEmpty) break;
     }
     return result;
   }
