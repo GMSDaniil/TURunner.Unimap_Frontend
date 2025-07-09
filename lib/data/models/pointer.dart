@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 class Pointer {
+  final int? id;
   final String name;
   final double lat;
   final double lng;
@@ -11,6 +12,7 @@ class Pointer {
   final bool isCampusBuilding; // <-- Add this if not present
 
   Pointer({
+    this.id,
     required this.name,
     required this.lat,
     required this.lng,
@@ -28,6 +30,7 @@ class Pointer {
       throw Exception('Missing lat/lng in Pointer JSON: $json');
     }
     return Pointer(
+      id: json['id'] ?? 0,
       name: json['name'] ?? '',
       lat: (lat as num).toDouble(),
       lng: (lng as num).toDouble(),

@@ -98,7 +98,7 @@ class RouteDetailsPanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(8)),
               child: Text(segment.transportLine!,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.bold, fontSize: 13)),
             )
           : null;
       final stopCount = segment.stopCount;
@@ -111,7 +111,7 @@ class RouteDetailsPanel extends StatelessWidget {
             // Left rail area with fixed width
             Container(
               width: _railAreaWidth,
-              child: Column(
+              child: Stack(
                 children: [
                   // Transport icon circle
                   Center(
@@ -121,9 +121,9 @@ class RouteDetailsPanel extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: colour,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300, width: 3),
+                      border: Border.all(color: Theme.of(context).colorScheme.surface.withOpacity(0.3), width: 3),
                       ),
-                      child: Icon(icon, size: 16, color: Colors.white),
+                    child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.surface),
                     ),
                   ),
                   // Rail connector below
@@ -201,7 +201,7 @@ class RouteDetailsPanel extends StatelessWidget {
                       width: _indicatorSize,
                       height: _indicatorSize,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: colour, width: 3),
                       ),
@@ -294,7 +294,7 @@ class RouteDetailsPanel extends StatelessWidget {
                       width: _indicatorSize,
                       height: _indicatorSize,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: grey, width: 3),
                       ),
@@ -373,7 +373,7 @@ class RouteDetailsPanel extends StatelessWidget {
 
     // UI scaffold ---------------------------------------------------------------------------
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface, // Use theme surface color
       elevation: 12,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       clipBehavior: Clip.antiAlias,
@@ -395,7 +395,7 @@ class RouteDetailsPanel extends StatelessWidget {
                     Container(
                       width: 36,
                       height: 36,
-                      decoration: BoxDecoration(color: Colors.grey.shade200, shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1), shape: BoxShape.circle),
                       child: IconButton(
                         icon: const Icon(Icons.keyboard_arrow_down, size: 20),
                         splashRadius: 20,

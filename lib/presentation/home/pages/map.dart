@@ -1,9 +1,6 @@
 
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'dart:convert';
-import 'package:auth_app/presentation/widgets/route_timeline.dart';
-import 'package:wkt_parser/wkt_parser.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
@@ -49,8 +46,6 @@ import 'package:auth_app/domain/usecases/delete_favourite.dart';
 import 'package:auth_app/data/models/add_favourite_req_params.dart';
 import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 
-import 'route_timeline_panel.dart'; // Custom widget for route timeline panel
-
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
 // ─────────────────────────────────────────────────────────────────────────
@@ -86,6 +81,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  List<FavouriteEntity> _lastFavourites = [];
   // Flag to indicate we want to show route details after closing options panel
   bool _pendingShowRouteDetails = false;
   // Flag to indicate we want to show route options after closing details panel (option C)
@@ -133,6 +129,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng? _routeDestination; // Field to store the route destination
   List<Marker> _markers = [];
   List<InteractiveAnnotation> _interactiveAnnotations = [];
+  List<InteractiveAnnotation> _allInteractiveAnnotations = [];
 
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
@@ -149,6 +146,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   Map<String, Object>? _mapConfig;
 
   MapTheme _currentMapTheme = MapTheme.day;
+  bool _userToggledTheme = false; // Track if user manually changed theme
   Timer? _themeTimer;
 
   VoidCallback? _clearBuildingHighlight;
@@ -197,7 +195,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
       themeProvider.updateMapTheme(_currentMapTheme);
+
+      Future.delayed(
+      const Duration(seconds: 2),
+      () {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        print(
+            '[DEBUG] Favourites on init: ${userProvider.favourites.length}');
+        _updateAnnotationsWithFavourites(userProvider.favourites);
+        },
+    );
+      
     });
+
+    
 
     _searchCtl.addListener(_onSearchChanged);
     _searchFocusNode.addListener(() {
@@ -225,9 +236,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
           _currentMapTheme = newTheme;
         });
 
-        if (mounted) {
+        if (mounted && !_userToggledTheme) {
           final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
           themeProvider.updateMapTheme(newTheme);
+          
         }
       }
       _updateThemeTimer(); // Schedule next update
@@ -246,6 +258,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       'mensa',
       'cafe',
       'library',
+      'building',
       'default',
       'destination',
       'favourite',
@@ -861,6 +874,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         name: p.name,
                         latitude: p.lat,
                         longitude: p.lng,
+                        placeId: p.id!,
                       ),
                     );
                     Navigator.of(context).pop();
@@ -1404,7 +1418,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                       data?.segments.expand((s) => s.path).toList() ?? [];
                   if (pts.isNotEmpty) {
                     final bounds = LatLngBounds.fromPoints(pts);
-                    _animatedMapboxMove(bounds.center, 16.0);
+                    _animatedMapboxMove(bounds.center, 15.0);
                   }
                 },
               ),
@@ -1475,73 +1489,110 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
+  void _updateAnnotationsWithFavourites(List<FavouriteEntity> favourites) {
+  final favouriteIcon = _categoryImageCache['favourite'];
+  final favouriteAnnotations = favouriteIcon == null
+      ? <InteractiveAnnotation>[]
+      : buildFavouriteAnnotations(favourites, favouriteIcon);
+
+  final favouritePositions = favourites
+      .map((f) => '${f.placeId}')
+      .toSet();
+  
+  final normalAnnotations = _allPointers.where((a) {
+    return !favouritePositions.contains('${a.id}');
+  }).map(mapBoxMarker).toList();
+
+  final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
+  final allAnnotations = showOnlyCategory
+      ? _activeCategoryPointers.map(mapBoxMarker).toList()
+      : [...normalAnnotations, ...favouriteAnnotations];
+  
+  setState(() {
+    _interactiveAnnotations = allAnnotations;
+  });
+}
+
   Widget _buildFlutterMap() {
-    final route = _routesNotifier.value[_currentMode];
-    final segments = route?.segments ?? [];
+    // return Consumer<UserProvider>(builder: (context, userProvider, child) {
+      final currentFavourites = Provider.of<UserProvider>(context).favourites;
+      final route = _routesNotifier.value[_currentMode];
+      final segments = route?.segments ?? [];
 
-    LatLng _closest(LatLng s, List<LatLng> line) {
-      double best = double.infinity;
-      if (line.isEmpty) return s; // no points, return start point
-      LatLng bestP = line.first;
-      for (final p in line) {
-        final d = Distance().as(LengthUnit.Meter, s, p);
-        if (d < best) {
-          best = d;
-          bestP = p;
+      LatLng _closest(LatLng s, List<LatLng> line) {
+        double best = double.infinity;
+        if (line.isEmpty) return s; // no points, return start point
+        LatLng bestP = line.first;
+        for (final p in line) {
+          final d = Distance().as(LengthUnit.Meter, s, p);
+          if (d < best) {
+            best = d;
+            bestP = p;
+          }
         }
+        return bestP;
       }
-      return bestP;
+
+      final busMarkers = buildBusStopMarkers(
+        segments: segments,
+        closestPointCalculator: _closest,
+      );
+      final scooterMarkers = buildScooterMarkers(segments);
+
+      // 1. Favourites & Icon aus Provider/Cache holen
+
+      final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
+      
+
+      if (favouritesChanged || _allPointers.isEmpty) {
+        _lastFavourites = List.from(currentFavourites);
+
+        _updateAnnotationsWithFavourites(currentFavourites);
+      
+      }
+      
+
+      return MapboxMapWidget(
+        markerAnnotations: _interactiveAnnotations,
+        navBarHeight: _navBarHeight,
+        destinationLatLng: _coordinatePanelLatLng,
+        markerImageCache: _categoryImageCache,
+        busStopMarkers: busMarkers,
+        isRaining: _isRaining,
+        segments: segments,
+        mapTheme: _currentMapTheme,
+        onMapTap: _onMapTap,
+        onMapCreated: (map) {
+          _mapboxMap = map;
+        },
+        parentContext: context,
+        onClearHighlightController: (clearFn) {
+          _clearBuildingHighlight = clearFn;
+        },
+        onCameraChanged: (data) {
+          _handleCameraChanged(data);
+        },
+        routePoints: const [],
+      );
+
+    // });
+    
+  }
+
+  bool _favouritesEqual(List<FavouriteEntity> a, List<FavouriteEntity> b) {
+    if (a.length != b.length) return false;
+    
+    for (int i = 0; i < a.length; i++) {
+      final favA = a[i];
+      final favB = b[i];
+      if (favA.id != favB.id || 
+          favA.name != favB.name || 
+          favA.lat != favB.lat || 
+          favA.lng != favB.lng) {
+        return false;
+      }
     }
-
-    final busMarkers = buildBusStopMarkers(
-      segments: segments,
-      closestPointCalculator: _closest,
-    );
-    final scooterMarkers = buildScooterMarkers(segments);
-
-    // 1. Favourites & Icon aus Provider/Cache holen
-    final favourites = Provider.of<UserProvider>(context).favourites;
-    final favouriteIcon = _categoryImageCache['favourite'];
-    final favouriteAnnotations = favouriteIcon == null
-        ? []
-        : buildFavouriteAnnotations(favourites, favouriteIcon);
-
-    final favouritePositions = favourites
-        .map((f) => '${f.lat},${f.lng}')
-        .toSet();
-    final normalAnnotations = _interactiveAnnotations.where((a) {
-      final coords = a.options.geometry.coordinates;
-      return !favouritePositions.contains('${coords.lat},${coords.lng}');
-    }).toList();
-
-    final showOnlyCategory =
-        _activeCategory != null && _activeCategoryPointers.isNotEmpty;
-    final allAnnotations = showOnlyCategory
-        ? _activeCategoryPointers.map(mapBoxMarker).toList()
-        : [...normalAnnotations, ...favouriteAnnotations];
-
-    return MapboxMapWidget(
-      markerAnnotations: allAnnotations.cast<InteractiveAnnotation>(),
-      navBarHeight: _navBarHeight,
-      destinationLatLng: _coordinatePanelLatLng,
-      markerImageCache: _categoryImageCache,
-      busStopMarkers: busMarkers,
-      isRaining: _isRaining,
-      segments: segments,
-      mapTheme: _currentMapTheme,
-      onMapTap: _onMapTap,
-      onMapCreated: (map) {
-        _mapboxMap = map;
-      },
-      parentContext: context,
-      onClearHighlightController: (clearFn) {
-        _clearBuildingHighlight = clearFn;
-      },
-      onCameraChanged: (data) {
-        _handleCameraChanged(data);
-      },
-      routePoints: const [],
-    );
+    return true;
   }
 
   Future<List<mb.PointAnnotationOptions>> convertMarkersToAnnotations(
@@ -1686,8 +1737,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
             final nextIndex = (currentIndex + 1) % MapTheme.values.length;
             setState(() {
+              _userToggledTheme = true;
+              _themeTimer?.cancel();
               _currentMapTheme = MapTheme.values[nextIndex];
+              
             });
+
             final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
             themeProvider.updateMapTheme(MapTheme.values[nextIndex]);
           },
@@ -1787,7 +1842,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       case 'canteen':
       case 'mensa':
         return _categoryImageCache['mensa']!;
-      default:
+      case 'building':  // ✅ Only actual buildings
+        return _categoryImageCache['building']!;
+      default:          // ✅ Everything else (gym, shops, restaurants, etc.)
         return _categoryImageCache['default']!;
     }
   }
@@ -1812,7 +1869,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         }
 
         setState(() {
+          _allInteractiveAnnotations = annotations;
           _interactiveAnnotations = annotations;
+
           _markers = m;
         });
       },
@@ -1912,6 +1971,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   InteractiveAnnotation mapBoxMarker(Pointer pointer) {
     return InteractiveAnnotation(
+      id: pointer.id,
       options: mb.PointAnnotationOptions(
         geometry: mb.Point(coordinates: mb.Position(pointer.lng, pointer.lat)),
         iconSize: 2.0,
@@ -1929,6 +1989,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   ) {
     return favourites.map((fav) {
       return InteractiveAnnotation(
+        id: fav.placeId,
         options: mb.PointAnnotationOptions(
           geometry: mb.Point(coordinates: mb.Position(fav.lng, fav.lat)),
           iconSize: 2.0,
@@ -2309,8 +2370,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         return 'assets/icons/pin_destination_64.png';
       case 'favourite':
         return 'assets/icons/pin_favourite_64.png';
-      default:
+      case 'building':  // ✅ Only actual buildings get building pin
         return 'assets/icons/pin_building_64.png';
+      default:          // ✅ Everything else (gym, shops, etc.) gets default pin
+        return 'assets/icons/pin_default_64.png';
     }
   }
 

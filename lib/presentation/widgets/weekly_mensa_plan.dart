@@ -152,9 +152,7 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
                                 fontWeight: isSelected || isToday
                                     ? FontWeight.bold
                                     : FontWeight.normal,
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.secondary
-                                    : isToday
+                                color: isToday
                                         ? Theme.of(context).colorScheme.secondary
                                         : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                                 fontSize: 11,

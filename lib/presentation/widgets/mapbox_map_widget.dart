@@ -223,6 +223,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   StreamSubscription? userPositionStream;
   dynamic _highlightedBuilding;
 
+  bool _isMapInitialized = false;
+
   final Map<String, PointAnnotation> _liveAnnotations = {};
 
   /* single canonical “clear” helper – both tap-handler and
@@ -245,6 +247,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   @override
   void didUpdateWidget(covariant MapboxMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if(!mounted) return;
+    if (!_isMapInitialized) {
+      // MapboxMap is not initialized yet, skip updates
+      return;
+    }
     // If the annotations list changed, update the map
     if (widget.markerAnnotations != oldWidget.markerAnnotations) {
       _updateAllMarkers();
@@ -997,6 +1004,9 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     // await _updateMarkerVisibility(initZoom);
 
     widget.onMapCreated?.call(mapboxMap);
+    setState(() {
+      _isMapInitialized = true;
+    });
     _bindInteractions();
   }
 
