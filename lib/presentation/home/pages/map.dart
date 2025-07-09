@@ -194,7 +194,20 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
       themeProvider.updateMapTheme(_currentMapTheme);
+
+      Future.delayed(
+      const Duration(seconds: 2),
+      () {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        print(
+            '[DEBUG] Favourites on init: ${userProvider.favourites.length}');
+        _updateAnnotationsWithFavourites(userProvider.favourites);
+        },
+    );
+      
     });
+
+    
 
     _searchCtl.addListener(_onSearchChanged);
     _searchFocusNode.addListener(() {
@@ -1474,9 +1487,33 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
+  void _updateAnnotationsWithFavourites(List<FavouriteEntity> favourites) {
+  final favouriteIcon = _categoryImageCache['favourite'];
+  final favouriteAnnotations = favouriteIcon == null
+      ? <InteractiveAnnotation>[]
+      : buildFavouriteAnnotations(favourites, favouriteIcon);
+
+  final favouritePositions = favourites
+      .map((f) => '${f.placeId}')
+      .toSet();
+  
+  final normalAnnotations = _allPointers.where((a) {
+    return !favouritePositions.contains('${a.id}');
+  }).map(mapBoxMarker).toList();
+
+  final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
+  final allAnnotations = showOnlyCategory
+      ? _activeCategoryPointers.map(mapBoxMarker).toList()
+      : [...normalAnnotations, ...favouriteAnnotations];
+  
+  setState(() {
+    _interactiveAnnotations = allAnnotations;
+  });
+}
+
   Widget _buildFlutterMap() {
-    return Consumer<UserProvider>(builder: (context, userProvider, child) {
-      final currentFavourites = userProvider.favourites;
+    // return Consumer<UserProvider>(builder: (context, userProvider, child) {
+      final currentFavourites = Provider.of<UserProvider>(context).favourites;
       final route = _routesNotifier.value[_currentMode];
       final segments = route?.segments ?? [];
 
@@ -1505,35 +1542,10 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
       
 
-      if (favouritesChanged) {
+      if (favouritesChanged || _allPointers.isEmpty) {
         _lastFavourites = List.from(currentFavourites);
 
-        final favouriteIcon = _categoryImageCache['favourite'];
-        final favouriteAnnotations = favouriteIcon == null
-            ? <InteractiveAnnotation>[]
-            : buildFavouriteAnnotations(currentFavourites, favouriteIcon);
-
-        final favouritePositions = currentFavourites
-            .map((f) =>  '${f.placeId}')
-            .toSet();
-        print('[DEBUG] Favourite positions: $favouritePositions');
-        final normalAnnotations = _allInteractiveAnnotations.where((a) {
-          
-          return !favouritePositions.contains('${a.id}');
-        }).toList();
-
-
-        final showOnlyCategory =
-            _activeCategory != null && _activeCategoryPointers.isNotEmpty;
-        final allAnnotations = showOnlyCategory
-            ? _activeCategoryPointers.map(mapBoxMarker).toList()
-            : [...normalAnnotations, ...favouriteAnnotations];
-        
-        
-        _interactiveAnnotations = allAnnotations;  
-        print('[DEBUG] Interactive annotations updated: ${_interactiveAnnotations.length}');
-        
-        
+        _updateAnnotationsWithFavourites(currentFavourites);
       
       }
       
@@ -1561,7 +1573,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         routePoints: const [],
       );
 
-    });
+    // });
     
   }
 
