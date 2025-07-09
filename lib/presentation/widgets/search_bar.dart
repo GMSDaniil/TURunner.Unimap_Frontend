@@ -261,6 +261,15 @@ class _MapSearchBarState extends State<MapSearchBar> {
               suggestion.name,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
+            subtitle: suggestion.rooms.isNotEmpty
+              ? Text(
+                  'Rooms: ${suggestion.rooms.take(4).join(', ')}${suggestion.rooms.length > 4 ? '...' : ''}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                )
+              : null,
             onTap: () {
               widget.searchController.clear();
               widget.onClear();
