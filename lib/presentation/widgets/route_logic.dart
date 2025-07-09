@@ -183,6 +183,8 @@ class RouteLogic {
                   path: seg.polyline,
                   distanceMeters: seg.distanceMeters,
                   durrationSeconds: seg.durationSeconds,
+                  departureTime: seg.departureTime,
+                  arrivalTime: seg.arrivalTime,
                   precisePolyline: seg.precisePolyline,
                   transportType: seg.transportType,
                   transportLine: seg.transportLine,

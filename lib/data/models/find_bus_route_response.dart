@@ -6,6 +6,8 @@ class BusRouteSegment {
   final int durationSeconds;
   final double distanceMeters;
   final List<LatLng>? precisePolyline;
+  final DateTime? departureTime; 
+  final DateTime? arrivalTime;
   final String? transportType;
   final String? transportLine;
   final String? fromStop;
@@ -16,6 +18,8 @@ class BusRouteSegment {
     required this.polyline,
     required this.durationSeconds,
     required this.distanceMeters,
+    this.departureTime,
+    this.arrivalTime,
     this.precisePolyline,
     this.transportType,
     this.transportLine,
@@ -29,7 +33,12 @@ class BusRouteSegment {
       polyline: (map['Polyline'] as List)
           .map<LatLng>((e) => LatLng(e[0], e[1]))
           .toList(),
-      
+      departureTime: map['DepartureTime'] != null
+          ? DateTime.parse(map['DepartureTime'])
+          : null,
+      arrivalTime: map['ArrivalTime'] != null
+          ? DateTime.parse(map['ArrivalTime'])
+          : null,
       durationSeconds: map['DurationSeconds'] ?? 0,
       distanceMeters: (map['DistanceMeters'] as num?)?.toDouble() ?? 0.0,
       transportType: map['TransportType'],
