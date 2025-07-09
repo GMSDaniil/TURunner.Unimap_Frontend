@@ -29,6 +29,7 @@ class SearchableDropdownState extends State<SearchableDropdown> {
   final FocusNode _focusNode = FocusNode();
   List<StudyProgramEntity> _filteredItems = [];
   bool _isOpen = false;
+  bool _isDisposing = false;  
   OverlayEntry? _overlayEntry;
   ScrollPosition? _scrollPosition;
   
@@ -38,7 +39,7 @@ class SearchableDropdownState extends State<SearchableDropdown> {
     _filteredItems = widget.items;
     _focusNode.addListener(_onFocusChanged);
     
-    // ✅ Initialize with selected item
+
     if (widget.selectedItem != null) {
       _searchController.text = widget.selectedItem!.name;
     }
@@ -46,6 +47,7 @@ class SearchableDropdownState extends State<SearchableDropdown> {
 
   @override
   void didChangeDependencies() {
+     if (_isDisposing) return; 
     super.didChangeDependencies();
     _scrollPosition?.removeListener(_updateOverlayPosition);
     _scrollPosition = Scrollable.maybeOf(context)?.position;
@@ -54,7 +56,11 @@ class SearchableDropdownState extends State<SearchableDropdown> {
 
   @override
   void didUpdateWidget(SearchableDropdown oldWidget) {
+    if (_isDisposing) return;  
+
     super.didUpdateWidget(oldWidget);
+
+    
     
     if (widget.items != oldWidget.items) {
       _filteredItems = widget.items;
@@ -260,6 +266,13 @@ class SearchableDropdownState extends State<SearchableDropdown> {
     return TextFormField(
       controller: _searchController,
       focusNode: _focusNode,
+      onTapOutside: (event) {
+        if (_isOpen) {
+          _focusNode.unfocus();
+          _closeDropdown();
+          widget.onFocusChanged?.call(false);
+        }
+      },
       onChanged: _onSearchChanged,
       decoration: InputDecoration(
         hintText: widget.hintText,
@@ -346,9 +359,11 @@ class SearchableDropdownState extends State<SearchableDropdown> {
 
   @override
   void dispose() {
+    _isDisposing = true; 
     _closeDropdown();
     _scrollPosition?.removeListener(_updateOverlayPosition);
     _searchController.dispose();
+    
     _focusNode.dispose();
     
     super.dispose();

@@ -68,7 +68,9 @@ class _HomePageState extends State<HomePage> {
       FavouritesPage(),
       ProfilePage(
         onSearchFocusChanged: (active) {
-          if (_hideNav != active) setState(() => _hideNav = active);
+          if (mounted && _hideNav != active) {
+            setState(() => _hideNav = active);
+          }
         },
       ),
     ];
