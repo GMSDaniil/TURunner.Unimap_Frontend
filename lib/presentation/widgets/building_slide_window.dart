@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 import 'package:auth_app/domain/usecases/get_mensa_menu.dart';
@@ -64,21 +65,21 @@ class GradientActionButton extends StatelessWidget {
 class BuildingSlideWindow extends StatelessWidget {
   final String title;
   final String category;
+  final LatLng? coordinates;
   final VoidCallback onCreateRoute;
   final VoidCallback onAddToFavourites;
   final VoidCallback onClose;
   final VoidCallback? onShowMenu;
-  final PanelController? panelController;
 
   const BuildingSlideWindow({
     Key? key,
     required this.title,
     required this.category,
+    this.coordinates,
     required this.onCreateRoute,
     required this.onAddToFavourites,
     required this.onClose,
     required this.onShowMenu,
-    this.panelController,
   }) : super(key: key);
 
   // quick access to brand colours (taken from profile-screen gradient)
@@ -90,6 +91,9 @@ class BuildingSlideWindow extends StatelessWidget {
   bool get isCanteen =>
       category.trim().toLowerCase() == 'canteen' ||
       category.trim().toLowerCase() == 'mensa';
+  
+  // Helper to determine if this is a coordinate panel
+  bool get isCoordinatePanel => coordinates != null;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +144,10 @@ class BuildingSlideWindow extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            category,
+                            // ✅ Show coordinates for coordinate panels
+                            isCoordinatePanel 
+                                ? '${coordinates!.latitude.toStringAsFixed(6)}, ${coordinates!.longitude.toStringAsFixed(6)}'
+                                : category,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],
@@ -193,7 +200,9 @@ class BuildingSlideWindow extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (isCanteen && onShowMenu != null) ...[
+                
+                // Only show mensa menu for buildings (not coordinates)
+                if (!isCoordinatePanel && isCanteen && onShowMenu != null) ...[
                   const SizedBox(height: 16),
                   GradientActionButton(
                     onPressed: onShowMenu!,
@@ -207,7 +216,6 @@ class BuildingSlideWindow extends StatelessWidget {
           ),
         ),
       ),
-      // ),
     );
   }
 }
