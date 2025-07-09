@@ -1,4 +1,3 @@
-
 import 'dart:math' as math;
 
 import 'package:auth_app/common/providers/theme.dart';
@@ -1043,120 +1042,105 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             if (_coordinatePanelLatLng != null) {
               final latlng = _coordinatePanelLatLng!;
               return ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28), // Match route options sheet
-                ),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 child: Material(
                   color: Theme.of(context).colorScheme.surface,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      12,
-                      20,
-                      MediaQuery.of(context).padding.bottom,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(2),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Handle
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Coordinates',
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
+
+                          // Header
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Coordinates',
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${latlng.latitude.toStringAsFixed(6)}, '
-                                    '${latlng.longitude.toStringAsFixed(6)}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${latlng.latitude.toStringAsFixed(6)}, ${latlng.longitude.toStringAsFixed(6)}',
+                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: 36,
-                              height: 36,
-                              margin: const EdgeInsets.only(left: 8, top: 0),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(0.1),
-                                // boxShadow: [
-                                //   BoxShadow(
-                                //     color: Colors.black.withOpacity(0.06),
-                                //     blurRadius: 4,
-                                //     offset: const Offset(0, 2),
-                                //   ),
-                                // ],
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 18),
-                                splashRadius: 18,
-                                padding: const EdgeInsets.all(0),
-                                onPressed: () {
-                                  setState(() => _coordinatePanelLatLng = null);
-                                  _panelController.close();
-                                  _notifyNavBar(false);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                height: 56,
-                                child: GradientActionButton(
-                                  onPressed: () {
-                                    setState(
-                                      () => _coordinatePanelLatLng = null,
-                                    );
-                                    _panelController.close();
-                                    _startRouteFlow(latlng);
-                                  },
-                                  icon: Icons.directions,
-                                  label: 'Create Route',
-                                  colors: const [
-                                    Color(0xFF7B61FF),
-                                    Color(0xFFEA5CFF),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                      ],
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.close, size: 16),
+                                  splashRadius: 16,
+                                  padding: const EdgeInsets.all(4),
+                                  onPressed: () {
+                                    setState(() => _coordinatePanelLatLng = null);
+                                    _panelController.close();
+                                    _notifyNavBar(false);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          // ✅ Action buttons row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GradientActionButton(
+                                  onPressed: () async {
+                                    setState(() => _coordinatePanelLatLng = null);
+                                    _panelController.close();
+                                    _notifyNavBar(false);
+                                    await _startRouteFlow(latlng);
+                                  },
+                                  icon: Icons.directions,
+                                  label: 'Create Route',
+                                  colors: const [Color(0xFF7B61FF), Color(0xFFB750FF)],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: GradientActionButton(
+                                  onPressed: () => _showAddCoordinateToFavouritesDialog(latlng), // ✅ Add to Favourites button
+                                  icon: Icons.favorite_border,
+                                  label: 'Add to Favourites',
+                                  colors: const [Color(0xFFFF3C2A), Color(0xFFFF6E3B)],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -2467,5 +2451,120 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       updateCurrentMode: (m) => setState(() => _currentMode = m),
     );
 
+  }
+
+    // Helper function to show the dialog
+  void _showAddCoordinateToFavouritesDialog(LatLng coordinates) {
+    final TextEditingController nameController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add to Favourites'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter a name for this location:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                hintText: 'e.g., My favorite spot',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coordinates: ${coordinates.latitude.toStringAsFixed(6)}, ${coordinates.longitude.toStringAsFixed(6)}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.pop(context);
+                _addCoordinateToFavourites(coordinates, name);
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addCoordinateToFavourites(LatLng coordinates, String name) async {
+    final user = Provider.of<UserProvider>(context, listen: false).user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to use favourites!')),
+      );
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    // Use coordinates string as placeId
+    final coordString = "${coordinates.latitude},${coordinates.longitude}";
+    final placeId = coordString.hashCode;
+    
+    final result = await sl<AddFavouriteUseCase>().call(
+      param: AddFavouriteReqParams(
+        name: name,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        placeId: placeId,
+      ),
+    );
+
+    Navigator.of(context).pop(); // Close loading
+
+    result.fold(
+      (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add favourite: $error')),
+        );
+      },
+      (_) async {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added "$name" to favourites!')),
+        );
+        
+        // Close coordinate panel
+        setState(() => _coordinatePanelLatLng = null);
+        _panelController.close();
+        _notifyNavBar(false);
+        
+        // Update favourites and map
+        final updated = await sl<GetFavouritesUseCase>().call();
+        updated.fold(
+          (error) => print('[DEBUG] Failed to reload favourites: $error'),
+          (favs) {
+            if (!mounted) return;
+            Provider.of<UserProvider>(context, listen: false).setFavourites(favs);
+            _updateAnnotationsWithFavourites(favs);
+            setState(() {});
+          },
+        );
+      },
+    );
   }
 }
