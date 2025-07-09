@@ -127,6 +127,7 @@ class BuildingPopupManager {
               name: pointer.name,
               latitude: pointer.lat,
               longitude: pointer.lng,
+              placeId: pointer.id!, // Ensure placeId is not null
             ),
           );
           Navigator.of(ctx).pop();
@@ -362,6 +363,7 @@ class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
                         name: widget.pointer.name,
                         latitude: widget.pointer.lat,
                         longitude: widget.pointer.lng,
+                        placeId: widget.pointer.id!
                       ),
                     );
                     Navigator.of(context).pop();

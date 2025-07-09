@@ -102,7 +102,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       elevation: 8,
       clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
@@ -127,7 +127,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -146,7 +146,7 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -472,7 +472,7 @@ class _ModeSelector extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: active ? theme.colorScheme.primary : Colors.grey.shade200,
+              color: active ? theme.colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -486,8 +486,8 @@ class _ModeSelector extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: active
-                        ? theme.colorScheme.onPrimary
-                        : Colors.black87,
+                        ? Theme.of(context).colorScheme.surface
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -504,7 +504,7 @@ class _ModeSelector extends StatelessWidget {
           Icon(
             Icons.directions_walk,
             size: 20,
-            color: selected == TravelMode.walk ? theme.colorScheme.onPrimary : Colors.black87,
+            color: selected == TravelMode.walk ? theme.colorScheme.surface : theme.colorScheme.onSurface,
           ),
           'Walk',
         ),
@@ -519,7 +519,7 @@ class _ModeSelector extends StatelessWidget {
               padding: const EdgeInsets.all(2.0),
               child: SvgPicture.asset(
                 'assets/icons/public_transport.svg',
-                color: selected == TravelMode.bus ? theme.colorScheme.onPrimary : Colors.black87,
+                color: selected == TravelMode.bus ? theme.colorScheme.surface : theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -531,7 +531,7 @@ class _ModeSelector extends StatelessWidget {
           Icon(
             Icons.electric_scooter,
             size: 20,
-            color: selected == TravelMode.scooter ? theme.colorScheme.onPrimary : Colors.black87,
+            color: selected == TravelMode.scooter ? theme.colorScheme.surface : theme.colorScheme.onSurface,
           ),
           'Scooter',
         ),

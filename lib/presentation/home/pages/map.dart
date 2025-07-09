@@ -1,9 +1,6 @@
 
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/core/configs/theme/app_theme.dart';
-import 'dart:convert';
-import 'package:auth_app/presentation/widgets/route_timeline.dart';
-import 'package:wkt_parser/wkt_parser.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
@@ -49,8 +46,6 @@ import 'package:auth_app/domain/usecases/delete_favourite.dart';
 import 'package:auth_app/data/models/add_favourite_req_params.dart';
 import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 
-import 'route_timeline_panel.dart'; // Custom widget for route timeline panel
-
 // ─────────────────────────────────────────────────────────────────────────
 //  MapPage – now featuring Google-Maps-style route planner
 // ─────────────────────────────────────────────────────────────────────────
@@ -86,6 +81,7 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
+  List<FavouriteEntity> _lastFavourites = [];
   // Flag to indicate we want to show route details after closing options panel
   bool _pendingShowRouteDetails = false;
   // Flag to indicate we want to show route options after closing details panel (option C)
@@ -133,6 +129,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng? _routeDestination; // Field to store the route destination
   List<Marker> _markers = [];
   List<InteractiveAnnotation> _interactiveAnnotations = [];
+  List<InteractiveAnnotation> _allInteractiveAnnotations = [];
 
   List<Pointer> _allPointers = [];
   List<Pointer> _suggestions = [];
@@ -861,6 +858,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
                         name: p.name,
                         latitude: p.lat,
                         longitude: p.lng,
+                        placeId: p.id!,
                       ),
                     );
                     Navigator.of(context).pop();
@@ -1476,72 +1474,110 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Widget _buildFlutterMap() {
-    final route = _routesNotifier.value[_currentMode];
-    final segments = route?.segments ?? [];
+    return Consumer<UserProvider>(builder: (context, userProvider, child) {
+      final currentFavourites = userProvider.favourites;
+      final route = _routesNotifier.value[_currentMode];
+      final segments = route?.segments ?? [];
 
-    LatLng _closest(LatLng s, List<LatLng> line) {
-      double best = double.infinity;
-      if (line.isEmpty) return s; // no points, return start point
-      LatLng bestP = line.first;
-      for (final p in line) {
-        final d = Distance().as(LengthUnit.Meter, s, p);
-        if (d < best) {
-          best = d;
-          bestP = p;
+      LatLng _closest(LatLng s, List<LatLng> line) {
+        double best = double.infinity;
+        if (line.isEmpty) return s; // no points, return start point
+        LatLng bestP = line.first;
+        for (final p in line) {
+          final d = Distance().as(LengthUnit.Meter, s, p);
+          if (d < best) {
+            best = d;
+            bestP = p;
+          }
         }
+        return bestP;
       }
-      return bestP;
+
+      final busMarkers = buildBusStopMarkers(
+        segments: segments,
+        closestPointCalculator: _closest,
+      );
+      final scooterMarkers = buildScooterMarkers(segments);
+
+      // 1. Favourites & Icon aus Provider/Cache holen
+
+      final favouritesChanged = !_favouritesEqual(_lastFavourites, currentFavourites);
+      
+
+      if (favouritesChanged) {
+        _lastFavourites = List.from(currentFavourites);
+
+        final favouriteIcon = _categoryImageCache['favourite'];
+        final favouriteAnnotations = favouriteIcon == null
+            ? <InteractiveAnnotation>[]
+            : buildFavouriteAnnotations(currentFavourites, favouriteIcon);
+
+        final favouritePositions = currentFavourites
+            .map((f) =>  '${f.placeId}')
+            .toSet();
+        print('[DEBUG] Favourite positions: $favouritePositions');
+        final normalAnnotations = _allInteractiveAnnotations.where((a) {
+          
+          return !favouritePositions.contains('${a.id}');
+        }).toList();
+
+
+        final showOnlyCategory =
+            _activeCategory != null && _activeCategoryPointers.isNotEmpty;
+        final allAnnotations = showOnlyCategory
+            ? _activeCategoryPointers.map(mapBoxMarker).toList()
+            : [...normalAnnotations, ...favouriteAnnotations];
+        
+        
+        _interactiveAnnotations = allAnnotations;  
+        print('[DEBUG] Interactive annotations updated: ${_interactiveAnnotations.length}');
+        
+        
+      
+      }
+      
+
+      return MapboxMapWidget(
+        markerAnnotations: _interactiveAnnotations,
+        navBarHeight: _navBarHeight,
+        destinationLatLng: _coordinatePanelLatLng,
+        markerImageCache: _categoryImageCache,
+        busStopMarkers: busMarkers,
+        isRaining: _isRaining,
+        segments: segments,
+        mapTheme: _currentMapTheme,
+        onMapTap: _onMapTap,
+        onMapCreated: (map) {
+          _mapboxMap = map;
+        },
+        parentContext: context,
+        onClearHighlightController: (clearFn) {
+          _clearBuildingHighlight = clearFn;
+        },
+        onCameraChanged: (data) {
+          _handleCameraChanged(data);
+        },
+        routePoints: const [],
+      );
+
+    });
+    
+  }
+
+  bool _favouritesEqual(List<FavouriteEntity> a, List<FavouriteEntity> b) {
+    if (a.length != b.length) return false;
+    
+    for (int i = 0; i < a.length; i++) {
+      final favA = a[i];
+      final favB = b[i];
+      if (favA.id != favB.id || 
+          favA.name != favB.name || 
+          favA.lat != favB.lat || 
+          favA.lng != favB.lng) {
+        return false;
+      }
     }
-
-    final busMarkers = buildBusStopMarkers(
-      segments: segments,
-      closestPointCalculator: _closest,
-    );
-    final scooterMarkers = buildScooterMarkers(segments);
-
-    // 1. Favourites & Icon aus Provider/Cache holen
-    final favourites = Provider.of<UserProvider>(context).favourites;
-    final favouriteIcon = _categoryImageCache['favourite'];
-    final favouriteAnnotations = favouriteIcon == null
-        ? []
-        : buildFavouriteAnnotations(favourites, favouriteIcon);
-
-    final favouritePositions = favourites
-        .map((f) => '${f.lat},${f.lng}')
-        .toSet();
-    final normalAnnotations = _interactiveAnnotations.where((a) {
-      final coords = a.options.geometry.coordinates;
-      return !favouritePositions.contains('${coords.lat},${coords.lng}');
-    }).toList();
-
-    final showOnlyCategory =
-        _activeCategory != null && _activeCategoryPointers.isNotEmpty;
-    final allAnnotations = showOnlyCategory
-        ? _activeCategoryPointers.map(mapBoxMarker).toList()
-        : [...normalAnnotations, ...favouriteAnnotations];
-
-    return MapboxMapWidget(
-      markerAnnotations: allAnnotations.cast<InteractiveAnnotation>(),
-      navBarHeight: _navBarHeight,
-      destinationLatLng: _coordinatePanelLatLng,
-      markerImageCache: _categoryImageCache,
-      busStopMarkers: busMarkers,
-      isRaining: _isRaining,
-      segments: segments,
-      mapTheme: _currentMapTheme,
-      onMapTap: _onMapTap,
-      onMapCreated: (map) {
-        _mapboxMap = map;
-      },
-      parentContext: context,
-      onClearHighlightController: (clearFn) {
-        _clearBuildingHighlight = clearFn;
-      },
-      onCameraChanged: (data) {
-        _handleCameraChanged(data);
-      },
-      routePoints: const [],
-    );
+    return true;
   }
 
   Future<List<mb.PointAnnotationOptions>> convertMarkersToAnnotations(
@@ -1812,7 +1848,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         }
 
         setState(() {
+          _allInteractiveAnnotations = annotations;
           _interactiveAnnotations = annotations;
+
           _markers = m;
         });
       },
@@ -1912,6 +1950,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   InteractiveAnnotation mapBoxMarker(Pointer pointer) {
     return InteractiveAnnotation(
+      id: pointer.id,
       options: mb.PointAnnotationOptions(
         geometry: mb.Point(coordinates: mb.Position(pointer.lng, pointer.lat)),
         iconSize: 2.0,
@@ -1929,6 +1968,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   ) {
     return favourites.map((fav) {
       return InteractiveAnnotation(
+        id: fav.placeId,
         options: mb.PointAnnotationOptions(
           geometry: mb.Point(coordinates: mb.Position(fav.lng, fav.lat)),
           iconSize: 2.0,

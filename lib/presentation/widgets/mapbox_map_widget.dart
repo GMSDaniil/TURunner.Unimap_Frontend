@@ -245,6 +245,11 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   @override
   void didUpdateWidget(covariant MapboxMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if(!mounted) return;
+    if(mapboxMap == null) {
+      // MapboxMap is not initialized yet, skip updates
+      return;
+    }
     // If the annotations list changed, update the map
     if (widget.markerAnnotations != oldWidget.markerAnnotations) {
       _updateAllMarkers();

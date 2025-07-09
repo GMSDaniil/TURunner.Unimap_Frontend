@@ -18,8 +18,8 @@ class ShimmerLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isLoading) return const SizedBox.shrink();
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
+      baseColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+      highlightColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
       child: Container(
         width: width,
         height: height,

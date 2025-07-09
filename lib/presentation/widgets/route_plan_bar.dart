@@ -131,7 +131,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
           height: 40,
           child: Row(
             children: [
-              Icon(icon, size: 22, color: Colors.grey.shade800),
+              Icon(icon, size: 22, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
               const SizedBox(width: 12),
               Expanded(
                 child: GestureDetector(
@@ -157,8 +157,8 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
               if (_ctls.length > 2)
                 GestureDetector(
                   onTap: () => _removeStop(i),
-                  child: const Icon(Icons.remove_circle_outline,
-                      size: 20, color: Colors.black54),
+                  child: Icon(Icons.remove_circle_outline,
+                      size: 20, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
               const Padding(
                 padding: EdgeInsets.only(left: 4),
@@ -179,7 +179,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
         child: Tooltip(
           message: tip,
           child: Icon(ic,
-              size: 22, color: enabled ? Colors.black : Colors.black26),
+              size: 22, color: enabled ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
         ),
       );
 
@@ -327,7 +327,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
             child: Center(
               child: Material(
                 elevation: 10,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 424),
@@ -343,7 +343,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                           buildDefaultDragHandles: false,
                           onReorder: _reorder,
                           proxyDecorator: (c, i, a) => Material(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(20),
                             elevation: 8,
                             child: c,
