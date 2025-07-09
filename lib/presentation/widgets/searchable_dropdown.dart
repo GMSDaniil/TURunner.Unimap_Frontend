@@ -71,7 +71,7 @@ class SearchableDropdownState extends State<SearchableDropdown> {
     
     if (hasFocus && !_isOpen) {
       _openDropdown();
-    } else if (!hasFocus && _isOpen) {
+    } else if ((!hasFocus && _isOpen)) {
       _closeDropdown();
     }
     
@@ -98,7 +98,7 @@ class SearchableDropdownState extends State<SearchableDropdown> {
   void _closeDropdown() {
     if (!_isOpen) return;
 
-    setState(() => _isOpen = false);
+    _isOpen = false;
     _overlayEntry?.remove();
     _overlayEntry = null;
   }
@@ -346,10 +346,11 @@ class SearchableDropdownState extends State<SearchableDropdown> {
 
   @override
   void dispose() {
+    _closeDropdown();
     _scrollPosition?.removeListener(_updateOverlayPosition);
     _searchController.dispose();
     _focusNode.dispose();
-    _closeDropdown();
+    
     super.dispose();
   }
 }
