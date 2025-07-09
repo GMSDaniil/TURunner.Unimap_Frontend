@@ -8,6 +8,8 @@ import 'package:auth_app/data/source/student_api_service.dart';
 import 'package:auth_app/data/source/weather_api_service.dart';
 import 'package:auth_app/domain/repository/auth.dart';
 import 'package:auth_app/domain/repository/pointers.dart';
+import 'package:auth_app/domain/usecases/add_favourite_meal.dart';
+import 'package:auth_app/domain/usecases/delete_favourite_meal.dart';
 import 'package:auth_app/domain/usecases/find_bus_route.dart';
 import 'package:auth_app/domain/usecases/find_scooter_route.dart';
 import 'package:auth_app/domain/usecases/get_pointers_usecase.dart';
@@ -108,6 +110,8 @@ void setupServiceLocator() {
 
   // Mensa Use Cases
   sl.registerSingleton<GetMensaMenuUseCase>(GetMensaMenuUseCase());
+  sl.registerSingleton<AddFavouriteMealUseCase>(AddFavouriteMealUseCase());
+  sl.registerSingleton<DeleteFavouriteMealUseCase>(DeleteFavouriteMealUseCase());
 
   // Weather Use Cases
   sl.registerSingleton<GetWeatherInfoUseCase>(GetWeatherInfoUseCase());

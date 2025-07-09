@@ -18,4 +18,7 @@ class ApiUrls {
   static const getStudentSchedule = '${baseURL}student-schedule';
 
   static const getStudyPrograms = '${baseURL}StudyProgram';
+
+  static const addFavouriteMeal = '${baseURL}Users/addFavouriteMeal';
+  static const removeFavouriteMeal= '${baseURL}Users/removeFavouriteMeal';
 }

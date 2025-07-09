@@ -3,6 +3,7 @@ import 'package:auth_app/data/models/signin_response.dart';
 import 'package:auth_app/data/models/user.dart';
 import 'package:auth_app/data/source/auth_api_service.dart';
 import 'package:auth_app/data/source/auth_local_service.dart';
+import 'package:auth_app/domain/entities/user.dart';
 import 'package:auth_app/domain/repository/auth.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:dartz/dartz.dart';
@@ -49,13 +50,14 @@ class AuthRepositoryImpl extends AuthRepository {
       },
       (data) {
         Response response = data;
-        var userModel = UserModel.fromMap(response.data);
-        var userEntity = userModel.toEntity();
+        var userEntity = UserEntity.fromJson(response.data);
+        // var userEntity = userModel.toEntity();
         return Right(userEntity);
       }
      );
   }
   
+
   @override
   Future<Either> logout() async {
     return await sl<AuthLocalService>().logout();

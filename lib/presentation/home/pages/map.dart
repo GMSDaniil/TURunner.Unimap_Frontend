@@ -1510,6 +1510,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   void _updateAnnotationsWithFavourites(List<FavouriteEntity> favourites) {
+  if(!mounted) return;
   final favouriteIcon = _categoryImageCache['favourite'];
   final favouriteAnnotations = favouriteIcon == null
       ? <InteractiveAnnotation>[]

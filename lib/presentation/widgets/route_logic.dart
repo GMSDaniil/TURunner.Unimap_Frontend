@@ -125,7 +125,7 @@ class RouteLogic {
 
         // only pop the “Create Route” sheet & open the bottom sheet on first call
         if (!rebuildOnly) {
-          if (mounted && Navigator.of(context).canPop()) {
+          if (mounted && context.mounted && Navigator.of(context).canPop()) {
             Navigator.of(context).pop();   // close the building sheet
           }
           
