@@ -2,9 +2,7 @@ import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:flutter/material.dart';
 import 'shimmer_loading.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'route_details_sheet.dart';
 
 /// Possible travel profiles.  Only *walk* is implemented for now but the
 /// widget is future-proof for bus / scooter.
@@ -305,39 +303,45 @@ class _SegmentTimelineTile extends StatelessWidget {
           child: Column(
             children: [
               if (!isFirst)
-                Container(
-                  width: 4,
-                  height: 16,
-                  color: timelineColor,
-                ),
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: isBus
-                      ? theme.colorScheme.primary
-                      : isSubway
-                          ? Colors.blue.shade700
-                          : Colors.white,
-                  border: Border.all(
+                Center(
+                  child: Container(
+                    width: 4,
+                    height: 16,
                     color: timelineColor,
-                    width: 3,
                   ),
-                  shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: isBus
-                      ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
-                      : isSubway
-                          ? Icon(Icons.subway, size: 12, color: Colors.white)
-                          : Icon(Icons.directions_walk, size: 12, color: timelineColor),
+              Center(
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: isBus
+                        ? theme.colorScheme.primary
+                        : isSubway
+                            ? Colors.blue.shade700
+                            : Colors.white,
+                    border: Border.all(
+                      color: timelineColor,
+                      width: 3,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: isBus
+                        ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
+                        : isSubway
+                            ? Icon(Icons.subway, size: 12, color: Colors.white)
+                            : Icon(Icons.directions_walk, size: 12, color: timelineColor),
+                  ),
                 ),
               ),
               if (!isLast)
-                Container(
-                  width: 4,
-                  height: 32,
-                  color: timelineColor,
+                Center(
+                  child: Container(
+                    width: 4,
+                    height: 32,
+                    color: timelineColor,
+                  ),
                 ),
             ],
           ),
@@ -661,25 +665,29 @@ class RouteDetailsSheet extends StatelessWidget {
                                   child: Column(
                                     children: [
                                       // No line above start
-                                      Container(
-                                        width: 20,
-                                        height: 20,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          border: Border.all(
-                                            color: Colors.grey.shade400,
-                                            width: 3,
+                                      Center(
+                                        child: Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            border: Border.all(
+                                              color: Colors.grey.shade400,
+                                              width: 3,
+                                            ),
+                                            borderRadius: BorderRadius.circular(6),
                                           ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                          child: Center(
+                                            child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                          ),
                                         ),
                                       ),
-                                      Container(
-                                        width: 4,
-                                        height: 32,
-                                        color: Colors.grey.shade400,
+                                      Center(
+                                        child: Container(
+                                          width: 4,
+                                          height: 32,
+                                          color: Colors.grey.shade400,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -715,24 +723,28 @@ class RouteDetailsSheet extends StatelessWidget {
                                 width: 32,
                                 child: Column(
                                   children: [
-                                    Container(
-                                      width: 4,
-                                      height: 32,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        border: Border.all(
-                                          color: Colors.grey.shade400,
-                                          width: 3,
-                                        ),
-                                        shape: BoxShape.circle,
+                                    Center(
+                                      child: Container(
+                                        width: 4,
+                                        height: 32,
+                                        color: Colors.grey.shade400,
                                       ),
-                                      child: Center(
-                                        child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                    ),
+                                    Center(
+                                      child: Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color: Colors.grey.shade400,
+                                            width: 3,
+                                          ),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Center(
+                                          child: Icon(Icons.flag, size: 12, color: Colors.grey.shade400),
+                                        ),
                                       ),
                                     ),
                                     // No line below end

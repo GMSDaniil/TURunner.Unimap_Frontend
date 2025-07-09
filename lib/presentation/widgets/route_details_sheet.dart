@@ -104,7 +104,7 @@ class RouteDetailsPanel extends StatelessWidget {
       final stopCount = segment.stopCount;
 
       return Container(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -114,22 +114,26 @@ class RouteDetailsPanel extends StatelessWidget {
               child: Column(
                 children: [
                   // Transport icon circle
-                  Container(
-                    width: _indicatorSize,
-                    height: _indicatorSize,
-                    decoration: BoxDecoration(
-                      color: colour,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey.shade300, width: 3),
+                  Center(
+                    child: Container(
+                      width: _indicatorSize,
+                      height: _indicatorSize,
+                      decoration: BoxDecoration(
+                        color: colour,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300, width: 3),
+                      ),
+                      child: Icon(icon, size: 16, color: Colors.white),
                     ),
-                    child: Icon(icon, size: 16, color: Colors.white),
                   ),
                   // Rail connector below
                   if (!isLast)
-                    Container(
-                      width: _railThickness,
-                      height: 60,
-                      color: nextIsWalk ? Colors.grey.shade400 : colour,
+                    Center(
+                      child: Container(
+                        width: _railThickness,
+                        height: 80,
+                        color: nextIsWalk ? Colors.grey.shade400 : colour,
+                      ),
                     ),
                 ],
               ),
@@ -182,7 +186,7 @@ class RouteDetailsPanel extends StatelessWidget {
       final (colour, icon) = _styleFor(segment);
       
       return Container(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -192,27 +196,31 @@ class RouteDetailsPanel extends StatelessWidget {
               child: Column(
                 children: [
                   // Walk icon circle
-                  Container(
-                    width: _indicatorSize,
-                    height: _indicatorSize,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colour, width: 3),
+                  Center(
+                    child: Container(
+                      width: _indicatorSize,
+                      height: _indicatorSize,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colour, width: 3),
+                      ),
+                      child: Icon(icon, size: 10, color: colour),
                     ),
-                    child: Icon(icon, size: 10, color: colour),
                   ),
                   // Rail connector below (dashed)
                   // Always show connector except if this is the very last tile and there's no flag tile after
-                  Container(
-                    width: _railThickness ,
-                    height: 60,
-                    child: CustomPaint(
-                      painter: DashedLinePainter(
-                        color: colour,
-                        thickness: _railThickness / 4,
-                        dash: 4, // Smaller dots
-                        gap: 15,  // Smaller gaps
+                  Center(
+                    child: Container(
+                      width: _railThickness ,
+                      height: 60,
+                      child: CustomPaint(
+                        painter: DashedLinePainter(
+                          color: colour,
+                          thickness: _railThickness / 4,
+                          dash: 4, // Smaller dots
+                          gap: 15,  // Smaller gaps
+                        ),
                       ),
                     ),
                   ),
@@ -271,7 +279,7 @@ class RouteDetailsPanel extends StatelessWidget {
       String content = deriveEndName(data);
       
       return Container(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -281,18 +289,20 @@ class RouteDetailsPanel extends StatelessWidget {
               child: Column(
                 children: [
                   // Flag icon circle (always end flag now)
-                  Container(
-                    width: _indicatorSize,
-                    height: _indicatorSize,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: grey, width: 3),
-                    ),
-                    child: Icon(
-                      Icons.flag, 
-                      size: 10, 
-                      color: grey
+                  Center(
+                    child: Container(
+                      width: _indicatorSize,
+                      height: _indicatorSize,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: grey, width: 3),
+                      ),
+                      child: Icon(
+                        Icons.flag, 
+                        size: 10, 
+                        color: grey
+                      ),
                     ),
                   ),
                   // No rail connector for end tile
