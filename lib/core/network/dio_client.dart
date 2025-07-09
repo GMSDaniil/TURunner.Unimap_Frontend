@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'interceptors.dart';
@@ -12,7 +13,7 @@ class DioClient {
   DioClient()
     : _dio = Dio(
         BaseOptions(
-          headers: {'Content-Type': 'application/json; charset=UTF-8'},
+          headers: {'Content-Type': 'application/json; charset=UTF-8', 'X-App-Key': dotenv.env['X_APP_TOKEN'] ?? ''},
           responseType: ResponseType.json,
           sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 30),
