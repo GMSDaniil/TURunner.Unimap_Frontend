@@ -5,7 +5,7 @@ import 'package:auth_app/domain/entities/study_program.dart';
 class SearchableDropdown extends StatefulWidget {
   final List<StudyProgramEntity> items;
   final StudyProgramEntity? selectedItem;
-  final Function(StudyProgramEntity) onChanged;
+  final Function(StudyProgramEntity?) onChanged;
   final String hintText;
   final bool isLoading;
   final void Function(bool)? onFocusChanged;
@@ -282,23 +282,59 @@ class SearchableDropdownState extends State<SearchableDropdown> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               )
-            : GestureDetector(  // ✅ Wrap icon with GestureDetector
-                onTap: () {
-                  if (_isOpen) {
-                    // ✅ Close dropdown and unfocus
-                    _focusNode.unfocus();
-                    _closeDropdown();
-                  } else {
-                    // ✅ Open dropdown and focus
-                    _focusNode.requestFocus();
-                    _openDropdown();
-                  }
-                },
-                child: Icon(
-                  _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  color: Colors.grey[600],
-                ),
-              ),
+            : _searchController.text.isNotEmpty
+                ? Row(  // ✅ Show both clear and dropdown arrow when there's text
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _searchController.clear();
+                            _filteredItems = widget.items;  // Reset to all items
+                          });
+                          widget.onChanged(null);  // Clear selection
+                          _updateOverlay();  // Update dropdown content
+                        },
+                        child: Icon(
+                          Icons.clear,
+                          color: Colors.grey[600],
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          if (_isOpen) {
+                            _focusNode.unfocus();
+                            _closeDropdown();
+                          } else {
+                            _focusNode.requestFocus();
+                            _openDropdown();
+                          }
+                        },
+                        child: Icon(
+                          _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  )
+                : GestureDetector(  // ✅ Just dropdown arrow when no text
+                    onTap: () {
+                      if (_isOpen) {
+                        _focusNode.unfocus();
+                        _closeDropdown();
+                      } else {
+                        _focusNode.requestFocus();
+                        _openDropdown();
+                      }
+                    },
+                    child: Icon(
+                      _isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: Colors.grey[600],
+                    ),
+                  ),
       ),
     );
   }

@@ -418,7 +418,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 4),
                       TextFormField(
                         controller: _semesterController,
-                        focusNode: _semesterFocusNode,  // ✅ Add FocusNode
+                        focusNode: _semesterFocusNode,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(fontWeight: FontWeight.w500),
                         decoration: InputDecoration(
@@ -434,13 +434,32 @@ class _ProfilePageState extends State<ProfilePage> {
                             vertical: 12,
                           ),
                           isDense: true,
+                          // ✅ Add clear button as suffix icon
+                          suffixIcon: _semesterController.text.isNotEmpty
+                              ? IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _semesterController.clear();
+                                      _scheduleError = null;  // Clear any error when clearing
+                                    });
+                                  },
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: Colors.grey[600],
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                )
+                              : null,
                         ),
                         onChanged: (value) {
-                          if (_scheduleError != null) {
-                            setState(() => _scheduleError = null);
-                          }
+                          setState(() {
+                            if (_scheduleError != null) {
+                              _scheduleError = null;
+                            }
+                          });
                         },
-                        // ✅ Add focus handling for semester field
                         onTap: () {
                           widget.onSearchFocusChanged?.call(true);
                         },
