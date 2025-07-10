@@ -410,6 +410,180 @@ class RouteDetailsPanel extends StatelessWidget {
       );
     }
 
+    /// Scooter segment tile ----------------------------------------------------------------
+    Widget _scooterTile(
+      RouteSegment segment, {
+      required bool isLast,
+      required bool isFirst,
+      String? previousEndStop,
+    }) {
+      const scooterColor = Color(0xFFFFA500); // Force orange color
+      return Container(
+        padding: const EdgeInsets.only(bottom: 0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left rail area with fixed width
+            Container(
+              width: _railAreaWidth,
+              child: Stack(
+                children: [
+                  // Rail connector below (solid orange line) - always show for scooter
+                  Center(
+                    child: Container(
+                      margin: EdgeInsets.only(top: _indicatorSize / 2),
+                      width: _railThickness / 3, // Same thickness as dashed line
+                      height: 95,
+                      color: scooterColor, // Force orange color for scooter
+                    ),
+                  ),
+                  // Scooter icon circle
+                  Center(
+                    child: Container(
+                      width: _indicatorSize,
+                      height: _indicatorSize,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: scooterColor, width: 3),
+                      ),
+                      child: Icon(
+                        Icons.electric_scooter,
+                        size: 20,
+                        color: scooterColor,
+                      ),
+                    ),
+                  ),
+                  // Ride label positioned in the middle of the orange line
+                  Positioned(
+                    top: _indicatorSize + 25, // Position it in the middle of the line
+                    left: _railAreaWidth + 8, // Extend into the content area
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: scooterColor, width: 1),
+                      ),
+                      child: Text(
+                        'Ride ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
+                        style: textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: scooterColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Right content area
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(left: 8, top: _contentVerticalOffset),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          deriveStartName(data),
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    // Add divider line after "Start" label for first segment
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 13, bottom: 14),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    if (previousEndStop != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 0, bottom: 8), // Removed top padding to align with icon
+                        child: Text(
+                          "Scooter location",
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    // Add divider line above scooter row
+                    if (previousEndStop != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 0), // Added spacing to maintain symmetry
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    // Add constant "Scooter location" text
+                    if (previousEndStop == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 0, bottom: 8), // Aligned with icon
+                        child: Text(
+                          "Scooter location",
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    // Add divider line above scooter row for first segment
+                    if (previousEndStop == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 0), // Reduced to bring closer to ride label
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    Padding(
+                      padding: EdgeInsets.only(top: previousEndStop != null ? 12 : 12), // Reduced padding to center around ride label
+                      child: Row(
+                        children: [
+                          Icon(Icons.electric_scooter, size: 20, color: textTheme.bodyMedium!.color),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Ride ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
+                              style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Add divider line after scooter time/distance for first segment
+                    if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 0), // Added spacing to match top symmetry
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    // Add divider line after scooter time/distance for last scooter segment (not first)
+                    if (!isFirst && isLast)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 17, bottom: 12),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     /// Flag tiles (end only) ----------------------------------------------------------------
     Widget _flagTile({required bool isStart}) {
       final grey = Colors.grey.shade400;
@@ -484,6 +658,7 @@ class RouteDetailsPanel extends StatelessWidget {
 
         // Use both type field and transportType for walk detection
         final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null;
+        final isScoot = isScooter(seg);
         
         // Check if this is a zero-duration/distance walk
         bool isZeroWalk = false;
@@ -499,24 +674,31 @@ class RouteDetailsPanel extends StatelessWidget {
         /// look-ahead: is the next segment a walk?
         final nextIsWalk = !isLast && (segs[i + 1].type == 'walk' || segs[i + 1].transportType == 'walk');
 
-        // Get previous segment's end stop if this is a walking segment
+        // Get previous segment's end stop if this is a walking or scooter segment
         String? previousEndStop;
-        if (isWalk && i > 0) {
+        if ((isWalk || isScoot) && i > 0) {
           final prevSeg = segs[i - 1];
-          if (prevSeg.type != 'walk' && prevSeg.transportType != 'walk') {
+          if (prevSeg.type != 'walk' && prevSeg.transportType != 'walk' && !isScooter(prevSeg)) {
             previousEndStop = prevSeg.toStop;
           }
         }
 
         tiles.add(
-          isWalk
-              ? _walkTile(
+          isScoot
+              ? _scooterTile(
                   seg,
                   isLast: isLast,
                   isFirst: isFirst,
                   previousEndStop: previousEndStop,
                 )
-              : _vehicleTile(seg, isLast: isLast, nextIsWalk: nextIsWalk),
+              : isWalk
+                  ? _walkTile(
+                      seg,
+                      isLast: isLast,
+                      isFirst: isFirst,
+                      previousEndStop: previousEndStop,
+                    )
+                  : _vehicleTile(seg, isLast: isLast, nextIsWalk: nextIsWalk),
         );
       }
       tiles.add(_flagTile(isStart: false));
@@ -599,4 +781,7 @@ class RouteDetailsPanel extends StatelessWidget {
   String _distance(double meters) => meters >= 1000
       ? '${(meters / 1000).toStringAsFixed(1)} km'
       : '${meters.round()} m';
+
+  // Helper: is this a scooter segment?
+  bool isScooter(RouteSegment s) => s.transportType == 'scooter' || s.mode.toString().contains('scooter');
 }
