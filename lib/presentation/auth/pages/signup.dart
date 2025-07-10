@@ -49,10 +49,10 @@ class SignupPage extends StatelessWidget {
                 SignInResponse response = state.data;
                 var userProvider = Provider.of<UserProvider>(context, listen: false);
                 userProvider.setUser(response.user);
-                Navigator.of(context).pushNamedAndRemoveUntil(
-  '/home',
-  (route) => false,
-);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
               }
               if (state is ButtonFailureState) {
                 var snackBar = SnackBar(content: Text(state.errorMessage));

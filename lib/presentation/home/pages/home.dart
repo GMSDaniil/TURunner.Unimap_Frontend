@@ -1,19 +1,13 @@
 import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
 import 'package:auth_app/common/bloc/button/button_state.dart';
-import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/presentation/home/bloc/user_display_cubit.dart';
-import 'package:auth_app/presentation/home/bloc/user_display_state.dart';
 import 'package:auth_app/presentation/home/pages/favourites.dart';
 import 'package:auth_app/presentation/home/pages/map.dart';
 import 'package:auth_app/presentation/home/pages/profile.dart';
 import 'package:auth_app/presentation/home/pages/welcome.dart';
 import 'package:auth_app/presentation/widgets/bottom_navigation.dart';
-import 'package:auth_app/presentation/widgets/route_options_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'package:provider/provider.dart';
-import 'package:auth_app/common/providers/user.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -50,6 +44,26 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
+    // ✅ Schedule navigation for after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _clearNavigationHistory();
+      }
+    });
+  }
+
+  void _clearNavigationHistory() {
+    // Only clear if there are routes to pop
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const HomePage(),
+          settings: const RouteSettings(name: '/home'),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -78,8 +92,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final favourites = Provider.of<UserProvider>(context).favourites;
-
     if (_pages == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -98,9 +110,13 @@ class _HomePageState extends State<HomePage> {
               child: BlocListener<ButtonStateCubit, ButtonState>(
                 listener: (context, state) {
                   if (state is ButtonSuccessState) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WelcomePage()),
+                    // ✅ Use pushAndRemoveUntil to clear entire stack
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => const WelcomePage(),
+                        settings: const RouteSettings(name: '/'),
+                      ),
+                      (route) => false, // Remove all previous routes
                     );
                   }
                 },

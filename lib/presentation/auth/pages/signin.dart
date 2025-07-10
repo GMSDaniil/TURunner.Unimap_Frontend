@@ -65,10 +65,10 @@ class SigninPage extends StatelessWidget {
                 },
               );
 
-              Navigator.of(context).pushNamedAndRemoveUntil(
-  '/home',
-  (route) => false,
-);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomePage()),
+              );
             }
             if (state is ButtonFailureState) {
               // Show error message on login failure

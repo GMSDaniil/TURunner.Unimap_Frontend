@@ -404,6 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         isLoading: _isLoadingStudyPrograms,
                         onFocusChanged: (focused) {
                           widget.onSearchFocusChanged?.call(focused);
+                          
                         },
                       ),
                       const SizedBox(height: 16),
