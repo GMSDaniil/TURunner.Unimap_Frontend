@@ -270,6 +270,7 @@ class RouteDetailsPanel extends StatelessWidget {
       RouteSegment segment, {
       required bool isLast,
       required bool isFirst,
+      required bool isTransfer,
       String? previousEndStop,
     }) {
       final (colour, icon) = _styleFor(segment);
@@ -313,8 +314,7 @@ class RouteDetailsPanel extends StatelessWidget {
                       child: Icon(
                         isFirst
                             ? Icons.play_arrow
-                            : Icons
-                                  .logout, // Start icon for first segment, hop off icon for others
+                            : isTransfer ? Icons.pause : Icons.logout, // Start icon for first segment, hop off icon for others
                         size: 20,
                         color: colour,
                       ),
@@ -349,6 +349,28 @@ class RouteDetailsPanel extends StatelessWidget {
                           color: Colors.grey.shade300,
                         ),
                       ),
+
+                    if (isTransfer)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          'Stopover',
+                          style: textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    // Add divider line after "Start" label for first segment
+                    if (isTransfer)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 13, bottom: 14),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+
+
                     if (previousEndStop != null)
                       Padding(
                         padding: const EdgeInsets.only(
@@ -405,6 +427,15 @@ class RouteDetailsPanel extends StatelessWidget {
                     ),
                     // Add divider line after walk time/distance for first segment
                     if (isFirst)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 17, bottom: 12),
+                        child: Container(
+                          height: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                      ),
+                    
+                    if (isTransfer)
                       Padding(
                         padding: const EdgeInsets.only(top: 17, bottom: 12),
                         child: Container(
@@ -631,7 +662,7 @@ class RouteDetailsPanel extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: grey, width: 3),
                       ),
-                      child: Icon(Icons.flag, size: 20, color: grey),
+                      child: Icon(Icons.stop, size: 24, color: grey),
                     ),
                   ),
                   // No rail connector for end tile
@@ -678,7 +709,7 @@ class RouteDetailsPanel extends StatelessWidget {
         
         // Use both type field and transportType for walk detection
         final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null || seg.mode.toString() == TravelMode.walk.toString();
-        
+        final isTransfer = (i > 0 && segs[i - 1].mode.toString() == TravelMode.walk.toString() && isWalk);
         // Use the helper method to detect scooter segments
         final isScoot = isScooter(seg);
         
@@ -718,6 +749,7 @@ class RouteDetailsPanel extends StatelessWidget {
                       seg,
                       isLast: isLast,
                       isFirst: isFirst,
+                      isTransfer: isTransfer,
                       previousEndStop: previousEndStop,
                     )
                   : _vehicleTile(seg, isLast: isLast, nextIsWalk: nextIsWalk),
