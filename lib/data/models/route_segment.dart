@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 
 class RouteSegment {
+  final String? type; // "walk" or "transit" (from JSON)
   final TravelMode mode;
   final List<LatLng> path;
   final double distanceMeters;
@@ -22,6 +23,7 @@ class RouteSegment {
   final String? headsign;
 
   RouteSegment({
+    this.type,
     required this.mode,
     required this.path,
     required this.distanceMeters,
@@ -37,6 +39,31 @@ class RouteSegment {
     this.headsign,
     this.stops,
   });
+
+  factory RouteSegment.fromJson(Map<String, dynamic> json) {
+    return RouteSegment(
+      type: json['Type'] ?? json['type'],
+      mode: TravelMode.values.firstWhere(
+        (e) => e.toString().split('.').last == (json['mode'] ?? '').toLowerCase(),
+        orElse: () => TravelMode.walk,
+      ),
+      path: (json['Polyline'] ?? json['polyline'] ?? json['path'] ?? [])
+          .map<LatLng>((e) => LatLng(e[0], e[1]))
+          .toList(),
+      distanceMeters: (json['DistanceMeters'] ?? json['distanceMeters'] ?? 0).toDouble(),
+      durrationSeconds: json['DurationSeconds'] ?? json['durrationSeconds'] ?? 0,
+      precisePolyline: (json['precisePolyline'] as List?)?.map((e) => LatLng(e[0], e[1])).toList(),
+      transportType: json['TransportType'] ?? json['transportType'],
+      transportLine: json['TransportLine'] ?? json['transportLine'],
+      fromStop: json['FromStop'] ?? json['fromStop'],
+      toStop: json['ToStop'] ?? json['toStop'],
+      departureTime: json['DepartureTime'] != null ? DateTime.tryParse(json['DepartureTime']) : null,
+      arrivalTime: json['ArrivalTime'] != null ? DateTime.tryParse(json['ArrivalTime']) : null,
+      numStops: json['NumStops'] ?? json['numStops'],
+      headsign: json['Headsign'] ?? json['headsign'],
+      stops: (json['Stops'] as List?)?.map((e) => e.toString()).toList(),
+    );
+  }
 }
 
 /// Extension to get the number of stops for a segment, falling back to numStops, or inferring from stops list.
@@ -47,7 +74,7 @@ extension RouteSegmentStopCount on RouteSegment {
     if (stops != null) return stops!.length;
     
     // For public transport segments, provide a reasonable default
-    if (transportType != null && transportType != 'walk') {
+    if (transportType != null && transportType != 'walk' && transportType != 'walking') {
       // If we have from and to stops, assume at least 1 stop (the destination)
       if (fromStop != null && toStop != null) return 1;
     }

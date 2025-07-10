@@ -110,7 +110,7 @@ class RouteDetailsPanel extends StatelessWidget {
       final (colour, icon) = _styleFor(segment);
       // Only create pill for vehicle segments (not walking segments)
       final pill =
-          segment.transportType != 'walk' && segment.transportLine != null
+          segment.type != 'walk' && segment.transportType != 'walk' && segment.transportLine != null
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -164,12 +164,26 @@ class RouteDetailsPanel extends StatelessWidget {
                   // Rail connector below
                   if (!isLast)
                     Center(
-                      child: Container(
-                        margin: EdgeInsets.only(top: 34.4),
-                        width: _railThickness,
-                        height: 114,
-                        color: nextIsWalk ? Colors.grey.shade400 : colour,
-                      ),
+                      child: nextIsWalk
+                          ? Container(
+                              margin: EdgeInsets.only(top: 34.4),
+                              width: _railThickness,
+                              height: 114,
+                              child: CustomPaint(
+                                painter: DashedLinePainter(
+                                  color: colour,
+                                  thickness: _railThickness / 3,
+                                  dash: 3.5,
+                                  gap: 15,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              margin: EdgeInsets.only(top: 34.4),
+                              width: _railThickness,
+                              height: 114,
+                              color: colour,
+                            ),
                     ),
                 ],
               ),
@@ -202,7 +216,7 @@ class RouteDetailsPanel extends StatelessWidget {
                         child: pill,
                       ),
                     // Add divider line above ride stops text
-                    if (segment.transportType != 'walk')
+                    if (segment.type != 'walk' && segment.transportType != 'walk')
                       Padding(
                         padding: const EdgeInsets.only(top: 17, bottom: 0),
                         child: Container(
@@ -210,7 +224,7 @@ class RouteDetailsPanel extends StatelessWidget {
                           color: Colors.grey.shade300,
                         ),
                       ),
-                    if (segment.transportType != 'walk')
+                    if (segment.type != 'walk' && segment.transportType != 'walk')
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
@@ -221,7 +235,7 @@ class RouteDetailsPanel extends StatelessWidget {
                         ),
                       ),
                     // Add divider line after ride stops text
-                    if (segment.transportType != 'walk')
+                    if (segment.type != 'walk' && segment.transportType != 'walk')
                       Padding(
                         padding: const EdgeInsets.only(top: 16, bottom: 12),
                         child: Container(
@@ -466,21 +480,34 @@ class RouteDetailsPanel extends StatelessWidget {
         final isLast = i == segs.length - 1;
         final isFirst = i == 0;
 
+        // Use both type field and transportType for walk detection
+        final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null;
+        
+        // Check if this is a zero-duration/distance walk
+        bool isZeroWalk = false;
+        if (isWalk) {
+          isZeroWalk = seg.durationSeconds == 0 && seg.distanceMeters == 0;
+        }
+
+        // Skip zero walks completely
+        if (isZeroWalk) {
+          continue;
+        }
+
         /// look-ahead: is the next segment a walk?
-        final nextIsWalk = !isLast && segs[i + 1].transportType == 'walk';
+        final nextIsWalk = !isLast && (segs[i + 1].type == 'walk' || segs[i + 1].transportType == 'walk');
 
         // Get previous segment's end stop if this is a walking segment
         String? previousEndStop;
-        if ((seg.transportType == 'walk' || seg.transportType == null) &&
-            i > 0) {
+        if (isWalk && i > 0) {
           final prevSeg = segs[i - 1];
-          if (prevSeg.transportType != 'walk') {
+          if (prevSeg.type != 'walk' && prevSeg.transportType != 'walk') {
             previousEndStop = prevSeg.toStop;
           }
         }
 
         tiles.add(
-          seg.transportType == 'walk' || seg.transportType == null
+          isWalk
               ? _walkTile(
                   seg,
                   isLast: isLast,

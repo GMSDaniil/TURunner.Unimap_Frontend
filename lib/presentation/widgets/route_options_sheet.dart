@@ -298,11 +298,18 @@ class _SegmentTimelineTile extends StatelessWidget {
     // Use transportType for correct icon/color
     final isBus = segment.transportType == 'bus';
     final isSubway = segment.transportType == 'subway';
+    final isTram = segment.transportType == 'tram';
+    final isSuburban = segment.transportType == 'suburban';
+    
     final Color timelineColor = isBus
         ? theme.colorScheme.primary
         : isSubway
             ? Colors.blue.shade700
-            : Colors.grey.shade400;
+            : isTram
+                ? const Color(0xFFD32F2F)
+                : isSuburban
+                    ? const Color(0xff388e3c)
+                    : Colors.grey.shade400;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,7 +336,11 @@ class _SegmentTimelineTile extends StatelessWidget {
                         ? theme.colorScheme.primary
                         : isSubway
                             ? Colors.blue.shade700
-                            : Colors.white,
+                            : isTram
+                                ? const Color(0xFFD32F2F)
+                                : isSuburban
+                                    ? const Color(0xff388e3c)
+                                    : Colors.white,
                     border: Border.all(
                       color: timelineColor,
                       width: 3,
@@ -341,7 +352,11 @@ class _SegmentTimelineTile extends StatelessWidget {
                         ? Icon(Icons.directions_bus, size: 12, color: Colors.white)
                         : isSubway
                             ? Icon(Icons.subway, size: 12, color: Colors.white)
-                            : Icon(Icons.directions_walk, size: 12, color: timelineColor),
+                            : isTram
+                                ? Icon(Icons.tram, size: 12, color: Colors.white)
+                                : isSuburban
+                                    ? Icon(Icons.train, size: 12, color: Colors.white)
+                                    : Icon(Icons.directions_walk, size: 12, color: timelineColor),
                   ),
                 ),
               ),
@@ -365,21 +380,26 @@ class _SegmentTimelineTile extends StatelessWidget {
               color: theme.colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: _buildSegmentContent(context, isBus, isSubway),
+            child: _buildSegmentContent(context, isBus, isSubway, isTram, isSuburban),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSegmentContent(BuildContext context, bool isBus, bool isSubway) {
+  Widget _buildSegmentContent(BuildContext context, bool isBus, bool isSubway, bool isTram, bool isSuburban) {
     final theme = Theme.of(context);
-    if (isBus || isSubway) {
+    final isTransport = isBus || isSubway || isTram || isSuburban;
+    if (isTransport) {
       final Color pillColor = isBus
           ? theme.colorScheme.primary
           : isSubway
               ? Colors.blue.shade700
-              : Colors.grey.shade400;
+              : isTram
+                  ? const Color(0xFFD32F2F)
+                  : isSuburban
+                      ? const Color(0xff388e3c)
+                      : Colors.grey.shade400;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -404,7 +424,7 @@ class _SegmentTimelineTile extends StatelessWidget {
                 ),
               Expanded(
                 child: Text(
-                  segment.toStop ?? (isBus ? 'Bus segment' : 'Subway segment'),
+                  segment.toStop ?? (isBus ? 'Bus segment' : isSubway ? 'Subway segment' : isTram ? 'Tram segment' : 'Train segment'),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
@@ -718,13 +738,14 @@ class RouteDetailsSheet extends StatelessWidget {
                               ),
                             ],
                           ),
-                          // Segments
+                          // Segments (filter out zero-duration walking segments)
                           for (int i = 0; i < segs.length; i++)
-                            _SegmentTimelineTile(
-                              segment: segs[i],
-                              isFirst: i == 0,
-                              isLast: i == segs.length - 1,
-                            ),
+                            if (!((segs[i].transportType == 'walk' || segs[i].transportType == 'walking') && segs[i].durrationSeconds <= 0 && segs[i].distanceMeters <= 0))
+                              _SegmentTimelineTile(
+                                segment: segs[i],
+                                isFirst: i == 0,
+                                isLast: i == segs.length - 1,
+                              ),
                           // End endpoint
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
