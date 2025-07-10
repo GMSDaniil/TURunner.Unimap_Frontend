@@ -485,7 +485,7 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
     return FadeTransition(
       opacity: _fadeAnim,
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         child: SafeArea(
           child: Column(
             children: [

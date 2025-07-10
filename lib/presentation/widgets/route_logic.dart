@@ -174,8 +174,8 @@ class RouteLogic {
           if (context.mounted) {
           setState(() {
             final segments = <RouteSegment>[];
-            for (final seg in routeResponse.segments) {
-              // for (final seg in route.segments) {
+            for (final route in routeResponse) {
+              for (final seg in route.segments) {
                 // Convert each segment to RouteSegment
               segments.add(
                 RouteSegment(
@@ -193,7 +193,7 @@ class RouteLogic {
                   numStops: seg.polyline.length-1
                 ),
               );
-              // }
+              }
             }
             
             
