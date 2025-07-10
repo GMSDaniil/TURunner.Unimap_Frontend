@@ -79,27 +79,29 @@ class RouteDetailsPanel extends StatelessWidget {
   static const double _railAreaWidth = 50; // Fixed width for the rail area
   static const double _contentVerticalOffset = 5.7; // Tune this value to align text with icons
 
+
+  (Color, IconData) _styleFor(RouteSegment s) {
+    // Note: context is not available here, so use static colors for all except bus
+    switch (s.transportType) {
+      case 'bus':
+        return (const Color(0xFFB000B5), Icons.directions_bus); // Use a static purple for bus
+      case 'subway':
+        return (Colors.blue.shade700, Icons.subway);
+      case 'tram':
+        return (const Color(0xFFD32F2F), Icons.tram);
+      case 'suburban':
+        return (const Color(0xff388e3c), Icons.train);
+      case 'scooter':
+        return (const Color(0xFFFFA500), Icons.electric_scooter);
+      default:
+        return (Colors.grey.shade400, Icons.directions_walk);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final segs = data?.segments ?? const <RouteSegment>[];
     final textTheme = Theme.of(context).textTheme;
-
-    (Color colour, IconData icon) _styleFor(RouteSegment s) {
-      switch (s.transportType) {
-        case 'bus':
-          return (Theme.of(context).colorScheme.primary, Icons.directions_bus);
-        case 'subway':
-          return (Colors.blue.shade700, Icons.subway);
-        case 'tram':
-          return (const Color(0xFFD32F2F), Icons.tram);
-        case 'suburban':
-          return (const Color(0xff388e3c), Icons.train);
-        case 'scooter':
-          return (const Color(0xFFFFA500), Icons.electric_scooter);
-        default:
-          return (Colors.grey.shade400, Icons.directions_walk);
-      }
-    }
 
     /// Vehicle (bus / train) segment tile ---------------------------------------------------
     /// `nextIsWalk` tells us whether the **following** tile is a walk leg.
@@ -730,25 +732,27 @@ class RouteDetailsPanel extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
+            // --- Compact route summary bar ---
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Route details',
-                      style: textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ..._buildRouteSummaryBar(segs, textTheme, context),
+                        ],
                       ),
                     ),
                   ),
                   Container(
                     width: 36,
                     height: 36,
+                    margin: const EdgeInsets.only(left: 8),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -760,7 +764,7 @@ class RouteDetailsPanel extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(height: 2),
             Expanded(
               child: ScrollConfiguration(
                 behavior: const _NoGlowScrollBehavior(),
@@ -785,6 +789,89 @@ class RouteDetailsPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Builds the compact route summary bar (chips/icons/arrows)
+  List<Widget> _buildRouteSummaryBar(List<RouteSegment> segs, TextTheme textTheme, BuildContext context) {
+    final List<Widget> widgets = [];
+    for (int i = 0; i < segs.length; i++) {
+      final seg = segs[i];
+      final isScoot = isScooter(seg);
+      final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null || seg.mode.toString() == TravelMode.walk.toString();
+      final style = _styleFor(seg);
+      final colour = style.$1;
+      final icon = style.$2;
+
+      if (i > 0) {
+        widgets.add(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+        ));
+      }
+
+      if (isScoot) {
+        widgets.add(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFA500),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.electric_scooter, size: 16, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(
+                _minutes(seg.durationSeconds),
+                style: textTheme.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ));
+      } else if (isWalk) {
+        widgets.add(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade800,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.directions_walk, size: 16, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(
+                _minutes(seg.durationSeconds),
+                style: textTheme.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ));
+      } else {
+        // Vehicle: show colored chip with line name
+        widgets.add(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: colour,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              if (seg.transportLine != null) ...[
+                const SizedBox(width: 4),
+                Text(
+                  seg.transportLine!,
+                  style: textTheme.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ]
+            ],
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   // ---------------------------------------------------------------------------
