@@ -93,6 +93,8 @@ class RouteDetailsPanel extends StatelessWidget {
           return (const Color(0xFFD32F2F), Icons.tram);
         case 'suburban':
           return (const Color(0xff388e3c), Icons.train);
+        case 'scooter':
+          return (const Color(0xFFFFA500), Icons.electric_scooter);
         default:
           return (Colors.grey.shade400, Icons.directions_walk);
       }
