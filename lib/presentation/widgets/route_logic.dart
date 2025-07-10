@@ -179,7 +179,7 @@ class RouteLogic {
                 // Convert each segment to RouteSegment
               segments.add(
                 RouteSegment(
-                  mode: seg.type == 'walk' ? TravelMode.walk : TravelMode.bus,
+                  mode: (seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == 'walking') ? TravelMode.walk : TravelMode.bus,
                   path: seg.polyline,
                   distanceMeters: seg.distanceMeters,
                   durrationSeconds: seg.durationSeconds,

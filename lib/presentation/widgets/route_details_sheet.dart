@@ -109,8 +109,10 @@ class RouteDetailsPanel extends StatelessWidget {
     }) {
       final (colour, icon) = _styleFor(segment);
       // Only create pill for vehicle segments (not walking segments)
+      // Use type field for walk/transport detection
+      final isTransport = (segment.type == 'transit') || (segment.transportType != 'walk' && segment.transportType != 'walking' && segment.transportType != null);
       final pill =
-          segment.transportType != 'walk' && segment.transportLine != null
+          isTransport && segment.transportLine != null
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -202,7 +204,7 @@ class RouteDetailsPanel extends StatelessWidget {
                         child: pill,
                       ),
                     // Add divider line above ride stops text
-                    if (segment.transportType != 'walk')
+                    if (isTransport)
                       Padding(
                         padding: const EdgeInsets.only(top: 17, bottom: 0),
                         child: Container(
@@ -210,7 +212,7 @@ class RouteDetailsPanel extends StatelessWidget {
                           color: Colors.grey.shade300,
                         ),
                       ),
-                    if (segment.transportType != 'walk')
+                    if (isTransport)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(
@@ -221,7 +223,7 @@ class RouteDetailsPanel extends StatelessWidget {
                         ),
                       ),
                     // Add divider line after ride stops text
-                    if (segment.transportType != 'walk')
+                    if (isTransport)
                       Padding(
                         padding: const EdgeInsets.only(top: 16, bottom: 12),
                         child: Container(
@@ -245,6 +247,7 @@ class RouteDetailsPanel extends StatelessWidget {
       required bool isLast,
       required bool isFirst,
       String? previousEndStop,
+      bool isTransferWalk = false,
     }) {
       final (colour, icon) = _styleFor(segment);
 
@@ -258,22 +261,23 @@ class RouteDetailsPanel extends StatelessWidget {
               width: _railAreaWidth,
               child: Stack(
                 children: [
-                  // Rail connector below (dashed) - draw first so it's behind the icon
-                  Center(
-                    child: Container(
-                      margin: EdgeInsets.only(top: _indicatorSize / 2),
-                      width: _railThickness,
-                      height: 95,
-                      child: CustomPaint(
-                        painter: DashedLinePainter(
-                          color: colour,
-                          thickness: _railThickness / 3,
-                          dash: 3.5, // Smaller dots
-                          gap: 15, // Smaller gaps
+                  // Rail connector below (dashed for transfer walks, or regular walks)
+                  if (!isLast || isTransferWalk)
+                    Center(
+                      child: Container(
+                        margin: EdgeInsets.only(top: _indicatorSize / 2),
+                        width: _railThickness,
+                        height: 95,
+                        child: CustomPaint(
+                          painter: DashedLinePainter(
+                            color: colour,
+                            thickness: _railThickness / 3,
+                            dash: 3.5, // Smaller dots
+                            gap: 15, // Smaller gaps
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   // Walk icon circle - draw on top so it covers the dashed line
                   Center(
                     child: Container(
@@ -287,8 +291,9 @@ class RouteDetailsPanel extends StatelessWidget {
                       child: Icon(
                         isFirst
                             ? Icons.play_arrow
-                            : Icons
-                                  .logout, // Start icon for first segment, hop off icon for others
+                            : isTransferWalk
+                                ? Icons.transfer_within_a_station // Transfer icon for station changes
+                                : Icons.logout, // Regular hop off icon
                         size: 20,
                         color: colour,
                       ),
@@ -358,7 +363,9 @@ class RouteDetailsPanel extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Walk ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
+                              isTransferWalk 
+                                ? 'Transfer ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})'
+                                : 'Walk ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
                               style: textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w500,
                               ),
@@ -466,26 +473,46 @@ class RouteDetailsPanel extends StatelessWidget {
         final isLast = i == segs.length - 1;
         final isFirst = i == 0;
 
+        // Use type field for walk/transport detection
+        // Use type field for walk/transport detection
+        final isWalk = seg.type == 'walk' || (seg.type == null && (seg.transportType == 'walk' || seg.transportType == 'walking' || seg.transportType == null));
+
+        // Determine if this is a transfer walk (between two transit segments)
+        bool isTransferWalk = false;
+        if (isWalk && !isFirst && !isLast) {
+          final prevSeg = segs[i - 1];
+          final nextSeg = segs[i + 1];
+          final prevIsTransit = (prevSeg.type == 'transit') || (prevSeg.type == null && prevSeg.transportType != 'walk' && prevSeg.transportType != 'walking' && prevSeg.transportType != null);
+          final nextIsTransit = (nextSeg.type == 'transit') || (nextSeg.type == null && nextSeg.transportType != 'walk' && nextSeg.transportType != 'walking' && nextSeg.transportType != null);
+          isTransferWalk = prevIsTransit && nextIsTransit;
+        }
+
+        // Skip all zero-duration/zero-distance walking segments (including transfer walks),
+        // BUT: always show transfer walks, even if 0 duration/distance
+        if (isWalk && seg.durrationSeconds <= 0 && seg.distanceMeters <= 0 && !isTransferWalk) {
+          continue; // Skip this segment unless it's a transfer walk
+        }
+
         /// look-ahead: is the next segment a walk?
-        final nextIsWalk = !isLast && segs[i + 1].transportType == 'walk';
+        final nextIsWalk = !isLast && (segs[i + 1].type == 'walk' || (segs[i + 1].type == null && (segs[i + 1].transportType == 'walk' || segs[i + 1].transportType == 'walking')));
 
         // Get previous segment's end stop if this is a walking segment
         String? previousEndStop;
-        if ((seg.transportType == 'walk' || seg.transportType == null) &&
-            i > 0) {
+        if (isWalk && i > 0) {
           final prevSeg = segs[i - 1];
-          if (prevSeg.transportType != 'walk') {
+          if ((prevSeg.type != 'walk' && (prevSeg.type != null || (prevSeg.transportType != 'walk' && prevSeg.transportType != 'walking'))) ) {
             previousEndStop = prevSeg.toStop;
           }
         }
 
         tiles.add(
-          seg.transportType == 'walk' || seg.transportType == null
+          isWalk
               ? _walkTile(
                   seg,
                   isLast: isLast,
                   isFirst: isFirst,
                   previousEndStop: previousEndStop,
+                  isTransferWalk: isTransferWalk,
                 )
               : _vehicleTile(seg, isLast: isLast, nextIsWalk: nextIsWalk),
         );
