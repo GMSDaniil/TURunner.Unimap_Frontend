@@ -84,15 +84,22 @@ class RouteDetailsPanel extends StatelessWidget {
     // Note: context is not available here, so use static colors for all except bus
     switch (s.transportType) {
       case 'bus':
-        return (const Color(0xFFB000B5), Icons.directions_bus); // Use a static purple for bus
+        return (const Color(0xFFB000B5), Icons.directions_bus); // Purple
       case 'subway':
-        return (Colors.blue.shade700, Icons.subway);
+        return (const Color(0xFF1976D2), Icons.subway); // Blue
       case 'tram':
-        return (const Color(0xFFD32F2F), Icons.tram);
+        return (const Color(0xFFD32F2F), Icons.tram); // Red
       case 'suburban':
-        return (const Color(0xff388e3c), Icons.train);
+      case 'sbahn':
+        return (const Color(0xFF388E3C), Icons.train); // Green (S-Bahn)
+      case 'regional':
+        return (const Color(0xFF795548), Icons.train); // Brown (Regional)
+      case 'express':
+        return (const Color(0xFFFFD600), Icons.train); // Gold (Express)
+      case 'ferry':
+        return (const Color(0xFF00B8D4), Icons.directions_boat); // Teal (Ferry)
       case 'scooter':
-        return (const Color(0xFFFFA500), Icons.electric_scooter);
+        return (const Color(0xFFFFA500), Icons.electric_scooter); // Orange
       default:
         return (Colors.grey.shade400, Icons.directions_walk);
     }
