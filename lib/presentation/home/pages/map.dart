@@ -1240,11 +1240,12 @@ void dispose() {
                 
                 if (favouritesChanged) {
                   // ✅ Use addPostFrameCallback to avoid setState during build
+                  print('[DEBUG] Favourites changed, updating annotations');
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) {
                       _lastFavourites = List.from(currentFavourites);
                       Future.delayed(
-                        const Duration(milliseconds: 500),
+                        const Duration(milliseconds: 300),
                         () => _updateAnnotationsWithFavourites(currentFavourites),
                       );
                       
@@ -1981,11 +1982,33 @@ void dispose() {
     final newAnnotations = filteredPointers
         .map((pointer) => mapBoxMarker(pointer))
         .toList();
+    
+    final favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+    final currentFavourites = Provider.of<UserProvider>(context, listen: false).favourites;
+    final favouriteIcon = _categoryImageCache['favourite'];
+    final favouriteAnnotations = favouriteIcon == null
+      ? <InteractiveAnnotation>[]
+      : buildFavouriteAnnotations(favourites, favouriteIcon);
+
+  final favouritePositions = favourites
+      .map((f) => '${f.placeId ?? ''}')
+      .toSet();
+
+  print('Favourite positions: $favouritePositions');
+  
+  final normalAnnotations = newAnnotations.where((a) {
+    return !favouritePositions.contains('${a.id}');
+  }).toList();
+
+  final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
+  final allAnnotations = 
+      // showOnlyCategory? _activeCategoryPointers.map(mapBoxMarker).toList(): 
+      [...normalAnnotations, ...favouriteAnnotations];
 
     setState(() {
       _markers = newMarkers;
       if (_interactiveAnnotations.length != newAnnotations.length) {
-        _interactiveAnnotations = newAnnotations;
+        _interactiveAnnotations = allAnnotations;
       }
     });
 
