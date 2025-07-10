@@ -197,8 +197,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 32),
-                    _buildProfilePicture(context),
+                    // const SizedBox(height: 32),
+                    // _buildProfilePicture(context),
                     const SizedBox(height: 24),
                     _buildUsername(user),
                     const SizedBox(height: 8),
@@ -280,8 +280,8 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 32),
-          _buildProfilePicture(context),
+          // const SizedBox(height: 32),
+          // _buildProfilePicture(context),
           const SizedBox(height: 24),
           const Text(
             'Guest',
