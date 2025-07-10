@@ -104,6 +104,10 @@ class RouteDetailsPanel extends StatelessWidget {
         return (Colors.grey.shade400, Icons.directions_walk);
     }
   }
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,11 +226,48 @@ class RouteDetailsPanel extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (pill != null)
+                    Row(
+                      children: [
+                        if (pill != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
                         child: pill,
                       ),
+                      const SizedBox(width: 8),
+                      if (segment.type != 'walk' && segment.transportType != 'walk' && segment.departureTime != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.schedule,
+                              size: 16,
+                              color: textTheme.bodyMedium!.color?.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Departs ${_formatTime(segment.departureTime)}',
+                              style: textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: textTheme.bodyMedium!.color?.withOpacity(0.8),
+                              ),
+                            ),
+                            // if (segment.arrivalTime != null) ...[
+                            //   const SizedBox(width: 12),
+                            //   Text(
+                            //     '→ ${_formatTime(segment.arrivalTime)}',
+                            //     style: textTheme.bodyMedium?.copyWith(
+                            //       fontWeight: FontWeight.w500,
+                            //       color: textTheme.bodyMedium!.color?.withOpacity(0.8),
+                            //     ),
+                            //   ),
+                            // ],
+                          ],
+                        ),
+                      ),
+                      ],
+                    ),
+                    
                     // Add divider line above ride stops text
                     if (segment.type != 'walk' && segment.transportType != 'walk')
                       Padding(
@@ -681,6 +722,8 @@ class RouteDetailsPanel extends StatelessWidget {
                 ),
               ),
             ),
+            
+                  
           ],
         ),
       );
@@ -833,6 +876,7 @@ class RouteDetailsPanel extends StatelessWidget {
   /// Builds the compact route summary bar (chips/icons/arrows)
   List<Widget> _buildRouteSummaryBar(List<RouteSegment> segs, TextTheme textTheme, BuildContext context) {
     final List<Widget> widgets = [];
+    
     for (int i = 0; i < segs.length; i++) {
       final seg = segs[i];
       final isScoot = isScooter(seg);
