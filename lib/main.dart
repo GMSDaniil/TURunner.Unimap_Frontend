@@ -141,11 +141,17 @@ class MyApp extends StatelessWidget {
                     _loadUserDataOnAuthenticated(context);
                   },
                 );
-                return const HomePage(); // Show MapPage for both Authenticated and Guest users
+                Navigator.of(context).pushNamedAndRemoveUntil(
+  '/home',
+  (route) => false,
+); // Show MapPage for both Authenticated and Guest users
               }
               if (state is GuestAuthenticated) {
                 // Load user data for guest
-                return const HomePage();
+                Navigator.of(context).pushNamedAndRemoveUntil(
+  '/home',
+  (route) => false,
+);
               }
               if (state is UnAuthenticated) {
                 return const WelcomePage();

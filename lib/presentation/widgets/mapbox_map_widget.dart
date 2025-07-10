@@ -28,14 +28,14 @@ class MapboxMapWidget extends StatefulWidget {
   final List<InteractiveAnnotation> markerAnnotations;
   final Map<String, Uint8List> markerImageCache;
   final MapTheme? mapTheme;
-  bool isRaining = false; // New: flag to control rain overlay
+  final bool isRaining; // New: flag to control rain overlay
   final LatLng? destinationLatLng;
   /// Optional controller callback: parent can capture the unhighlight function to call when needed (e.g., when panel closes).
   final void Function(void Function())? onClearHighlightController;
   final double navBarHeight;
   final List<RouteSegment> segments;
   final Function(LatLng) onMapTap;
-  final void Function(MapboxMap)? onMapCreated;
+  final void Function(MapboxMap?) onMapCreated;
   final BuildContext parentContext;
   /// New: optional camera change callback
   final void Function(CameraChangedEventData)? onCameraChanged;
@@ -64,7 +64,13 @@ class MapboxMapWidget extends StatefulWidget {
 
 
 class _MapBoxWidgetState extends State<MapboxMapWidget> {
-
+  bool _isDisposed = false;
+  bool get _canPerformMapOperations {
+    return !_isDisposed && 
+           mounted && 
+           _isMapInitialized && 
+           mapboxMap != null;
+  }
   /// Helper to get color for a transport type
   int _lineColor(String? transportType) {
     switch (transportType) {
@@ -83,33 +89,43 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   /// Removes all changeover circles and labels from the map
   Future<void> removeChangeoverMarkers() async {
-    final layers = await mapboxMap.style.getStyleLayers();
-    final sources = await mapboxMap.style.getStyleSources();
-    for (final layer in [...layers]) {
-      if (layer != null && (layer.id.startsWith('changeover-layer-') || layer.id.startsWith('changeover-label-layer-'))) {
-        await mapboxMap.style.removeStyleLayer(layer.id);
+    if (!_canPerformMapOperations) {
+      print('Cannot remove changeover markers - map not ready');
+      return;
+    }
+    
+    final layers = await mapboxMap!.style.getStyleLayers();
+    final sources = await mapboxMap!.style.getStyleSources();
+    for (final layer in layers) {
+      if (layer?.id.startsWith('changeover-layer-') == true || layer?.id.startsWith('changeover-label-layer-') == true) {
+        await mapboxMap!.style.removeStyleLayer(layer!.id);
       }
     }
-    for (final src in [...sources]) {
-      if (src != null && (src.id.startsWith('changeover-source-') || src.id.startsWith('changeover-label-source-'))) {
-        await mapboxMap.style.removeStyleSource(src.id);
+    for (final src in sources) {
+      if (src?.id.startsWith('changeover-source-') == true || src?.id.startsWith('changeover-label-source-') == true) {
+        await mapboxMap!.style.removeStyleSource(src!.id);
       }
     }
   }
   var _currentTheme = MapTheme.day;
   /// Draws small white points for all bus stops along the bus segments
   Future<void> drawBusStopMarkers(List<LatLng> busMarkers) async {
+    if (!_canPerformMapOperations) {
+      print('Cannot draw bus stop markers - map not ready');
+      return;
+    }
+    
     // Remove old bus stop layers/sources
-    final layers = await mapboxMap.style.getStyleLayers();
-    final sources = await mapboxMap.style.getStyleSources();
-    for (final layer in [...layers]) {
-      if (layer!.id.startsWith('busstop-layer-')) {
-        await mapboxMap.style.removeStyleLayer(layer.id);
+    final layers = await mapboxMap!.style.getStyleLayers();
+    final sources = await mapboxMap!.style.getStyleSources();
+    for (final layer in layers) {
+      if (layer?.id.startsWith('busstop-layer-') == true) {
+        await mapboxMap!.style.removeStyleLayer(layer!.id);
       }
     }
-    for (final src in [...sources]) {
-      if (src!.id.startsWith('busstop-source-')) {
-        await mapboxMap.style.removeStyleSource(src.id);
+    for (final src in sources) {
+      if (src?.id.startsWith('busstop-source-') == true) {
+        await mapboxMap!.style.removeStyleSource(src!.id);
       }
     }
 
@@ -118,7 +134,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       final srcId = 'busstop-source-$i';
       final lyrId = 'busstop-layer-$i';
 
-      await mapboxMap.style.addSource(GeoJsonSource(
+      await mapboxMap!.style.addSource(GeoJsonSource(
         id: srcId,
         data: jsonEncode({
           "type": "FeatureCollection",
@@ -135,7 +151,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         }),
       ));
 
-      await mapboxMap.style.addLayer(CircleLayer(
+      await mapboxMap!.style.addLayer(CircleLayer(
         id: lyrId,
         sourceId: srcId,
         circleEmissiveStrength: 1.0,
@@ -152,17 +168,19 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   /// pins that have appeared during the **current zoom-in** gesture
   /// (must never disappear until we zoom-out again)
   final Set<String> _visibleThisZoomIn = {};
-  double? _lastMarkerVisibilityZoom;
-  DateTime _lastUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   //Timer? _cameraPollTimer;
-  double? _lastZoom;
   // ── dynamic-marker visibility ───────────────────────────────────
   //static const double _markerZoomThreshold = 14.0;   // tune as you like
   /*──────────── Highlight Logic ────────────*/
 
   /// Centralized method for selecting and highlighting a building, with zoom logic
   Future<void> selectBuilding(dynamic feature, dynamic event) async {
-    final cameraState = await mapboxMap.getCameraState();
+    if (!_canPerformMapOperations) {
+      print('Cannot select building - map not ready');
+      return;
+    }
+    
+    final cameraState = await mapboxMap!.getCameraState();
     const minZoom = 15.2;
 
     // If zoom is too low, animate to minZoom and center on the building
@@ -174,7 +192,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     await unhighlightCurrentBuilding();
 
     // Highlight new building
-    await mapboxMap.setFeatureStateForFeaturesetFeature(
+    await mapboxMap!.setFeatureStateForFeaturesetFeature(
       feature,
       StandardBuildingsState(highlight: true),
     );
@@ -189,8 +207,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   /// Helper method to unhighlight the currently highlighted building
   Future<void> unhighlightCurrentBuilding() async {
-    if (_highlightedBuilding != null) {
-      await mapboxMap.setFeatureStateForFeaturesetFeature(
+    if (_highlightedBuilding != null && _canPerformMapOperations) {
+      await mapboxMap!.setFeatureStateForFeaturesetFeature(
         _highlightedBuilding,
         StandardBuildingsState(highlight: false),
       );
@@ -211,14 +229,14 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     // No polling timer: marker visibility will update on camera events
   }
   final Map<String, VoidCallback> _markerTapCallbacks = {};
-  late MapboxMap mapboxMap;
+  MapboxMap? mapboxMap;
   Map<String, Object> mapConfig = {
       "showPointOfInterestLabels": false,
       "lightPreset": "day",
       "colorBuildingHighlight": "#B39DDB",
     };
-  late PointAnnotationManager pointAnnotationManager;
-  late PolylineAnnotationManager polylineAnnotationManager;
+  PointAnnotationManager? pointAnnotationManager;
+  PolylineAnnotationManager? polylineAnnotationManager;
 
   StreamSubscription? userPositionStream;
   dynamic _highlightedBuilding;
@@ -247,9 +265,8 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   @override
   void didUpdateWidget(covariant MapboxMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if(!mounted) return;
-    if (!_isMapInitialized) {
-      // MapboxMap is not initialized yet, skip updates
+    if(!_canPerformMapOperations) {
+      print('[DEBUG] Skipping widget update: widget disposed or map not ready');
       return;
     }
     // If the annotations list changed, update the map
@@ -262,9 +279,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       // Remove old changeover markers before drawing new ones
       removeChangeoverMarkers();
       drawStyledRouteSegments(widget.segments);
-      if (widget.busStopMarkers != null) {
-        drawBusStopMarkers(widget.busStopMarkers!);
-      }
+      drawBusStopMarkers(widget.busStopMarkers);
       print("Updated polylines");
     }
 
@@ -283,35 +298,62 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   void _updateMapTheme() {
-    if (mapboxMap == null) return;
+    if (!_canPerformMapOperations) {
+      print('[DEBUG] Cannot update map theme: map not ready or disposed');
+      return;
+    }
     
-    mapConfig["lightPreset"] = _currentTheme.toString();
-    mapboxMap.style.setStyleImportConfigProperties("basemap", mapConfig);
+    try {
+      mapConfig["lightPreset"] = _currentTheme.toString();
+      mapboxMap!.style.setStyleImportConfigProperties("basemap", mapConfig);
+    } catch (e) {
+      print('[ERROR] Failed to update map theme: $e');
+    }
   }
 
   @override
-    void dispose(){
-      // No polling timer to cancel
-      try{
-        mapboxMap.dispose();
-      }catch(e){
-        if(kDebugMode){
-          print("Error disposing mapboxMap: $e");
-        }
-      }
+  void dispose() {
+    _isDisposed = true;
+    
+    // Cancel position stream
+    try {
       userPositionStream?.cancel();
-      _liveAnnotations.clear();
-      _markerTapCallbacks.clear();
-      _hiddenThisZoomOut.clear();
-      _visibleThisZoomIn.clear();
-      super.dispose();
+      userPositionStream = null;
+    } catch (e) {
+      print('Error canceling position stream: $e');
     }
+    
+    // Clear collections
+    _liveAnnotations.clear();
+    _markerTapCallbacks.clear();
+    _hiddenThisZoomOut.clear();
+    _visibleThisZoomIn.clear();
+    
+    // ✅ DON'T dispose mapboxMap - it's managed by MapWidget
+    // Just clear the reference
+    mapboxMap = null;
+    pointAnnotationManager = null;
+    polylineAnnotationManager = null;
+    
+    // Clear highlighted building reference
+    _highlightedBuilding = null;
+    
+    // Notify parent that map is disposed
+    try {
+      widget.onMapCreated.call(null);
+    } catch (e) {
+      print('Error notifying parent of disposal: $e');
+    }
+    
+    super.dispose();
+  }
 
   Future<void> _addInteractiveMarkers(
     Iterable<InteractiveAnnotation> annotations) async {
-  if (annotations.isEmpty) return;
+  if (annotations.isEmpty || !_canPerformMapOperations) return;
+  
   final opts = annotations.map((a) => a.options).toList();
-  final created = await pointAnnotationManager.createMulti(opts);
+  final created = await pointAnnotationManager!.createMulti(opts);
   int i = 0;
   for (final pa in created) {
     if (pa == null) continue;
@@ -323,21 +365,25 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 }
 
   Future<void> drawStyledRouteSegments(List<RouteSegment> segments) async {
+  if (!_canPerformMapOperations) {
+    print('[DEBUG] Map not initialized, skipping route drawing');
+    return;
+  }
   // ── 1) Clean up old route, changeover, and bus label layers/sources ─────────────
-  final layers = await mapboxMap.style.getStyleLayers();
-  final sources = await mapboxMap.style.getStyleSources();
-  for (final layer in [...?layers]) {
-    if (layer!.id.startsWith('route-layer-') ||
-        layer.id.startsWith('change-layer-') ||
-        layer.id.startsWith('bus-label-layer-')) {
-      await mapboxMap.style.removeStyleLayer(layer.id);
+  final layers = await mapboxMap!.style.getStyleLayers();
+  final sources = await mapboxMap!.style.getStyleSources();
+  for (final layer in layers) {
+    if (layer?.id.startsWith('route-layer-') == true ||
+        layer?.id.startsWith('change-layer-') == true ||
+        layer?.id.startsWith('bus-label-layer-') == true) {
+      await mapboxMap!.style.removeStyleLayer(layer!.id);
     }
   }
-  for (final src in [...?sources]) {
-    if (src!.id.startsWith('route-source-') ||
-        src.id.startsWith('change-source-') ||
-        src.id.startsWith('bus-label-source-')) {
-      await mapboxMap.style.removeStyleSource(src.id);
+  for (final src in sources) {
+    if (src?.id.startsWith('route-source-') == true ||
+        src?.id.startsWith('change-source-') == true ||
+        src?.id.startsWith('bus-label-source-') == true) {
+      await mapboxMap!.style.removeStyleSource(src!.id);
     }
   }
 
@@ -409,12 +455,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     final layerId = 'route-layer-${seg.mode.name}-$i';
 
     try {
-      await mapboxMap.style.addSource(GeoJsonSource(
+      await mapboxMap!.style.addSource(GeoJsonSource(
         id: sourceId,
         data: jsonEncode(geojson),
       ));
 
-      await mapboxMap.style.addLayer(LineLayer(
+      await mapboxMap!.style.addLayer(LineLayer(
         id: layerId,
         sourceId: sourceId,
         lineColor: color,
@@ -435,7 +481,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         final labelPoint = points[points.length ~/ 2];
         final labelSourceId = 'bus-label-source-$i';
         final labelLayerId = 'bus-label-layer-$i';
-        await mapboxMap.style.addSource(GeoJsonSource(
+        await mapboxMap!.style.addSource(GeoJsonSource(
           id: labelSourceId,
           data: jsonEncode({
             "type": "FeatureCollection",
@@ -462,7 +508,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
                     : isSuburban
                         ? const Color(0xFF388E3C).value
                         : Colors.black.value;
-        await mapboxMap.style.addLayerAt(SymbolLayer(
+        await mapboxMap!.style.addLayerAt(SymbolLayer(
           id: labelLayerId,
           sourceId: labelSourceId,
           textField: '{lineName}',
@@ -507,7 +553,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       int strokeColor = _lineColor(nextSeg.transportType);
       if (strokeColor == Colors.black.value) strokeColor = Colors.grey.value;
 
-      await mapboxMap.style.addSource(GeoJsonSource(
+      await mapboxMap!.style.addSource(GeoJsonSource(
         id: srcId,
         data: jsonEncode({
           "type": "FeatureCollection",
@@ -524,7 +570,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
         }),
       ));
 
-      await mapboxMap.style.addLayer(CircleLayer(
+      await mapboxMap!.style.addLayer(CircleLayer(
         id: lyrId,
         sourceId: srcId,
         circleEmissiveStrength: 1.0,
@@ -555,7 +601,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
           final labelSrcId = 'changeover-label-source-$i';
           final labelLyrId = 'changeover-label-layer-$i';
 
-          await mapboxMap.style.addSource(GeoJsonSource(
+          await mapboxMap!.style.addSource(GeoJsonSource(
             id: labelSrcId,
             data: jsonEncode({
               "type": "FeatureCollection",
@@ -575,7 +621,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
           ));
 
           int haloColor = _lineColor(nextSeg.transportType);
-          await mapboxMap.style.addLayerAt(SymbolLayer(
+          await mapboxMap!.style.addLayerAt(SymbolLayer(
             id: labelLyrId,
             sourceId: labelSrcId,
             textField: '{changeLabel}',
@@ -665,13 +711,19 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   Future<void> deleteDestinationMarker() async {
+    if (!_canPerformMapOperations) {
+      return; // Silently return if map isn't ready
+    }
     try {
-      await mapboxMap.style.removeStyleLayer('destination-layer');
-      await mapboxMap.style.removeStyleSource('destination-source');
+      await mapboxMap!.style.removeStyleLayer('destination-layer');
+      await mapboxMap!.style.removeStyleSource('destination-source');
     } catch (_) {}
   }
   Future<void> addDestinationMarker(LatLng destination) async {
-
+    if (!_canPerformMapOperations) {
+      print('[DEBUG] Cannot add destination marker: map not ready or widget disposed');
+      return;
+    }
     final destinationGeoJson = {
       "type": "FeatureCollection",
       "features": [
@@ -686,13 +738,13 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       ]
     };
 
-    await mapboxMap.style.addSource(GeoJsonSource(
+    await mapboxMap!.style.addSource(GeoJsonSource(
       id: 'destination-source',
       data: jsonEncode(destinationGeoJson),
     ));
 
     // Option 1: Circle marker
-    // await mapboxMap.style.addLayer(CircleLayer(
+    // await mapboxMap!.style.addLayer(CircleLayer(
     //   id: 'destination-layer',
     //   sourceId: 'destination-source',
     //   circleRadius: 15.0,
@@ -702,7 +754,7 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
     // ));
 
     // Option 2: Symbol marker (if you have an icon)
-    await mapboxMap.style.addLayer(SymbolLayer(
+    await mapboxMap!.style.addLayer(SymbolLayer(
       id: 'destination-layer',
       sourceId: 'destination-source',
       iconImage: 'destination-marker', // You'd need to load this icon first
@@ -712,11 +764,16 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   Future<void> _updateAllMarkers() async {
+    if (!_canPerformMapOperations) {
+      print('Cannot update markers - map not ready');
+      return;
+    }
+    
     // recreate full initial set (will be trimmed by first camera-event)
-    await pointAnnotationManager.deleteAll();
+    await pointAnnotationManager!.deleteAll();
     _liveAnnotations.clear();
     await _addInteractiveMarkers(widget.markerAnnotations);
-    pointAnnotationManager.addOnPointAnnotationClickListener(MarkerClickListener(_markerTapCallbacks));
+    pointAnnotationManager!.addOnPointAnnotationClickListener(MarkerClickListener(_markerTapCallbacks));
   }
 
   /*────────────────────────  ZOOM-AWARE VISIBILITY  ────────────────────────*/
@@ -805,133 +862,12 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   // }
 
   // ── smart, diff-aware declutter ────────────────────────────────
-  /*──────────────── helper – buffer grows smoothly with zoom ─────────────*/
-double _minScreenDist(double zoom) {
-  const zMax = 19.0, zMin = 11.0;
-  const dMax = 350.0, dMin = 30.0;
-  final t = ((zMax - zoom) / (zMax - zMin)).clamp(0.0, 1.0);
-  return dMin + (dMax - dMin) * t;
-}
-
-/*──────────────── smart, one-way declutter ─────────────────────────────*/
-Future<void> _updateMarkerVisibility(double zoom) async {
-  final now = DateTime.now();
-  if (now.difference(_lastUpdate).inMilliseconds < 250) return;
-  _lastUpdate = now;
-
-  final bool zoomingIn =
-      _lastMarkerVisibilityZoom == null || zoom > _lastMarkerVisibilityZoom!;
-  _lastMarkerVisibilityZoom = zoom;
-
-  if (zoomingIn) {
-    _hiddenThisZoomOut.clear();
-  } else {
-    _visibleThisZoomIn.clear();
-  }
-
-  final buffer = _minScreenDist(zoom);
-
-  String keyOf(Position p) => '${p.lat},${p.lng}';
-  int priorityOf(String cat) {
-    final c = cat.toLowerCase();
-    if (c.contains('canteen') || c.contains('mensa')) return 0;
-    if (c.contains('library')) return 1;
-    if (c.contains('cafe')) return 2;
-    return 3;
-  }
-
-  if (zoomingIn) {
-    final candidates = widget.markerAnnotations
-        .where((a) =>
-            !_liveAnnotations.containsKey(keyOf(a.options.geometry.coordinates)) &&
-            !_hiddenThisZoomOut.contains(keyOf(a.options.geometry.coordinates)))
-        .toList()
-      ..sort((a, b) =>
-          priorityOf(a.category).compareTo(priorityOf(b.category)));
-
-    final List<InteractiveAnnotation> toAdd = [];
-    final List<Offset> onScreen = [];
-
-    for (final pa in _liveAnnotations.values) {
-      final pt = await mapboxMap.pixelForCoordinate(pa.geometry);
-      onScreen.add(Offset(pt.x, pt.y));
-    }
-
-    for (final ann in candidates) {
-      final pt = await mapboxMap.pixelForCoordinate(
-        Point(coordinates: Position(
-          ann.options.geometry.coordinates.lng,
-          ann.options.geometry.coordinates.lat,
-        )),
-      );
-      final screenPt = Offset(pt.x, pt.y);
-
-      bool crowded = false;
-      for (final other in onScreen) {
-        if ((screenPt - other).distance < buffer) {
-          crowded = true;
-          break;
-        }
-      }
-      if (!crowded) {
-        toAdd.add(ann);
-        onScreen.add(screenPt);
-      }
-    }
-
-    await _addInteractiveMarkers(toAdd);
-    _visibleThisZoomIn.addAll(
-        toAdd.map((a) => keyOf(a.options.geometry.coordinates)));
-  } else {
-    final work = _liveAnnotations.entries.toList()
-      ..sort((a, b) {
-        final catA = widget.markerAnnotations
-            .firstWhere((x) => keyOf(x.options.geometry.coordinates) == a.key)
-            .category;
-        final catB = widget.markerAnnotations
-            .firstWhere((x) => keyOf(x.options.geometry.coordinates) == b.key)
-            .category;
-        return priorityOf(catA).compareTo(priorityOf(catB));
-      });
-
-    final keep = <String>{};
-    final keepScreen = <Offset>[];
-
-    for (final entry in work) {
-      final k = entry.key;
-      if (_hiddenThisZoomOut.contains(k)) continue;
-      final pt = await mapboxMap.pixelForCoordinate(entry.value.geometry);
-      final screenPt = Offset(pt.x, pt.y);
-
-      bool crowded = false;
-      for (final other in keepScreen) {
-        if ((screenPt - other).distance < buffer) {
-          crowded = true;
-          break;
-        }
-      }
-
-      if (crowded) {
-        await pointAnnotationManager.delete(entry.value);
-        _liveAnnotations.remove(k);
-        _hiddenThisZoomOut.add(k);
-      } else {
-        keep.add(k);
-        keepScreen.add(screenPt);
-      }
-    }
-  }
-
-  pointAnnotationManager.addOnPointAnnotationClickListener(
-    MarkerClickListener(_markerTapCallbacks),
-  );
-}
 
 /* utility: coordinates → key */
 String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
   void _bindInteractions() {
-    mapboxMap.setOnMapTapListener(
+    mapboxMap!.setOnMapTapListener(
       (context) {
         widget.onMapTap(LatLng(context.point.coordinates.lat.toDouble(), context.point.coordinates.lng.toDouble()));
       },
@@ -977,15 +913,19 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
   }
 
   void _onMapCreated(MapboxMap map) async {
-    mapboxMap = map;
-    _updateMapTheme();
-
+    if (_isDisposed || !mounted) {
+      print('[DEBUG] Map created but widget is disposed or unmounted');
+      return;
+    }
     
-    
-    pointAnnotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-    polylineAnnotationManager = await mapboxMap.annotations.createPolylineAnnotationManager();
+    try {
+      mapboxMap = map;
+      _updateMapTheme();
+      
+      pointAnnotationManager = await mapboxMap!.annotations.createPointAnnotationManager();
+      polylineAnnotationManager = await mapboxMap!.annotations.createPolylineAnnotationManager();
 
-    await mapboxMap.setBounds(CameraBoundsOptions(
+      await mapboxMap!.setBounds(CameraBoundsOptions(
     minPitch: 0,    // Minimum tilt angle (degrees)
     maxPitch: 70,   // Maximum tilt angle (degrees), adjust as needed
     bounds: CoordinateBounds(
@@ -1006,7 +946,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
      maxZoom: 18.0,
   ));
 
-  mapboxMap.compass.updateSettings(
+  mapboxMap!.compass.updateSettings(
       CompassSettings(
         enabled: true,
         clickable: true,
@@ -1018,25 +958,25 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
       )
     );
 
-    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
+    mapboxMap!.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
 
 
-    mapboxMap.location.updateSettings(LocationComponentSettings(
+    mapboxMap!.location.updateSettings(LocationComponentSettings(
       enabled: true,
       pulsingEnabled: true,
       showAccuracyRing: true,
     ));    
 
-  mapboxMap.style.addStyleImage(
+  mapboxMap!.style.addStyleImage(
     'destination-marker', 
     1.0, 
     MbxImage(width: 64, height: 64, data: widget.markerImageCache['destination']!),
     false, [], [], null);
 
 
-    mapboxMap.style.setStyleImportConfigProperties("basemap", mapConfig);
+    mapboxMap!.style.setStyleImportConfigProperties("basemap", mapConfig);
     
-    // var x = await mapboxMap.style.getStyleImportConfigProperties("basemap");
+    // var x = await mapboxMap!.style.getStyleImportConfigProperties("basemap");
     // print("Style import config: ${x["lightPreset"]!.value as String}");
     // x["lightPreset"].toString();
 
@@ -1044,14 +984,18 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
 
     _addBuildingTapInteraction(); // Add building tap interaction
 
-    // final initZoom = (await mapboxMap.getCameraState()).zoom;
+    // final initZoom = (await mapboxMap!.getCameraState()).zoom;
     // await _updateMarkerVisibility(initZoom);
 
-    widget.onMapCreated?.call(mapboxMap);
+    widget.onMapCreated.call(mapboxMap);
     setState(() {
       _isMapInitialized = true;
     });
     _bindInteractions();
+    } catch (e) {
+      print('[ERROR] Failed to initialize map: $e');
+      // Don't rethrow - let the widget continue to work with limited functionality
+    }
   }
 
   void _addBuildingTapInteraction() {
@@ -1062,7 +1006,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
         await selectBuilding(feature, event);
       },
     );
-    mapboxMap.addInteraction(buildingTap);
+    mapboxMap!.addInteraction(buildingTap);
   }
 
   @override
@@ -1106,36 +1050,4 @@ class MarkerClickListener implements OnPointAnnotationClickListener{
       callback();
     }
   }
-}
-
-Future<List<InteractiveAnnotation>> _declutterMarkers(
-    MapboxMap mapboxMap, List<InteractiveAnnotation> markers, double buffer) async {
-  final List<InteractiveAnnotation> result = [];
-  final List<Offset> screenPoints = [];
-
-  for (final marker in markers) {
-    final screenCoordinate = await mapboxMap.pixelForCoordinate(
-      Point(coordinates: Position(
-        marker.options.geometry.coordinates.lng,
-        marker.options.geometry.coordinates.lat,
-      )),
-    );
-
-    final screenPt = Offset(screenCoordinate.x, screenCoordinate.y);
-
-    bool tooClose = false;
-    for (final other in screenPoints) {
-      if ((screenPt - other).distance < buffer) {
-        tooClose = true;
-        break;
-      }
-    }
-
-    if (!tooClose) {
-      result.add(marker);
-      screenPoints.add(screenPt);
-    }
-  }
-
-  return result;
 }

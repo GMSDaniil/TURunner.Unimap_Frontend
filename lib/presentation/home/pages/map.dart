@@ -446,47 +446,76 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     }
   }
 
-  @override
-  void dispose() {
-    _themeTimer?.cancel();
-    _buildingZoomTimer?.cancel();
+ @override
+void dispose() {
+  _themeTimer?.cancel();
+  _buildingZoomTimer?.cancel();
 
-    if (_plannerOverlay != null) {
-      try {
-        _plannerOverlay?.remove();
-        _plannerOverlay = null;
-      } catch (e) {
-        print('Overlay removal error during dispose: $e');
-      }
+  // ✅ Fix overlay removal
+  if (_plannerOverlay != null) {
+    try {
+      _plannerOverlay?.remove();
+    } catch (e) {
+      print('Overlay removal error during dispose: $e');
+    } finally {
+      _plannerOverlay = null;
     }
-
-    if (_panelController.isPanelOpen && mounted) {
-      try {
-        _panelController.close();
-      } catch (e) {
-        // Ignore errors during disposal
-        print('Panel close error during dispose: $e');
-      }
-    }
-
-    _mapAnimController?.dispose();
-    _plannerAnimCtr?.dispose(); // ← tidy up Route-Plan bar anim
-
-    _categoryImageCache.clear();
-
-    _searchCtl.dispose();
-    _searchFocusNode.dispose();
-
-    _allPointers.clear();
-    _markers.clear();
-    _suggestions.clear();
-    _interactiveAnnotations.clear();
-    _allInteractiveAnnotations.clear();
-    _activeCategoryPointers.clear();
-    _lastFavourites.clear();
-
-    super.dispose();
   }
+
+  // ✅ Fix panel controller disposal
+  try {
+    if (_panelController.isPanelOpen) {
+      _panelController.close();
+    }
+  } catch (e) {
+    print('Panel close error during dispose: $e');
+  }
+
+  // ✅ Fix animation controllers disposal
+  try {
+    _mapAnimController?.dispose();
+  } catch (e) {
+    print('Map animation controller dispose error: $e');
+  } finally {
+    _mapAnimController = null;
+  }
+
+  try {
+    _plannerAnimCtr?.dispose();
+  } catch (e) {
+    print('Planner animation controller dispose error: $e');
+  } finally {
+    _plannerAnimCtr = null;
+  }
+
+  // ✅ Clear caches and lists
+  _categoryImageCache.clear();
+  _allPointers.clear();
+  _markers.clear();
+  _suggestions.clear();
+  _interactiveAnnotations.clear();
+  _allInteractiveAnnotations.clear();
+  _activeCategoryPointers.clear();
+  _lastFavourites.clear();
+
+  // ✅ Dispose text controllers and focus nodes
+  try {
+    _searchCtl.dispose();
+  } catch (e) {
+    print('Search controller dispose error: $e');
+  }
+
+  try {
+    _searchFocusNode.dispose();
+  } catch (e) {
+    print('Search focus node dispose error: $e');
+  }
+
+  // ✅ Clear MapboxMap reference without calling methods on it
+  _mapboxMap = null;
+
+  super.dispose();
+}
 
   // /// Snap the sheet to the nearest predefined stop once the user lifts their finger.
   // void _snapToNearest() {
