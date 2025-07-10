@@ -118,9 +118,10 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
       ),
       child: SafeArea(
         top: false,
-        bottom: false,
+        bottom: true,
+        minimum: const EdgeInsets.only(bottom: 16), // Add extra padding to the bottom
         child: Container(
-          constraints: const BoxConstraints(minHeight: 320), // Set your minimal height here
+          constraints: const BoxConstraints(minHeight: 320, maxHeight: 600), // Increased maxHeight to make the route options taller
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -258,15 +259,13 @@ class _RouteOptionsPanelState extends State<RouteOptionsPanel> {
                                     ],
                                   ),
                           ),
-                    // Removed timeline/segment tiles below the Show details button
                   ],
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
+    ));
   }
 }
 
@@ -804,78 +803,9 @@ class RouteDetailsSheet extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+          )],
+          ),
       ),
     ));
-  }
-}
-
-class _RouteEndpointTile extends StatelessWidget {
-  final String label;
-  final String? location;
-  final bool isFirst;
-  final bool isLast;
-
-  const _RouteEndpointTile({
-    required this.label,
-    required this.location,
-    required this.isFirst,
-    required this.isLast,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (!isFirst)
-            Container(
-              width: 4,
-              height: 48,
-              color: Colors.grey.shade300,
-              margin: const EdgeInsets.only(right: 12),
-            ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade700,
-                    fontSize: 14,
-                  ),
-                ),
-                if (location != null)
-                  Text(
-                    location!,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

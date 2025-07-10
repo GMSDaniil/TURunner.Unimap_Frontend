@@ -705,7 +705,7 @@ void dispose() {
         double minAllowed = 180.0;
         maxHeight = total.clamp(minAllowed, maxAllowed);
       } else {
-        maxHeight = MediaQuery.of(context).size.height * 0.31;
+        maxHeight = MediaQuery.of(context).size.height * 0.4; // Adjusted to 40% of screen height
       }
 
       // ────────────────────────────────────────────────────────────────
@@ -1898,7 +1898,7 @@ void dispose() {
         return _categoryImageCache['mensa']!;
       case 'building':  // ✅ Only actual buildings
         return _categoryImageCache['building']!;
-      default:          // ✅ Everything else (gym, shops, restaurants, etc.)
+      default:          // ✅ Everything else (gym, shops, restaurants, etc.) gets default pin
         return _categoryImageCache['default']!;
     }
   }
