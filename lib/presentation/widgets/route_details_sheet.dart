@@ -670,11 +670,14 @@ class RouteDetailsPanel extends StatelessWidget {
         // Use both type field and transportType for walk detection
         final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null || seg.mode.toString() == TravelMode.walk.toString();
         
+        // Use the helper method to detect scooter segments
+        final isScoot = isScooter(seg);
+        
         // Check if this is a zero-duration/distance walk
-        bool isZeroWalk = false;
-        if (isWalk) {
-          isZeroWalk = seg.durationSeconds == 0 && seg.distanceMeters == 0;
-        }
+        // bool isZeroWalk = false;
+        // if (isWalk) {
+        //   isZeroWalk = seg.durationSeconds == 0 && seg.distanceMeters == 0;
+        // }
 
         // Skip zero walks completely
         // if (isZeroWalk) {
