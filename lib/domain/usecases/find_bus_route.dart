@@ -5,9 +5,9 @@ import 'package:auth_app/core/usecase/usecase.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:dartz/dartz.dart';
 
-class FindBusRouteUseCase implements UseCase<Either<String, FindBusRouteResponse>, FindRouteReqParams> {
+class FindBusRouteUseCase implements UseCase<Either<String, List<FindBusRouteResponse>>, FindRouteReqParams> {
   @override
-  Future<Either<String, FindBusRouteResponse>> call({FindRouteReqParams? param}) async {
+  Future<Either<String, List<FindBusRouteResponse>>> call({FindRouteReqParams? param}) async {
     if (param == null) return Left("Parameters can't be null");
 
     try {

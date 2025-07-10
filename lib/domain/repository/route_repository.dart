@@ -6,6 +6,6 @@ import 'package:dartz/dartz.dart';
 
 abstract class RouteRepository {
   Future<Either<String, FindRouteResponse>> findRoute(FindRouteReqParams params);
-  Future<Either<String, FindBusRouteResponse>> findBusRoute(FindRouteReqParams params);
+  Future<Either<String, List<FindBusRouteResponse>>> findBusRoute(FindRouteReqParams params);
   Future<Either<String, FindScooterRouteResponse>> findScooterRoute(FindRouteReqParams params);
 }
