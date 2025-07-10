@@ -803,6 +803,7 @@ class RouteDetailsPanel extends StatelessWidget {
       final icon = style.$2;
 
       if (i > 0) {
+        if(seg.distanceMeters == 0 && seg.durrationSeconds == 0) continue;
         widgets.add(Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
@@ -829,6 +830,7 @@ class RouteDetailsPanel extends StatelessWidget {
           ),
         ));
       } else if (isWalk) {
+        // if(seg.distanceMeters == 0 && seg.durrationSeconds == 0) continue;
         widgets.add(Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           margin: const EdgeInsets.symmetric(horizontal: 1),
