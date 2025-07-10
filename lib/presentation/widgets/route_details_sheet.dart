@@ -1,3 +1,4 @@
+import 'package:auth_app/data/models/travel_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:auth_app/data/models/route_data.dart';
 import 'package:auth_app/data/models/route_segment.dart';
@@ -350,14 +351,16 @@ class RouteDetailsPanel extends StatelessWidget {
                         ),
                       ),
                     // Add divider line above walk row
+                    
                     if (previousEndStop != null)
+                      (segment.durationSeconds != 0 || segment.distanceMeters != 0) ?
                       Padding(
                         padding: const EdgeInsets.only(top: 20, bottom: 0),
                         child: Container(
                           height: 1,
                           color: Colors.grey.shade300,
                         ),
-                      ),
+                      ) : const SizedBox(height: 12,),
                     Padding(
                       padding: EdgeInsets.only(
                         top: previousEndStop != null ? 12 : 0,
@@ -370,6 +373,14 @@ class RouteDetailsPanel extends StatelessWidget {
                             color: textTheme.bodyMedium!.color,
                           ),
                           const SizedBox(width: 6),
+                          segment.durationSeconds == 0 && segment.distanceMeters == 0 ? 
+                          Expanded(child: Text(
+                            'Transfer',
+                              style: textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                          )) :
+
                           Expanded(
                             child: Text(
                               'Walk ${_minutes(segment.durationSeconds)} (${_distance(segment.distanceMeters)})',
@@ -479,9 +490,9 @@ class RouteDetailsPanel extends StatelessWidget {
         final seg = segs[i];
         final isLast = i == segs.length - 1;
         final isFirst = i == 0;
-
+        
         // Use both type field and transportType for walk detection
-        final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null;
+        final isWalk = seg.type == 'walk' || seg.transportType == 'walk' || seg.transportType == null || seg.mode.toString() == TravelMode.walk.toString();
         
         // Check if this is a zero-duration/distance walk
         bool isZeroWalk = false;
@@ -490,9 +501,9 @@ class RouteDetailsPanel extends StatelessWidget {
         }
 
         // Skip zero walks completely
-        if (isZeroWalk) {
-          continue;
-        }
+        // if (isZeroWalk) {
+        //   continue;
+        // }
 
         /// look-ahead: is the next segment a walk?
         final nextIsWalk = !isLast && (segs[i + 1].type == 'walk' || segs[i + 1].transportType == 'walk');

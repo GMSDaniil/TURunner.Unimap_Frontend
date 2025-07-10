@@ -36,7 +36,7 @@ class RouteRepositoryImpl implements RouteRepository {
   }
 
    @override
-  Future<Either<String, FindBusRouteResponse>> findBusRoute(FindRouteReqParams params) async {
+  Future<Either<String, List<FindBusRouteResponse>>> findBusRoute(FindRouteReqParams params) async {
     final result = await sl<FindRouteApiService>().getBusRoute(params);
 
     return result.fold(
@@ -53,10 +53,11 @@ class RouteRepositoryImpl implements RouteRepository {
           if (data is List && data.isNotEmpty){
             final firstRoute = data[0];
             final route = FindBusRouteResponse.fromJson(firstRoute);
-            return Right(route);
+            final routes = data.map((e) => FindBusRouteResponse.fromJson(e)).toList();
+            return Right(routes);
           }else if (data is Map<String, dynamic>) {
             final route = FindBusRouteResponse.fromJson(data);
-            return Right(route);
+            return Right([route]);
           } else {
             return Left('Unexpected data format');
           }
