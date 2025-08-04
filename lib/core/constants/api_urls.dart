@@ -1,24 +1,28 @@
-class ApiUrls {
-  static const baseURL = 'https://dev.cherep.co/tubify/api/';
-  static const register = '${baseURL}Users/register';
-  static const login = '${baseURL}Users/login';
-  static const refreshToken = '${baseURL}Tokens/refreshToken';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-  static const userProfile = '${baseURL}Users/getUser';
+class ApiUrls {
+  static String get baseURL => dotenv.env['BASE_URL']!;
+
+  static String get register => '${baseURL}Users/register';
+  static String get login => '${baseURL}Users/login';
+  static String get refreshToken => '${baseURL}Tokens/refreshToken';
+
+  static String get userProfile => '${baseURL}Users/getUser';
 
   //TODO
-  static const findRoute = '${baseURL}Route/walking';
-  static const findBusRoute = '${baseURL}Route/hybrid-several-points';
-  static const findScooterRoute = '${baseURL}Route/scooter-route';
-  static const getMensaMenu = '${baseURL}mensa/all-menus';
-  static const getPointers = '${baseURL}Route/all-pointers';
-  static const getWeatherInfo = '${baseURL}weather';
+  static String get findRoute => '${baseURL}Route/walking';
+  static String get findBusRoute => '${baseURL}Route/hybrid-several-points';
+  static String get findScooterRoute => '${baseURL}Route/scooter-route';
+  static String get getMensaMenu => '${baseURL}mensa/all-menus';
+  static String get getPointers => '${baseURL}Route/all-pointers';
+  static String get getWeatherInfo => '${baseURL}weather';
 
   // Student schedule (Moses TU Berlin)
-  static const getStudentSchedule = '${baseURL}student-schedule';
+  static String get getStudentSchedule => '${baseURL}student-schedule';
 
-  static const getStudyPrograms = '${baseURL}StudyProgram';
+  static String get getStudyPrograms => '${baseURL}StudyProgram';
 
-  static const addFavouriteMeal = '${baseURL}Users/addFavouriteMeal';
-  static const removeFavouriteMeal= '${baseURL}Users/removeFavouriteMeal';
+  static String get addFavouriteMeal => '${baseURL}Users/addFavouriteMeal';
+  static String get removeFavouriteMeal =>
+      '${baseURL}Users/removeFavouriteMeal';
 }
