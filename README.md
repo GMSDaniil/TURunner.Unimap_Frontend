@@ -97,4 +97,3 @@ Group D – PP3S @ TU Berlin
 **Daniil, Yura, Malika, Ivan**
 
 
-A new Flutter project.
