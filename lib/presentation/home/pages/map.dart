@@ -188,6 +188,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // ── lifecycle ────────────────────────────────────────────────────
   @override
   void initState() {
+
     super.initState();
     _navBarHeight = widget.navBarHeight;
     _initializeMap(); // Create separate initialization method

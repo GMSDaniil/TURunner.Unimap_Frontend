@@ -298,10 +298,10 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   }
 
   void _updateMapTheme() {
-    if (!_canPerformMapOperations) {
-      print('[DEBUG] Cannot update map theme: map not ready or disposed');
-      return;
-    }
+    // if (!_canPerformMapOperations) {
+    //   print('[DEBUG] Cannot update map theme: map not ready or disposed');
+    //   return;
+    // }
     
     try {
       mapConfig["lightPreset"] = _currentTheme.toString();
@@ -920,6 +920,7 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
     
     try {
       mapboxMap = map;
+      _currentTheme = widget.mapTheme ?? ThemeManager.getCurrentTheme();
       _updateMapTheme();
       
       pointAnnotationManager = await mapboxMap!.annotations.createPointAnnotationManager();

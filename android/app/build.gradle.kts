@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.tubify"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Temporarily remove NDK version to let system choose compatible version
+    // ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
