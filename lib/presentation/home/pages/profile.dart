@@ -20,6 +20,8 @@ import 'package:auth_app/domain/usecases/get_study_programs.dart';
 import 'package:auth_app/domain/entities/study_program.dart';
 import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
 import 'package:auth_app/presentation/home/pages/settings/app_settings_page.dart';
+import 'package:auth_app/presentation/auth/pages/signin.dart';
+import 'package:auth_app/presentation/auth/pages/signup.dart';
 
 class ProfilePage extends StatefulWidget {
   final void Function(bool)? onSearchFocusChanged;
@@ -280,13 +282,17 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           BasicAppButton(
             title: 'Sign In',
-            onPressed: () => Navigator.of(context).pushNamed('/signin'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => SigninPage()),
+            ),
             width: screenWidth,
           ),
           const SizedBox(height: 16),
           BasicAppButton(
             title: 'Create Account',
-            onPressed: () => Navigator.of(context).pushNamed('/signup'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => SignupPage()),
+            ),
             width: screenWidth,
           ),
           const SizedBox(height: 24),

@@ -11,11 +11,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
 import '../../../common/bloc/button/button_state.dart';
-import '../../home/pages/home.dart';
+// Removed HomePage import: we now just pop back to Profile after auth
 import 'signup.dart';
 
-import 'package:auth_app/domain/repository/favourites.dart';
-import 'package:auth_app/domain/entities/favourite.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 
 class SigninPage extends StatelessWidget {
@@ -65,10 +63,10 @@ class SigninPage extends StatelessWidget {
                 },
               );
 
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomePage()),
-              );
+              // Instead of rebuilding HomePage, just pop back to previous (Profile)
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
             }
             if (state is ButtonFailureState) {
               // Show error message on login failure

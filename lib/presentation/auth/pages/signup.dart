@@ -1,15 +1,12 @@
-import 'package:auth_app/common/bloc/auth/sign_in_cubit.dart';
 import 'package:auth_app/common/bloc/button/button_state.dart';
 import 'package:auth_app/common/bloc/button/button_state_cubit.dart';
 import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/common/widgets/button/basic_app_button.dart';
-import 'package:auth_app/data/models/signin_req_params.dart';
 import 'package:auth_app/data/models/signin_response.dart';
 import 'package:auth_app/data/models/signup_req_params.dart';
-import 'package:auth_app/domain/usecases/signin.dart';
 import 'package:auth_app/domain/usecases/signup.dart';
 import 'package:auth_app/presentation/auth/pages/signin.dart';
-import 'package:auth_app/presentation/home/pages/home.dart';
+// Removed HomePage import: successful signup just pops back
 import 'package:auth_app/service_locator.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -49,10 +46,10 @@ class SignupPage extends StatelessWidget {
                 SignInResponse response = state.data;
                 var userProvider = Provider.of<UserProvider>(context, listen: false);
                 userProvider.setUser(response.user);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
+                // Return to previous (Profile) without rebuilding map/home
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                }
               }
               if (state is ButtonFailureState) {
                 var snackBar = SnackBar(content: Text(state.errorMessage));
