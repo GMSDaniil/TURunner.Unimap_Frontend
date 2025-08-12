@@ -82,12 +82,12 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
       // Remove from favorites
       await userProvider.removeFavoriteMeal(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$mealName removed from favourites'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text('$mealName removed from favourites'),
+        //     duration: const Duration(seconds: 2),
+        //   ),
+        // );
       }
     } else {
       // Add to favorites
@@ -100,12 +100,12 @@ class _WeeklyMensaPlanState extends State<WeeklyMensaPlan> {
       );
       await userProvider.addFavoriteMeal(userMeal);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$mealName added to favorites'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //     content: Text('$mealName added to favorites'),
+        //     duration: const Duration(seconds: 2),
+        //   ),
+        // );
       }
     }
   }

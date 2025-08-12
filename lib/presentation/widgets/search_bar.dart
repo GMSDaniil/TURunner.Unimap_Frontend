@@ -251,25 +251,41 @@ class _MapSearchBarState extends State<MapSearchBar> {
         ),
         itemBuilder: (context, index) {
           final suggestion = widget.suggestions[index];
+          final bool isAction = suggestion.category == 'action';
+          final leadingIcon = isAction
+              ? Icon(
+                  Icons.add_location_alt_outlined,
+                  size: 22,
+                  color: Theme.of(context).colorScheme.primary,
+                )
+              : const Icon(
+                  Icons.location_on_outlined,
+                  size: 22,
+                  color: Colors.grey,
+                );
           return ListTile(
-            leading: const Icon(
-              Icons.location_on_outlined,
-              size: 22,
-              color: Colors.grey,
-            ),
+            leading: leadingIcon,
             title: Text(
               suggestion.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isAction
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+              ),
             ),
-            subtitle: suggestion.rooms.isNotEmpty
-              ? Text(
-                  'Rooms: ${suggestion.rooms.take(4).join(', ')}${suggestion.rooms.length > 4 ? '...' : ''}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                  ),
-                )
-              : null,
+            subtitle: isAction
+                ? null
+                : (suggestion.rooms.isNotEmpty
+                    ? Text(
+                        'Rooms: ${suggestion.rooms.take(4).join(', ')}${suggestion.rooms.length > 4 ? '...' : ''}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                      )
+                    : null),
             onTap: () {
               widget.searchController.clear();
               widget.onClear();

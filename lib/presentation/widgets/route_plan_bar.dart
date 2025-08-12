@@ -9,6 +9,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'route_search_bar.dart';
 
+/// Controller allowing parent widgets to manipulate the RoutePlanBar (e.g., set a field after a map tap)
+class RoutePlanBarController {
+  _RoutePlanBarState? _state;
+  void _attach(_RoutePlanBarState s) => _state = s;
+  void setFieldLocation(int index, LatLng pos, {String? label}) =>
+      _state?.setFieldLocation(index, pos, label: label);
+}
+
 typedef OnCancelled = void Function();
 /// Called when the route changes:
 /// [positions] is the list of LatLng for start, stops, destination
@@ -35,18 +43,24 @@ class _Cand {
 class RoutePlanBar extends StatefulWidget {
   const RoutePlanBar({
     super.key,
+    required this.controller,
     required this.currentLocation,
     required this.initialDestination,
     required this.allPointers,
     required this.onCancelled,
     required this.onChanged,
+    required this.onRequestMapPick,
   });
+
+  final RoutePlanBarController controller;
 
   final LatLng? currentLocation;
   final LatLng? initialDestination;
   final List<Pointer> allPointers;
   final OnCancelled onCancelled;
   final OnRouteChanged onChanged;
+  /// Request parent (map page) to let user tap map to choose coordinate for field index
+  final void Function(int fieldIndex) onRequestMapPick;
 
   @override
   State<RoutePlanBar> createState() => _RoutePlanBarState();
@@ -67,6 +81,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   @override
   void initState() {
     super.initState();
+  widget.controller._attach(this);
 
     _pool = [
       if (widget.currentLocation != null)
@@ -154,6 +169,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
                   ),
                 ),
               ),
+              const SizedBox(width: 4),
               if (_ctls.length > 2)
                 GestureDetector(
                   onTap: () => _removeStop(i),
@@ -261,7 +277,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   /*──────── overlay search ────────*/
-  Future<_Cand?> _search(String hint) {
+  Future<_Cand?> _search(String hint, int fieldIndex) {
     final completer = Completer<_Cand?>();
     _overlay = OverlayEntry(
       builder: (_) => _RouteSearchOverlay(
@@ -280,6 +296,9 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
           _overlay = null;
           completer.complete(null);
         },
+        onPickOnMap: () {
+          widget.onRequestMapPick(fieldIndex);
+        },
       ),
     );
     Overlay.of(context, rootOverlay: true)!.insert(_overlay!);
@@ -287,7 +306,7 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
   }
 
   Future<void> _pick(int idx, String hint) async {
-    final p = await _search(hint);
+    final p = await _search(hint, idx);
     if (p == null) return;
     setState(() {
       _chosen.remove(_route[idx]);
@@ -387,6 +406,25 @@ class _RoutePlanBarState extends State<RoutePlanBar> {
     for (final c in _ctls) c.dispose();
     super.dispose();
   }
+
+  /// Public method: parent can set a field's location after a map tap
+  void setFieldLocation(int index, LatLng pos, {String? label}) {
+    if (index < 0 || index >= _ctls.length) return;
+    final name = label ?? _pretty(pos);
+    final cand = _Cand(name, pos);
+    setState(() {
+      _chosen.remove(_route[index]);
+      _route[index] = cand;
+      _ctls[index].text = name;
+      _chosen.add(cand);
+      if (_types[index] == 'start') {
+        _start = cand;
+      } else if (_types[index] == 'dest') {
+        _dest = cand;
+      }
+      _fire();
+    });
+  }
 }
 
 /*──────────────────────── search overlay (unchanged) ──────────*/
@@ -399,6 +437,7 @@ class _RouteSearchOverlay extends StatefulWidget {
     required this.onPicked,
     required this.onCancel,
     required this.hint,
+  required this.onPickOnMap,
   });
 
   final String initialText;
@@ -408,6 +447,7 @@ class _RouteSearchOverlay extends StatefulWidget {
   final void Function(_Cand) onPicked;
   final VoidCallback onCancel;
   final String hint;
+  final VoidCallback onPickOnMap;
 
   @override
   State<_RouteSearchOverlay> createState() => _RouteSearchOverlayState();
@@ -491,17 +531,30 @@ class _RouteSearchOverlayState extends State<_RouteSearchOverlay>
             children: [
               RouteSearchBar(
                 searchController: _searchCtl,
-                suggestions: _suggestions
-                    .map((c) => Pointer(
-                          name: c.label,
-                          lat: c.pos.latitude,
-                          lng: c.pos.longitude,
-                          category: '',
-                          rooms: _getRoomsForPointer(c.label),
-                        ))
-                    .toList(),
+                suggestions: [
+                  // Synthetic first suggestion for picking on map
+                  Pointer(
+                    name: 'Select location',
+                    lat: 0,
+                    lng: 0,
+                    category: 'action',
+                    rooms: [],
+                  ),
+                  ..._suggestions.map((c) => Pointer(
+                        name: c.label,
+                        lat: c.pos.latitude,
+                        lng: c.pos.longitude,
+                        category: '',
+                        rooms: _getRoomsForPointer(c.label),
+                      )),
+                ],
                 onClear: () => _searchCtl.clear(),
                 onSuggestionSelected: (p) {
+                  if (p.name == 'Select location') {
+                    widget.onPickOnMap();
+                    _close();
+                    return;
+                  }
                   final cand = widget.pool.firstWhere(
                       (c) =>
                           c.label == p.name &&

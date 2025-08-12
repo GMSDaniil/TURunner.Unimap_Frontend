@@ -1,8 +1,6 @@
-import 'dart:math' as math;
 
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/common/providers/app_settings.dart';
-import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
@@ -98,6 +96,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
+  final RoutePlanBarController _routePlanBarController = RoutePlanBarController();
+  int? _centerPickFieldIndex; // index of route field for center-pick mode
+  OverlayEntry? _centerPickOverlay; // overlay with center marker & actions
   PersistentBottomSheetController? _plannerSheetCtr;
   OverlayEntry? _plannerOverlay; // top Route-Plan bar overlay
   AnimationController? _plannerAnimCtr; // drives its in/out animation
@@ -1302,7 +1303,29 @@ void dispose() {
                     children: [
                       MapSearchBar(
                         searchController: _searchCtl,
-                        suggestions: _suggestions,
+                        // Inject synthetic first suggestion for center-pick like route overlay
+                        suggestions: _searchActive && _suggestions.isNotEmpty
+                            ? [
+                                Pointer(
+                                  name: 'Select location',
+                                  lat: 0,
+                                  lng: 0,
+                                  category: 'action',
+                                  rooms: const [],
+                                ),
+                                ..._suggestions,
+                              ]
+                            : _searchActive && _suggestions.isEmpty
+                                ? [
+                                    Pointer(
+                                      name: 'Select location',
+                                      lat: 0,
+                                      lng: 0,
+                                      category: 'action',
+                                      rooms: const [],
+                                    ),
+                                  ]
+                                : _suggestions,
                         onSearch: (q) {
                           _searchMarkers(q);
                           setState(() => _suggestions = []);
@@ -1320,6 +1343,15 @@ void dispose() {
                           }
                         },
                         onSuggestionSelected: (p) {
+                          if (p.category == 'action' && p.name == 'Select location') {
+                            // Start center-pick for global search (no specific route field)
+                            _startCenterPick(-1); // use sentinel index
+                            // Close search UI
+                            _searchFocusNode.unfocus();
+                            setState(() => _searchActive = false);
+                            _notifyNavBar(false);
+                            return;
+                          }
                           final dest = LatLng(p.lat, p.lng);
                           _animatedMapboxMove(dest, 18);
                           _onMapTap(dest);
@@ -1449,6 +1481,7 @@ void dispose() {
             child: Align(
               alignment: Alignment.topCenter,
               child: RoutePlanBar(
+                controller: _routePlanBarController,
                 currentLocation: currentLocation,
                 initialDestination: destination,
                 allPointers: _allPointers,
@@ -1476,6 +1509,9 @@ void dispose() {
                     _animatedMapboxMove(bounds.center, 15);
                   }
                 },
+                onRequestMapPick: (fieldIndex) {
+                  _startCenterPick(fieldIndex);
+                },
               ),
             ),
           ),
@@ -1483,7 +1519,7 @@ void dispose() {
       );
 
       if (_plannerOverlay != null) {
-        Overlay.of(context, rootOverlay: true)!.insert(_plannerOverlay!);
+        Overlay.of(context, rootOverlay: true).insert(_plannerOverlay!);
       }
       _plannerAnimCtr!.forward(); // animate it in
     }
@@ -1494,18 +1530,7 @@ void dispose() {
 
 
 
-  IconData _getThemeIcon(MapTheme theme) {
-    switch (theme) {
-      case MapTheme.dawn:
-        return Icons.wb_twilight;
-      case MapTheme.day:
-        return Icons.wb_sunny;
-      case MapTheme.dusk:
-        return Icons.wb_twilight;
-      case MapTheme.night:
-        return Icons.nightlight;
-    }
-  }
+  // _getThemeIcon removed (unused)
 
   // ── search listener ──────────────────────────────────────────────
   void _onSearchChanged() {
@@ -2027,11 +2052,135 @@ void dispose() {
 
   // ── taps ─────────────────────────────────────────────────────────
 
+  Future<void> _confirmCenterPick() async {
+    if (_centerPickFieldIndex == null) return;
+    try {
+      final cam = await _mapboxMap?.getCameraState();
+      if (cam != null) {
+        final mb.Position pos = cam.center.coordinates;
+        final double lat = pos.lat.toDouble();
+        final double lng = pos.lng.toDouble();
+        if (_centerPickFieldIndex == -1) {
+          // Global search center-pick: immediately start route planning to selected point
+          final destination = LatLng(lat, lng);
+          await _startRouteFlow(destination);
+        } else {
+          _routePlanBarController.setFieldLocation(
+            _centerPickFieldIndex!,
+            LatLng(lat, lng),
+          );
+        }
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   const SnackBar(content: Text('Location selected')),
+        // );
+      }
+    } catch (_) {}
+    _closeCenterPick();
+  }
+
+  void _cancelCenterPick() {
+    _closeCenterPick();
+  }
+
+  void _closeCenterPick() {
+    _centerPickFieldIndex = null;
+    _centerPickOverlay?.remove();
+    _centerPickOverlay = null;
+  }
+
+  void _startCenterPick(int fieldIndex) {
+    if (_centerPickOverlay != null) return; // already active
+    _centerPickFieldIndex = fieldIndex;
+    _centerPickOverlay = OverlayEntry(
+      builder: (ctx) => Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: Icon(Icons.place, size: 46, color: Theme.of(ctx).colorScheme.primary),
+                    ),
+                    Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 120,
+            child: Material(
+              elevation: 10,
+              borderRadius: BorderRadius.circular(20),
+              color: Theme.of(ctx).colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.add_location_alt_outlined, color: Theme.of(ctx).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Move map to select location', style: Theme.of(ctx).textTheme.titleSmall),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _cancelCenterPick,
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Theme.of(ctx).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(ctx).colorScheme.primary,
+                              foregroundColor: Theme.of(ctx).colorScheme.onPrimary,
+                            ),
+                            onPressed: _confirmCenterPick,
+                            child:const Text(
+                              'OK'
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_centerPickOverlay!);
+  }
+  
+  // ── normal map tap handler (disabled while center pick overlay active) ──
   void _onMapTap(LatLng latlng) async {
-    if (_markerTapJustHandled) {
-      _markerTapJustHandled = false;
-      return;
-    }
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
 
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
@@ -2058,7 +2207,7 @@ void dispose() {
       p = closePointers.isNotEmpty ? closePointers.first : null;
     }
 
-    if (p != null) {
+  if (p != null) {
       // Save camera state before zooming to building
       if (_mapboxMap != null && !_isBuildingZoomed) {
         final camState = await _mapboxMap!.getCameraState();
@@ -2141,7 +2290,7 @@ void dispose() {
       setState(() => _coordinatePanelLatLng = latlng);
       _panelController.open();
       _notifyNavBar(true);
-    }
+  }
   }
 
   void _onMarkerTap(Pointer p) async {
@@ -2283,39 +2432,7 @@ void dispose() {
   }
 
   // ── animation helper ───────────────────in──────────────────────────
-  void _animatedMapMove(LatLng dest, double zoom) {
-    _mapAnimController?.dispose();
-    _mapAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    final latTween = Tween(
-      begin: _mapController.camera.center.latitude,
-      end: dest.latitude,
-    );
-    final lngTween = Tween(
-      begin: _mapController.camera.center.longitude,
-      end: dest.longitude,
-    );
-    final zoomTween = Tween(begin: _mapController.camera.zoom, end: zoom);
-
-    // ❶ Create the curved animation first …
-    final anim = CurvedAnimation(
-      parent: _mapAnimController!,
-      curve: Curves.easeInOut,
-    );
-
-    // ❷ … then attach the listener.
-    anim.addListener(() {
-      _mapController.move(
-        LatLng(latTween.evaluate(anim), lngTween.evaluate(anim)),
-        zoomTween.evaluate(anim),
-      );
-    });
-
-    _mapAnimController!.forward();
-  }
+  // _animatedMapMove removed (unused after transition to mapbox easeTo)
 
   void _animatedMapboxMove(
     LatLng dest,
@@ -2348,16 +2465,18 @@ void dispose() {
   //   _startRouteFlow(dest);
   // }
 
-  void _updateMapConfig() {
-    if (_mapConfig == null || _mapboxMap == null) return;
-    _mapboxMap?.style.setStyleImportConfigProperties("basemap", _mapConfig!);
-  }
+  // _updateMapConfig removed (unused)
 
   /*───────────────────────────────────────────────────────────────
    * Route-Plan bar teardown animation (fade & slide out)
    *──────────────────────────────────────────────────────────────*/
   Future<void> _dismissPlannerOverlay() async {
     if (_plannerOverlay == null) return;
+
+    // If user was in center-pick mode for a route field, cancel it automatically
+    if (_centerPickOverlay != null) {
+      _closeCenterPick();
+    }
 
     // Play the reverse animation only if the forward one has finished.
     if (_plannerAnimCtr != null && _plannerAnimCtr!.isCompleted) {
