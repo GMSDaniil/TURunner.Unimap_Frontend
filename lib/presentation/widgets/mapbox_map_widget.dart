@@ -665,8 +665,22 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
 
   
 
-  // ── 4) Re‐draw the destination marker ───────────────────────────
+  // ── 4) Re‐draw the start & destination markers ─────────────────
+  await deleteStartMarker();
   await deleteDestinationMarker();
+  // Start marker: first segment with a non-empty path
+  final firstSeg = segments.firstWhere(
+    (s) => s.path.isNotEmpty,
+    orElse: () => RouteSegment(
+      mode: TravelMode.walk,
+      path: const [],
+      distanceMeters: 0,
+      durrationSeconds: 0,
+    ),
+  );
+  if (firstSeg.path.isNotEmpty) {
+    await addStartMarker(firstSeg.path.first);
+  }
   if (segments.isNotEmpty && segments.last.path.isNotEmpty) {
     await addDestinationMarker(segments.last.path.last);
   }
@@ -779,6 +793,42 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
       iconImage: 'destination-marker', // You'd need to load this icon first
       iconSize: 0.75,
       iconAnchor: IconAnchor.BOTTOM,
+    ));
+  }
+
+  Future<void> deleteStartMarker() async {
+    if (!_canPerformMapOperations) return;
+    try {
+      await mapboxMap!.style.removeStyleLayer('start-layer');
+      await mapboxMap!.style.removeStyleSource('start-source');
+    } catch (_) {}
+  }
+
+  Future<void> addStartMarker(LatLng start) async {
+    if (!_canPerformMapOperations) return;
+    final startGeoJson = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {"type": "Point", "coordinates": [start.longitude, start.latitude]},
+          "properties": {}
+        }
+      ]
+    };
+    await mapboxMap!.style.addSource(GeoJsonSource(
+      id: 'start-source',
+      data: jsonEncode(startGeoJson),
+    ));
+    // Circle style similar to scooter start marker (white fill, orange border)
+    await mapboxMap!.style.addLayer(CircleLayer(
+      id: 'start-layer',
+      sourceId: 'start-source',
+      circleEmissiveStrength: 1.0,
+        circleRadius: 5, // slightly larger for better visibility
+        circleColor: Colors.white.value,
+        circleStrokeColor: Colors.grey.value,
+        circleStrokeWidth: 3,
     ));
   }
 

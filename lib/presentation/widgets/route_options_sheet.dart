@@ -309,7 +309,6 @@ class _SegmentTimelineTile extends StatelessWidget {
                 : isSuburban
                     ? const Color(0xff388e3c)
                     : Colors.grey.shade400;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

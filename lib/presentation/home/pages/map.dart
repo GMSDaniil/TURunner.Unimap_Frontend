@@ -1431,10 +1431,12 @@ void dispose() {
     bool skipPanelOpen = false,
   }) async {
     // Optionally skip opening the panel if already open (for swap animation)
-    if (!skipPanelOpen) {
-      _panelController.open();
-      _notifyNavBar(true); // Hide nav bar when opening
-    }
+
+    // !!! COMMENTED OUT BECAUSE IT FIX THE BUG WITH UNPROPER SIZING OF ROUTE OPTION SHEETS
+    // if (!skipPanelOpen) {
+    //   _panelController.open();
+    //   _notifyNavBar(true); // Hide nav bar when opening
+    // }
 
     _routeDestination = destination; // remember for later
     if (_plannerOverlay != null) return;
