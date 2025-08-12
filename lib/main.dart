@@ -5,7 +5,6 @@ import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/get_user.dart';
 import 'package:auth_app/presentation/home/pages/home.dart';
-import 'package:auth_app/presentation/home/pages/welcome.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:flutter/services.dart';
@@ -128,31 +127,27 @@ class MyApp extends StatelessWidget {
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
           debugShowCheckedModeBanner: false,
-          home: BlocBuilder<AuthStateCubit, AuthState>(
-            builder: (context, state) {
-              if (state is Authenticated || state is GuestAuthenticated) {
-                Future.delayed(
-                  const Duration(seconds: 2), // Delay to simulate loading
-                  () {
-                    _loadUserDataOnAuthenticated(context);
-                  },
-                );
-                return const HomePage(); // Show MapPage for both Authenticated and Guest users
+          home: BlocListener<AuthStateCubit, AuthState>(
+            listenWhen: (prev, curr) => prev.runtimeType != curr.runtimeType,
+            listener: (context, state) {
+              final userProvider = Provider.of<UserProvider>(context, listen: false);
+              if (state is Authenticated) {
+                _loadUserDataOnAuthenticated(context);
+              } else if (state is UnAuthenticated) {
+                userProvider.clearUser();
+                userProvider.setFavourites([]);
+              } else if (state is GuestAuthenticated) {
+                // treat guest as cleared user with no favourites
+                userProvider.clearUser();
+                userProvider.setFavourites([]);
               }
-              if (state is GuestAuthenticated) {
-                // Load user data for guest
-                return const HomePage();
-              }
-              if (state is UnAuthenticated) {
-                return const WelcomePage();
-              }
-              return const Center(child: CircularProgressIndicator());
             },
+            child: const HomePage(),
           ),
           routes: {
             '/signup': (_) => SignupPage(),
             '/signin': (_) => SigninPage(),
-            '/home': (_) => const HomePage(), // Add this route for HomePage
+            '/home': (_) => const HomePage(),
           },
         );
       }

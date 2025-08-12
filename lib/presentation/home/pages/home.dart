@@ -4,7 +4,6 @@ import 'package:auth_app/presentation/home/bloc/user_display_cubit.dart';
 import 'package:auth_app/presentation/home/pages/favourites.dart';
 import 'package:auth_app/presentation/home/pages/map.dart';
 import 'package:auth_app/presentation/home/pages/profile.dart';
-import 'package:auth_app/presentation/home/pages/welcome.dart';
 import 'package:auth_app/presentation/widgets/bottom_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -110,14 +109,8 @@ class _HomePageState extends State<HomePage> {
               child: BlocListener<ButtonStateCubit, ButtonState>(
                 listener: (context, state) {
                   if (state is ButtonSuccessState) {
-                    // ✅ Use pushAndRemoveUntil to clear entire stack
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => const WelcomePage(),
-                        settings: const RouteSettings(name: '/'),
-                      ),
-                      (route) => false, // Remove all previous routes
-                    );
+                    // On logout just reset to first tab and let providers clear data
+                    setState(() => _tabIndex = 0);
                   }
                 },
                 child: IndexedStack(index: _tabIndex, children: _pages!),

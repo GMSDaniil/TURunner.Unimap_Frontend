@@ -11,7 +11,6 @@ import '../../../domain/usecases/logout.dart';
 import '../../../domain/entities/user.dart';
 import '../../home/bloc/user_display_cubit.dart';
 import '../../home/bloc/user_display_state.dart';
-import '../../home/pages/welcome.dart';
 import '../../../service_locator.dart';
 
 import 'package:auth_app/data/models/schedule_req_params.dart';
@@ -155,11 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
               if (state is ButtonSuccessState) {
                 // On successful logout, clear the user from the provider
                 Provider.of<UserProvider>(context, listen: false).clearUser();
-                // Navigate to welcome page
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WelcomePage()),
-                );
+                // Stay on HomePage; state cleared so UI reflects guest
               }
             },
           child: user != null
