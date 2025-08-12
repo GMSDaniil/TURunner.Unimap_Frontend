@@ -14,15 +14,13 @@ import '../../home/bloc/user_display_state.dart';
 import '../../home/pages/welcome.dart';
 import '../../../service_locator.dart';
 
-import '../../../common/bloc/auth/auth_state.dart';
-import '../../../common/bloc/auth/auth_state_cubit.dart';
 import 'package:auth_app/data/models/schedule_req_params.dart';
 import 'package:auth_app/domain/usecases/get_student_schedule.dart';
-import 'package:auth_app/data/models/student_schedule_response.dart';
 import 'package:auth_app/presentation/home/pages/student/student_schedule_detail_page.dart';
 import 'package:auth_app/domain/usecases/get_study_programs.dart';
 import 'package:auth_app/domain/entities/study_program.dart';
 import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
+import 'package:auth_app/presentation/home/pages/settings/app_settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final void Function(bool)? onSearchFocusChanged;
@@ -37,7 +35,6 @@ class _ProfilePageState extends State<ProfilePage> {
   List<StudentLectureEntity> _lectures = [];
   bool _isLoadingSchedule = false;
   String? _scheduleError;
-  bool _showScheduleSection = false;
   
   final _semesterController = TextEditingController();
   final _semesterFocusNode = FocusNode();  // ✅ Add FocusNode
@@ -136,9 +133,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _isLoadingSchedule = false;
       }),
       (scheduleResponse) => setState(() {
-        _lectures = scheduleResponse.lectures;
-        _isLoadingSchedule = false;
-        _showScheduleSection = true;
+  _lectures = scheduleResponse.lectures;
+  _isLoadingSchedule = false;
       }),
     );
   }
@@ -175,6 +171,25 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+   Widget _buildHeaderRow(String title) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          tooltip: 'App Settings',
+            onPressed: _openSettings,
+        ),
+      ],
+    );
+  }
+
   Widget _buildUserView(BuildContext context, UserEntity user) {
     // Wrap the user view with the BlocProvider and BlocListener for the logout button
     return BlocProvider(
@@ -200,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     // const SizedBox(height: 32),
                     // _buildProfilePicture(context),
                     const SizedBox(height: 24),
-                    _buildUsername(user),
+                    _buildHeaderRow(user.username),
                     const SizedBox(height: 8),
                     _buildEmail(user),
                     const SizedBox(height: 16),
@@ -234,13 +249,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildUsername(UserEntity user) {
-    return Text(
-      user.username,
-      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-    );
-  }
-
   Widget _buildEmail(UserEntity user) {
     return Text(
       user.email,
@@ -248,16 +256,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildDescription() {
-    return const Text(
-      'Empty Profile Description',
-      style: TextStyle(
-        fontStyle: FontStyle.italic,
-        fontSize: 16,
-        color: Colors.black,
-      ),
-    );
-  }
 
   Widget _buildLogoutButton(BuildContext context) {
     // Use the context from the BlocProvider to find the ButtonStateCubit
@@ -275,36 +273,25 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildGuestView(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // const SizedBox(height: 32),
-          // _buildProfilePicture(context),
           const SizedBox(height: 24),
-          const Text(
-            'Guest',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
+          _buildHeaderRow('Guest'),
           const SizedBox(height: 8),
-          const Text('-', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            const Text('-', style: TextStyle(fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 16),
-          // _buildDescription(),
-          // const SizedBox(height: 24),
           BasicAppButton(
             title: 'Sign In',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/signin');
-            },
+            onPressed: () => Navigator.of(context).pushNamed('/signin'),
             width: screenWidth,
           ),
           const SizedBox(height: 16),
           BasicAppButton(
             title: 'Create Account',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/signup');
-            },
+            onPressed: () => Navigator.of(context).pushNamed('/signup'),
             width: screenWidth,
           ),
           const SizedBox(height: 24),
@@ -313,41 +300,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfilePicture(BuildContext context) {
-    return Center(
-      child: Stack(
-        children: [
-          ClipOval(
-            child: Material(
-              color: Colors.transparent,
-              child: Ink.image(
-                image: const AssetImage('assets/images/person_profile.png'),
-                width: 150,
-                height: 150,
-                fit: BoxFit.cover,
-                child: InkWell(
-                  onTap: () {
-                    // navigate to edit page
-                  },
-                ),
-              ),
-            ),
-          ),
-          // Positioned(
-          //   bottom: 0,
-          //   right: 7,
-          //   child: ClipOval(
-          //     child: Container(
-          //       padding: const EdgeInsets.all(6),
-          //       color: const Color.fromARGB(255, 218, 99, 99),
-          //       child: const Icon(Icons.edit, color: Colors.white, size: 20),
-          //     ),
-          //   ),
-          // ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildScheduleSection() {
     return Container(
@@ -522,6 +474,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AppSettingsPage()),
+    );
+  }
+
   Widget _buildScheduleContent() {
     if (_scheduleError != null) {
       return Container(
@@ -632,12 +590,4 @@ class _ProfilePageState extends State<ProfilePage> {
     return const SizedBox.shrink();
   }
 
-  void _showFullSchedule() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentScheduleDetailPage(lectures: _lectures),
-      ),
-    );
-  }
 }

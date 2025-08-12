@@ -24,7 +24,16 @@ class AuthLocalServiceImpl extends AuthLocalService {
   @override
   Future<Either> logout() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    sharedPreferences.clear();
+    // Only remove authentication-related keys instead of clearing all.
+    // This preserves persistent user-neutral app settings (e.g. map theme).
+    const authKeys = [
+      'accessToken',
+      'refreshToken',
+      // Add any other strictly auth-related keys here if introduced later
+    ];
+    for (final k in authKeys) {
+      await sharedPreferences.remove(k);
+    }
     return const Right(true);
   }
   

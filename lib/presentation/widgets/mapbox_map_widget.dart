@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/data/models/interactive_annotation.dart';
 import 'package:auth_app/data/models/route_segment.dart';
 import 'package:auth_app/data/theme_manager.dart';
@@ -12,6 +13,7 @@ import 'package:geolocator/geolocator.dart'as gl;
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' hide LocationSettings;
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 
 final List<String> markers = [
   'mensa',
@@ -261,6 +263,23 @@ class _MapBoxWidgetState extends State<MapboxMapWidget> {
   //   super.initState();
   //   _setupPositionTracking();
   // }
+
+
+  MapTheme? _lastAppliedTheme;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final themeProv = Provider.of<ThemeProvider>(context);
+    final newTheme = themeProv.mapTheme;
+    if (newTheme != _lastAppliedTheme) {
+      _currentTheme = newTheme;
+      if (_isMapInitialized) {
+        _updateMapTheme();
+      }
+      _lastAppliedTheme = newTheme;
+    }
+  }
 
   @override
   void didUpdateWidget(covariant MapboxMapWidget oldWidget) {

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:auth_app/common/providers/theme.dart';
+import 'package:auth_app/common/providers/app_settings.dart';
 import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'dart:async';
 import 'package:auth_app/data/models/get_menu_req_params.dart';
@@ -166,17 +167,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // every focus toggle.  A ValueKey guarantees Flutter re-uses the
   // same State object, keeping the previously-fetched data alive.
   // ────────────────────────────────────────────────────────────────
-  bool _isRaining = false;
+  bool _isRaining = false; // raw rain state from API
   late final Widget _persistentWeather = WeatherWidget(
     key: const ValueKey('persistentWeather'),
     location: const LatLng(matheLat, matheLon),
     onWeatherChanged: (weather) {
       print('[DEBUG] Weather changed: ${weather.description}');
-      if (weather.description.toLowerCase().contains('rain') ||
-          weather.description.toLowerCase().contains('drizzle')) {
-        setState(() => _isRaining = true);
-      } else {
-        setState(() => _isRaining = false);
+      final raining = weather.description.toLowerCase().contains('rain') ||
+          weather.description.toLowerCase().contains('drizzle');
+      if (mounted) {
+        setState(() => _isRaining = raining);
       }
     },
   );
@@ -232,19 +232,26 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _themeTimer?.cancel();
 
     _themeTimer = Timer(Duration(minutes: 5), () {
-      final newTheme = ThemeManager.getCurrentTheme();
-      if (_currentMapTheme != newTheme) {
-        setState(() {
-          _currentMapTheme = newTheme;
-        });
-
-        if (mounted && !_userToggledTheme) {
+      final settings = Provider.of<AppSettingsProvider>(context, listen: false);
+      if (settings.autoMapTheme) {
+        final newTheme = ThemeManager.getCurrentTheme();
+        if (_currentMapTheme != newTheme) {
+          setState(() => _currentMapTheme = newTheme);
+          if (mounted) {
+            final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+            themeProvider.updateMapTheme(newTheme);
+          }
+        }
+      } else {
+        // manual mode
+        final manualTheme = settings.manualMapTheme;
+        if (_currentMapTheme != manualTheme) {
+          setState(() => _currentMapTheme = manualTheme);
           final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-          themeProvider.updateMapTheme(newTheme);
-          
+            themeProvider.updateMapTheme(manualTheme);
         }
       }
-      _updateThemeTimer(); // Schedule next update
+      _updateThemeTimer();
     });
   }
 
@@ -1326,9 +1333,7 @@ void dispose() {
                 ),
               ),
               _build3DButton(),
-
-              _buildThemesButton(),
-              _buildRainButton(),
+              // Theme & rain FABs removed – settings now in Profile > App Settings
 
               if (!_panelActive) _buildTUButton(),
               if (!_panelActive) _buildCurrentLocationButton(),
@@ -1614,7 +1619,7 @@ void dispose() {
         destinationLatLng: _coordinatePanelLatLng,
         markerImageCache: _categoryImageCache,
         busStopMarkers: busMarkers,
-        isRaining: _isRaining,
+  isRaining: _isRaining && Provider.of<AppSettingsProvider>(context).rainAnimationEnabled,
         segments: segments,
         mapTheme: _currentMapTheme,
         onMapTap: _onMapTap,
@@ -1743,79 +1748,7 @@ void dispose() {
     ),
   );
 
-  Widget _buildRainButton() => Positioned(
-    top: 320,
-    right: 20,
-    child: AnimatedSlide(
-      offset: _searchActive
-          ? const Offset(0, -1)
-          : Offset.zero, // Slide up when search is active
-      duration: _animDuration,
-      curve: Curves.easeInOut,
-      child: AnimatedOpacity(
-        opacity: _searchActive ? 0 : 1, // Fade out when search is active
-        duration: _animDuration,
-        child: FloatingActionButton(
-          heroTag: 'rain_toggle',
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          onPressed: () {
-            setState(() => _isRaining = !_isRaining);
-          },
-          child: GradientWidget(
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
-            ],
-            child: Icon(Icons.thunderstorm, size: 22),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Widget _buildThemesButton() => Positioned(
-    top: 250,
-    right: 20,
-    child: AnimatedSlide(
-      offset: _searchActive
-          ? const Offset(0, -1)
-          : Offset.zero, // Slide up when search is active
-      duration: _animDuration,
-      curve: Curves.easeInOut,
-      child: AnimatedOpacity(
-        opacity: _searchActive ? 0 : 1, // Fade out when search is active
-        duration: _animDuration,
-        child: FloatingActionButton(
-          heroTag: 'theme_toggle',
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          onPressed: () {
-            // Cycle through themes manually
-            final currentIndex = MapTheme.values.indexOf(_currentMapTheme);
-            final nextIndex = (currentIndex + 1) % MapTheme.values.length;
-            setState(() {
-              _userToggledTheme = true;
-              _themeTimer?.cancel();
-              _currentMapTheme = MapTheme.values[nextIndex];
-              
-            });
-
-            final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-            themeProvider.updateMapTheme(MapTheme.values[nextIndex]);
-          },
-          child: GradientWidget(
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.secondary,
-            ],
-            child: Icon(
-              _getThemeIcon(_currentMapTheme),
-              size: 22,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
+  // (Removed theme and rain toggle FABs – handled in Profile settings)
 
   Widget _buildTUButton() => Positioned(
     bottom: _bottomOffset,

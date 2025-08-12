@@ -1,5 +1,6 @@
 import 'package:auth_app/common/bloc/auth/auth_state_cubit.dart';
 import 'package:auth_app/common/providers/theme.dart';
+import 'package:auth_app/common/providers/app_settings.dart';
 import 'package:auth_app/common/providers/user.dart';
 import 'package:auth_app/domain/usecases/get_favourites.dart';
 import 'package:auth_app/domain/usecases/get_user.dart';
@@ -19,19 +20,13 @@ import 'service_locator.dart';
 // import 'package:provider/src/change_notifier_provider.dart';
 import 'package:provider/provider.dart';
 
-import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/material.dart';
 //import 'package:flutter_map/flutter_map.dart';      // ← for TileLayer
-import 'package:latlong2/latlong.dart'; // ← for LatLng & LatLngBounds
 //import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 
 import 'dart:async'; // for unawaited
 
-import 'package:auth_app/data/models/add_favourite_req_params.dart';
-import 'package:auth_app/data/models/delete_favourite_req_params.dart';
-import 'package:auth_app/domain/repository/favourites.dart';
-import 'package:auth_app/service_locator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,8 +117,9 @@ class MyApp extends StatelessWidget {
       // BlocProvider provides AuthStateCubit to the whole widget tree
       providers: [
         BlocProvider(create: (context) => AuthStateCubit()..appStarted()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+  ChangeNotifierProvider(create: (_) => UserProvider()),
+  ChangeNotifierProvider(create: (_) => ThemeProvider()),
+  ChangeNotifierProvider(create: (_) => AppSettingsProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child){
