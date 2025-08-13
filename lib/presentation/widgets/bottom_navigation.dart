@@ -109,7 +109,7 @@ class AnimatedBottomNavigationBar extends StatelessWidget {
 
   static const _tabs = <_NavTab>[
     _NavTab(Icons.map, 'Map'),
-    _NavTab(Icons.favorite, 'Favourites'),
+    // _NavTab(Icons.favorite, 'Favourites'),
     _NavTab(Icons.person, 'Profile'),
   ];
 

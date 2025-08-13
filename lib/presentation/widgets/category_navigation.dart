@@ -11,11 +11,13 @@ class CategoryNavigationBar extends StatefulWidget {
   // allow nullable params
   final void Function(String? category, Color? color) onCategorySelected;
   final LatLng? currentLocation;
+  final bool showFavouritesChip;
 
   const CategoryNavigationBar({
     Key? key,
     required this.onCategorySelected,
     this.currentLocation,
+    this.showFavouritesChip = false,
   }) : super(key: key);
 
   @override
@@ -51,6 +53,12 @@ class _CategoryNavigationBarState extends State<CategoryNavigationBar> {
                   label: 'Canteens',
                   color: Colors.green,
                 ),
+                if (widget.showFavouritesChip)
+                  _buildChip(
+                    icon: Icons.favorite,
+                    label: 'Favourites',
+                    color: Colors.pinkAccent,
+                  ),
 
                 // _buildChip(
                 //   icon: Icons.meeting_room,

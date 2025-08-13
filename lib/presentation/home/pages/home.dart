@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
         },
         navBarHeight: effectiveNavBarHeight,
       ),
-      FavouritesPage(),
+      // FavouritesPage(),
       ProfilePage(
         onSearchFocusChanged: (active) {
           if (mounted && _hideNav != active) {

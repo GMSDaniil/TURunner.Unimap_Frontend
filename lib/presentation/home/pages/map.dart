@@ -430,6 +430,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
             },
           ),
         ),
+        const SizedBox(height: 70),
       ],
     );
   }
@@ -1358,6 +1359,7 @@ void dispose() {
                           _onMapTap(dest);
                         },
                         focusNode: _searchFocusNode,
+                        showFavouritesChip: Provider.of<UserProvider>(context).favourites.isNotEmpty,
                       ),
                       // If you want to show the CategoryNavigationBar here, add it below:
                       // CategoryNavigationBar(...),
@@ -1590,7 +1592,6 @@ void dispose() {
     return !favouritePositions.contains('${a.id}');
   }).map(mapBoxMarker).toList();
 
-  final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
   final allAnnotations = 
       // showOnlyCategory? _activeCategoryPointers.map(mapBoxMarker).toList(): 
       [...normalAnnotations, ...favouriteAnnotations];
@@ -1926,15 +1927,37 @@ void dispose() {
       filteredPointers = _allPointers;
     } else {
       final cat = category.trim().toLowerCase();
-      filteredPointers = _allPointers.where((p) {
-        final pCat = p.category.trim().toLowerCase();
-        if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-        if (cat.contains('librar')) return pCat.contains('librar');
-        if (cat.contains('canteen') || cat.contains('mensa'))
-          return pCat == 'canteen' || pCat == 'mensa';
-        if (cat.contains('study room')) return pCat == 'study room';
-        return false;
-      }).toList();
+      if (cat.contains('favourite')) {
+        final favIds = Provider.of<UserProvider>(context, listen: false)
+            .favourites
+            .map((f) => f.placeId)
+            .toSet();
+        filteredPointers = _allPointers.where((p) => favIds.contains(p.id)).toList();
+        // add synthetic favourites not present among loaded pointers
+        final favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+        final existingIds = filteredPointers.map((p) => p.id).toSet();
+        for (final fav in favourites) {
+          if (!existingIds.contains(fav.placeId)) {
+            filteredPointers.add(Pointer(
+              id: fav.placeId,
+              name: fav.name,
+              lat: fav.lat,
+              lng: fav.lng,
+              category: 'favourite',
+            ));
+          }
+        }
+      } else {
+        filteredPointers = _allPointers.where((p) {
+          final pCat = p.category.trim().toLowerCase();
+          if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+          if (cat.contains('librar')) return pCat.contains('librar');
+          if (cat.contains('canteen') || cat.contains('mensa'))
+            return pCat == 'canteen' || pCat == 'mensa';
+          if (cat.contains('study room')) return pCat == 'study room';
+          return false;
+        }).toList();
+      }
     }
 
     final newMarkers = filteredPointers
@@ -1961,7 +1984,6 @@ void dispose() {
     return !favouritePositions.contains('${a.id}');
   }).toList();
 
-  final showOnlyCategory = _activeCategory != null && _activeCategoryPointers.isNotEmpty;
   final allAnnotations = 
       // showOnlyCategory? _activeCategoryPointers.map(mapBoxMarker).toList(): 
       [...normalAnnotations, ...favouriteAnnotations];
@@ -2329,6 +2351,7 @@ void dispose() {
       // Try to fit to polygon if available
       try {
         print(p.category);
+        
         if (building != null &&
             building.contourWKT != null &&
             building.contourWKT!.isNotEmpty &&
@@ -2524,15 +2547,38 @@ void dispose() {
 
   Future<void> _showCategoryListPopup(String category, Color color) async {
     final cat = category.trim().toLowerCase();
-    final filtered = _allPointers.where((p) {
-      final pCat = p.category.trim().toLowerCase();
-      if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
-      if (cat.contains('librar')) return pCat.contains('librar');
-      if (cat.contains('canteen') || cat.contains('mensa'))
-        return pCat == 'canteen' || pCat == 'mensa';
-      if (cat.contains('study room')) return pCat == 'study room';
-      return false;
-    }).toList();
+    List<Pointer> filtered;
+    if (cat.contains('favourite')) {
+      final favIds = Provider.of<UserProvider>(context, listen: false)
+          .favourites
+          .map((f) => f.placeId)
+          .toSet();
+      filtered = _allPointers.where((p) => favIds.contains(p.id)).toList();
+      // add synthetic favourites not present in _allPointers (e.g. saved custom coordinates)
+      final favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+      final existingIds = filtered.map((p) => p.id).toSet();
+      for (final fav in favourites) {
+        if (!existingIds.contains(fav.placeId)) {
+          filtered.add(Pointer(
+            id: fav.placeId,
+            name: fav.name,
+            lat: fav.lat,
+            lng: fav.lng,
+            category: 'favourite',
+          ));
+        }
+      }
+    } else {
+      filtered = _allPointers.where((p) {
+        final pCat = p.category.trim().toLowerCase();
+        if (cat.contains('café')) return pCat == 'cafe' || pCat == 'café';
+        if (cat.contains('librar')) return pCat.contains('librar');
+        if (cat.contains('canteen') || cat.contains('mensa'))
+          return pCat == 'canteen' || pCat == 'mensa';
+        if (cat.contains('study room')) return pCat == 'study room';
+        return false;
+      }).toList();
+    }
 
     final currentLocation = await getCurrentLocation();
 
@@ -2560,7 +2606,6 @@ void dispose() {
       _activeCategoryPointers = filtered;
       _currentLocation = currentLocation;
     });
-
     _filterMarkersByCategory(category);
 
     _panelController.open();

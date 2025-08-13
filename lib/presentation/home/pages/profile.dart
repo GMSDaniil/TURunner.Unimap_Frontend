@@ -1,4 +1,5 @@
 import 'package:auth_app/common/providers/user.dart';
+import 'package:auth_app/core/configs/theme/app_theme.dart';
 import 'package:auth_app/domain/entities/student_schedule.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,6 +23,9 @@ import 'package:auth_app/presentation/widgets/searchable_dropdown.dart';
 import 'package:auth_app/presentation/home/pages/settings/app_settings_page.dart';
 import 'package:auth_app/presentation/auth/pages/signin.dart';
 import 'package:auth_app/presentation/auth/pages/signup.dart';
+import 'package:auth_app/domain/usecases/delete_favourite.dart';
+import 'package:auth_app/domain/usecases/get_favourites.dart';
+import 'package:auth_app/data/models/delete_favourite_req_params.dart';
 
 class ProfilePage extends StatefulWidget {
   final void Function(bool)? onSearchFocusChanged;
@@ -36,6 +40,8 @@ class _ProfilePageState extends State<ProfilePage> {
   List<StudentLectureEntity> _lectures = [];
   bool _isLoadingSchedule = false;
   String? _scheduleError;
+  // Track favourites currently being deleted to disable buttons
+  final Set<String> deletingIds = {};
   
   final _semesterController = TextEditingController();
   final _semesterFocusNode = FocusNode();  // ✅ Add FocusNode
@@ -222,7 +228,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           children: [
                             _buildScheduleSection(),
                             const SizedBox(height: 24),
+                            _buildFavouritesSection(),
+                            const SizedBox(height: 24),
                             _buildLogoutButton(context),
+                            const SizedBox(height: 120),
                           ],
                         ),
                       ),
@@ -469,6 +478,133 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavouritesSection() {
+    final favourites = Provider.of<UserProvider>(context).favourites;
+    final gradient = Theme.of(context).primaryGradient;
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 0,
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Icon(
+            Icons.favorite_outline,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+          title: const Text(
+            'Your Favourite Places',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          children: [
+            favourites.isEmpty
+                ? Center(
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => gradient.createShader(
+                        Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+                      ),
+                      blendMode: BlendMode.srcIn,
+                      child: const Text(
+                        'You haven’t added any favourites yet.',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Column(
+                      children: [
+                        for (final fav in favourites)
+                          Card(
+                            elevation: 2,
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.favorite,
+                                color: Colors.pink,
+                              ),
+                              title: Text(
+                                fav.name,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: deletingIds.contains(fav.id)
+                                    ? null
+                                    : () async {
+                                        final user = Provider.of<UserProvider>(
+                                          context,
+                                          listen: false,
+                                        ).user;
+                                        if (user == null) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Please log in to use favourites.'),
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                        setState(() => deletingIds.add(fav.id));
+
+                                        final result = await sl<DeleteFavouriteUseCase>().call(
+                                          param: DeleteFavouriteReqParams(
+                                            favouriteId: fav.id.toString(),
+                                          ),
+                                        );
+                                        if (!mounted) return;
+
+                                        Future<void> refresh() async {
+                                          final getResult = await sl<GetFavouritesUseCase>().call();
+                                          if (!mounted) return;
+                                          getResult.fold((_) {}, (fresh) {
+                                            Provider.of<UserProvider>(context, listen: false).setFavourites(fresh);
+                                          });
+                                        }
+
+                                        result.fold(
+                                          (error) async {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Failed to delete: $error')),
+                                            );
+                                            await refresh();
+                                          },
+                                          (_) async {
+                                            await refresh();
+                                          },
+                                        );
+
+                                        if (mounted) {
+                                          setState(() => deletingIds.remove(fav.id));
+                                        }
+                                      },
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
           ],
         ),
       ),

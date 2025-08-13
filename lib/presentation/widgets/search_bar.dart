@@ -16,6 +16,7 @@ class MapSearchBar extends StatefulWidget {
   final bool showCategories; // ← NEW
   final VoidCallback? onBack;           // ← NEW optional callback
   final bool includeBottomSafeArea;     // ← NEW  (defaults to true)
+  final bool showFavouritesChip;        // ← NEW favourites chip toggle
 
   const MapSearchBar({
     Key? key,
@@ -29,6 +30,7 @@ class MapSearchBar extends StatefulWidget {
     this.showCategories = true, // ← NEW
     this.onBack,                           // ← NEW
     this.includeBottomSafeArea = true,     // ← NEW
+  this.showFavouritesChip = false,
   }) : super(key: key);
 
   @override
@@ -216,9 +218,10 @@ class _MapSearchBarState extends State<MapSearchBar> {
                     ),
                     child: hasFocus
                         ? const SizedBox(key: ValueKey('hidden_chips'))
-                        : CategoryNavigationBar(
+            : CategoryNavigationBar(
                             key: const ValueKey('visible_chips'),
-                            onCategorySelected: widget.onCategorySelected,
+              onCategorySelected: widget.onCategorySelected,
+              showFavouritesChip: widget.showFavouritesChip,
                           ),
                   ),
 
