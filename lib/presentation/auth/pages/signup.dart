@@ -47,7 +47,7 @@ class SignupPage extends StatelessWidget {
                 var userProvider = Provider.of<UserProvider>(context, listen: false);
                 userProvider.setUser(response.user);
                 // Return to previous (Profile) without rebuilding map/home
-                if (Navigator.of(context).canPop()) {
+                while (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
                 }
               }

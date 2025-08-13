@@ -64,7 +64,7 @@ class SigninPage extends StatelessWidget {
               );
 
               // Instead of rebuilding HomePage, just pop back to previous (Profile)
-              if (Navigator.of(context).canPop()) {
+              while (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
               }
             }

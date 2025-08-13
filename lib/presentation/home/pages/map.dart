@@ -139,6 +139,11 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   LatLng? _currentLocation;
 
   bool _markerTapJustHandled = false;
+  // Timestamp / flag helper to suppress the subsequent map tap that often fires
+  // right after a marker tap (Mapbox sends both). We set this flag in
+  // _onMarkerTap and consume it (and reset) at the top of _onMapTap so that the
+  // building/coordinate panel logic does not override the specific marker tap.
+
 
   bool _is3D = false;
 
@@ -1007,10 +1012,8 @@ void dispose() {
                       final raw = data.customStartName;
                       if (raw != null && raw.trim().isNotEmpty) return raw;
                       final segs = data.segments;
-                      if (segs != null && segs.isNotEmpty) {
-                        return segs.first.fromStop ??
-                            segs.first.toStop ??
-                            'Start';
+                      if (segs.isNotEmpty) {
+                        return segs.first.fromStop ?? segs.first.toStop ?? 'Start';
                       }
                       return 'Start';
                     },
@@ -1019,10 +1022,8 @@ void dispose() {
                       final raw = data.customEndName;
                       if (raw != null && raw.trim().isNotEmpty) return raw;
                       final segs = data.segments;
-                      if (segs != null && segs.isNotEmpty) {
-                        return segs.last.toStop ??
-                            segs.last.fromStop ??
-                            'Destination';
+                      if (segs.isNotEmpty) {
+                        return segs.last.toStop ?? segs.last.fromStop ?? 'Destination';
                       }
                       return 'Destination';
                     },
@@ -1427,9 +1428,8 @@ void dispose() {
   // Start full routing flow: top bar + bottom-sheet directions
   // ───────────────────────────────────────────────────────────
   Future<void> _startRouteFlow(
-    LatLng destination, {
-    bool skipPanelOpen = false,
-  }) async {
+    LatLng destination,
+  ) async {
     // Optionally skip opening the panel if already open (for swap animation)
 
     // !!! COMMENTED OUT BECAUSE IT FIX THE BUG WITH UNPROPER SIZING OF ROUTE OPTION SHEETS
@@ -1806,7 +1806,7 @@ void dispose() {
           // icon: const Icon(Icons.school, color: Colors.blue),
           onPressed: () {
             _animatedMapboxMove(LatLng(52.5125, 13.3269), 15.0);
-            _resetToDefaultState();
+            // _resetToDefaultState();
           },
         ),
       ),
@@ -1945,7 +1945,7 @@ void dispose() {
         .toList();
     
     final favourites = Provider.of<UserProvider>(context, listen: false).favourites;
-    final currentFavourites = Provider.of<UserProvider>(context, listen: false).favourites;
+  // final currentFavourites = Provider.of<UserProvider>(context, listen: false).favourites; // unused
     final favouriteIcon = _categoryImageCache['favourite'];
     final favouriteAnnotations = favouriteIcon == null
       ? <InteractiveAnnotation>[]
@@ -2184,7 +2184,12 @@ void dispose() {
   // ── normal map tap handler (disabled while center pick overlay active) ──
   void _onMapTap(LatLng latlng) async {
     if (_panelController.isPanelOpen || _plannerOverlay != null) return;
-
+    // Suppress map tap if it immediately follows a marker tap.
+    if (_markerTapJustHandled) {
+      _markerTapJustHandled = false; // consume
+      return;
+    }
+    
     final building = await sl<FindBuildingAtPoint>().call(point: latlng);
     Pointer? p;
     if (building != null) {
@@ -2296,8 +2301,9 @@ void dispose() {
   }
 
   void _onMarkerTap(Pointer p) async {
+    print("onmarkertap");
     if (_plannerOverlay != null) return;
-    _markerTapJustHandled = true;
+  _markerTapJustHandled = true; // signal to ignore the synthetic map tap that follows
 
     // Try to find the building entity for this pointer (by name)
     Pointer? building;
@@ -2322,9 +2328,11 @@ void dispose() {
       _buildingZoomTimer?.cancel();
       // Try to fit to polygon if available
       try {
+        print(p.category);
         if (building != null &&
             building.contourWKT != null &&
-            building.contourWKT!.isNotEmpty) {
+            building.contourWKT!.isNotEmpty &&
+            p.category.toLowerCase() == 'building') {
           final List<LatLng> coords = building.contourWKT!;
           // Calculate bounds
           double minLat = coords.first.latitude, maxLat = coords.first.latitude;
