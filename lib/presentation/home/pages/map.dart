@@ -278,6 +278,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       'default',
       'destination',
       'favourite',
+      'gym',
     ];
     for (final cat in categories) {
       final assetPath = getPinAssetForCategory(cat);
@@ -437,7 +438,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadFavouriteIcon() async {
-    final bytes = await rootBundle.load('assets/icons/pin_favourite_64.png');
+    final bytes = await rootBundle.load('assets/icons/favourite.png');
     setState(() {
       _categoryImageCache['favourite'] = bytes.buffer.asUint8List();
     });
@@ -1870,6 +1871,8 @@ void dispose() {
       case 'canteen':
       case 'mensa':
         return _categoryImageCache['mensa']!;
+      case 'gym':
+        return _categoryImageCache['gym']!;
       case 'building':  // ✅ Only actual buildings
         return _categoryImageCache['building']!;
       default:          // ✅ Everything else (gym, shops, restaurants, etc.) gets default pin
@@ -2538,21 +2541,23 @@ void dispose() {
     switch (cat.trim().toLowerCase()) {
       case 'mensa':
       case 'canteen':
-        return 'assets/icons/pin_mensa_64.png';
+        return 'assets/icons/mensa.png';
       case 'café':
       case 'cafe':
-        return 'assets/icons/pin_cafe_64.png';
+        return 'assets/icons/cafe.png';
       case 'libraries':
       case 'library':
-        return 'assets/icons/pin_library_64.png';
+        return 'assets/icons/library.png';
       case 'destination':
-        return 'assets/icons/pin_destination_64.png';
+        return 'assets/icons/destination.png';
       case 'favourite':
-        return 'assets/icons/pin_favourite_64.png';
-      case 'building':  // ✅ Only actual buildings get building pin
-        return 'assets/icons/pin_building_64.png';
-      default:          // ✅ Everything else (gym, shops, etc.) gets default pin
-        return 'assets/icons/pin_default_64.png';
+        return 'assets/icons/favourite.png';
+      case 'building': 
+        return 'assets/icons/building.png';
+      case 'gym':
+        return 'assets/icons/gym.png';
+      default:         
+        return 'assets/icons/default.png';
     }
   }
 

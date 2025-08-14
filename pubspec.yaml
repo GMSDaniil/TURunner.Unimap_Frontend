@@ -47,20 +47,16 @@ flutter:
     - assets/images/
     # - assets/campus_buildings.json
     # - assets/campus_buildings_centroids.json
-    - assets/sample_mensa_menu.json
-    - assets/icons/pin_mensa.png
-    - assets/icons/pin_cafe.png
-    - assets/icons/pin_library.png
-    - assets/icons/pin_building.png
-    - assets/icons/pin_mensa_64.png
-    - assets/icons/pin_cafe_64.png
-    - assets/icons/pin_library_64.png
-    - assets/icons/pin_building_64.png
-    - assets/icons/pin_default_64.png
-    - assets/icons/pin_destination_64.png
-    - assets/icons/pin_destination.png
-    - assets/icons/pin_favourite.png
-    - assets/icons/pin_favourite_64.png
+    - assets/icons/building.png
+    - assets/icons/cafe.png
+    - assets/icons/gym.png
+    - assets/icons/default.png
+    - assets/icons/destination.png
+    - assets/icons/favourite.png
+    - assets/icons/library.png
+    - assets/icons/mensa.png
+
+
 
     # Custom public transport icon
     - assets/icons/public_transport.svg

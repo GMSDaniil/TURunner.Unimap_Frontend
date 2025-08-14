@@ -21,6 +21,7 @@ final List<String> markers = [
   'cafe',
   'default',
   'destination', 
+  'gym',
 ];
 
 
@@ -1037,10 +1038,13 @@ String _markerKeyFromPoint(Position pos) => '${pos.lat},${pos.lng}';
       showAccuracyRing: true,
     ));    
 
+
+
+  //IMPORTANT. WIDTH AND HEIGHT SHOULD BE EXACTLY SAME.
   mapboxMap!.style.addStyleImage(
     'destination-marker', 
-    1.0, 
-    MbxImage(width: 64, height: 64, data: widget.markerImageCache['destination']!),
+    1.1, 
+    MbxImage(width: 65, height: 69, data: widget.markerImageCache['destination']!),
     false, [], [], null);
 
 
