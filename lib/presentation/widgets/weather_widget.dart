@@ -92,6 +92,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   @override
   void initState() {
     super.initState();
+    _fetchWeatherIfNeeded(force: true);
     if (widget.useCurrentLocation) {
       _resolveCurrentLocationOnce();
     } else {

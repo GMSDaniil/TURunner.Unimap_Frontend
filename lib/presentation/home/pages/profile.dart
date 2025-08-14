@@ -202,6 +202,15 @@ class _ProfilePageState extends State<ProfilePage> {
           if (state is UserLoaded) {
             Provider.of<UserProvider>(context, listen: false).setUser(state.userEntity);
           }
+          if (state is LoadUserFailure) {
+            // Treat failed profile load (e.g., expired refresh token) as signed-out
+            Provider.of<UserProvider>(context, listen: false).clearUser();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Session expired. Please sign in.')),
+              );
+            }
+          }
         },
         child: Center(
           child: BlocBuilder<UserDisplayCubit, UserDisplayState>(

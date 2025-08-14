@@ -41,6 +41,8 @@ class DioClient {
         },
       ),
     );
+    // Add token refresh handler after auth header injector and before logger
+    _dio.interceptors.add(TokenRefreshInterceptor(_dio));
   }
 
   // GET METHOD
