@@ -5,6 +5,6 @@ import 'package:dartz/dartz.dart';
 
 abstract class FavouritesRepository {
   Future<Either<String, List<FavouriteEntity>>> getFavourites();
-  Future<Either<String, void>> addFavourite(AddFavouriteReqParams params);
+  Future<Either<String, String>> addFavourite(AddFavouriteReqParams params);
   Future<Either<String, void>> deleteFavourite(DeleteFavouriteReqParams params);
 }

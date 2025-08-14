@@ -42,26 +42,18 @@ class SigninPage extends StatelessWidget {
                 listen: false,
               );
               userProvider.setUser(response.user);
-
-              print('hello world');
-
-              /// loding favourites after login
-              final favouritesResult = await sl<GetFavouritesUseCase>().call();
-              print('DEBUG favouritesResult: $favouritesResult');
-
-              favouritesResult.fold(
-                (error) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to load favourites: $error'),
-                    ),
-                  );
-                  userProvider.setFavourites([]);
-                },
-                (favourites) {
-                  userProvider.setFavourites(favourites);
-                },
-              );
+              print('[DEBUG] User set: ${response.user}');
+              // Hydrate favourites from response when present; otherwise fallback to API call
+              if (response.user.favouritePlaces != null) {
+                print('[DEBUG] Loaded favourites from response: ${response.user.favouritePlaces}');
+                userProvider.setFavourites(response.user.favouritePlaces!);
+              } else {
+                // final favouritesResult = await sl<GetFavouritesUseCase>().call();
+                // favouritesResult.fold(
+                //   (_) => userProvider.setFavourites([]),
+                //   (favourites) => userProvider.setFavourites(favourites),
+                // );
+              }
 
               // Instead of rebuilding HomePage, just pop back to previous (Profile)
               while (Navigator.of(context).canPop()) {

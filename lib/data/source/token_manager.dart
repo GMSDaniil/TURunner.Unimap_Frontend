@@ -8,6 +8,10 @@ class TokenManager {
     try {
       SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
       var refreshToken = sharedPreferences.getString('refreshToken');
+      if (refreshToken == null || refreshToken.isEmpty) {
+        // No refresh token available; cannot refresh
+        return false;
+      }
 
       var response = await sl<DioClient>().post(
         ApiUrls.refreshToken,

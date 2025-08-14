@@ -157,30 +157,29 @@ class MyApp extends StatelessWidget {
 
   void _loadUserDataOnAuthenticated(BuildContext context) async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    
-    // Only load if user is not already loaded
-    if (userProvider.user != null) return;
-    
     try {
-      // Load user profile
-      final userResult = await sl<GetUserUseCase>().call();
-      userResult.fold(
-        (error) => print('[DEBUG] Failed to load user: $error'),
-        (user) {
-          userProvider.setUser(user);
-          print('[DEBUG] User loaded: ${user.username}');
-        },
-      );
+      // Load user profile only if missing
+      if (userProvider.user == null) {
+        final userResult = await sl<GetUserUseCase>().call();
+        userResult.fold(
+          (error) => print('[DEBUG] Failed to load user: $error'),
+          (user) {
+            userProvider.setUser(user);
+            userProvider.setFavourites(user.favouritePlaces);
+            print('[DEBUG] User loaded: ${user.username}');
+          },
+        );
+      }
 
       // Load favourites
-      final favouritesResult = await sl<GetFavouritesUseCase>().call();
-      favouritesResult.fold(
-        (error) => print('[DEBUG] Failed to load favourites: $error'),
-        (favourites) {
-          userProvider.setFavourites(favourites);
-          print('[DEBUG] Loaded ${favourites.length} favourites');
-        },
-      );
+      // final favouritesResult = await sl<GetFavouritesUseCase>().call();
+      // favouritesResult.fold(
+      //   (error) => print('[DEBUG] Failed to load favourites: $error'),
+      //   (favourites) {
+      //     userProvider.setFavourites(favourites);
+      //     print('[DEBUG] Loaded ${favourites.length} favourites');
+      //   },
+      // );
     } catch (e) {
       print('[DEBUG] Error loading user data: $e');
     }

@@ -8,10 +8,11 @@ class SignInResponse{
   SignInResponse({
     required this.accessToken,
     required this.refreshToken,
-    required this.user,
+    required this.user
   });
 
   factory SignInResponse.fromJson(Map<String, dynamic> json) {
+
     return SignInResponse(
       accessToken: json['accessToken'] as String,
       refreshToken: json['refreshToken'] as String,

@@ -205,11 +205,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
       themeProvider.updateMapTheme(_currentMapTheme);
 
       Future.delayed(
-      const Duration(seconds: 2),
+      const Duration(seconds: 3),
       () {
         final userProvider = Provider.of<UserProvider>(context, listen: false);
         print(
             '[DEBUG] Favourites on init: ${userProvider.favourites.length}');
+          
         _updateAnnotationsWithFavourites(userProvider.favourites);
         },
     );
@@ -877,21 +878,21 @@ void dispose() {
                     (f) => f.name == p.name && f.lat == p.lat && f.lng == p.lng,
                   );
 
-                  Future<void> updateFavourites() async {
-                    final updated = await sl<GetFavouritesUseCase>().call();
-                    if (!mounted) return;
-                    updated.fold(
-                      (error) =>
-                          print('[DEBUG] Failed to reload favourites: $error'),
-                      (favs) {
-                        if (!mounted) return;
-                        Provider.of<UserProvider>(
-                          context,
-                          listen: false,
-                        ).setFavourites(favs);
-                      },
-                    );
-                  }
+                  // Future<void> updateFavourites() async {
+                  //   final updated = await sl<GetFavouritesUseCase>().call();
+                  //   if (!mounted) return;
+                  //   updated.fold(
+                  //     (error) =>
+                  //         print('[DEBUG] Failed to reload favourites: $error'),
+                  //     (favs) {
+                  //       if (!mounted) return;
+                  //       Provider.of<UserProvider>(
+                  //         context,
+                  //         listen: false,
+                  //       ).setFavourites(favs);
+                  //     },
+                  //   );
+                  // }
 
                   if (isFavourite) {
                     // Remove from favourites
@@ -912,7 +913,11 @@ void dispose() {
                         );
                       },
                       (_) async {
-                        await updateFavourites();
+                        favourites.remove(fav);
+                        Provider.of<UserProvider>(
+                          context,
+                          listen: false,
+                        ).setFavourites(favourites);
                         setState(() {});
                       },
                     );
@@ -943,8 +948,14 @@ void dispose() {
                           ),
                         );
                       },
-                      (_) async {
-                        await updateFavourites();
+                      (id) async {
+                        favourites.add(FavouriteEntity(
+                          id: id,
+                          placeId: p.id,
+                          name: p.name,
+                          lat: p.lat,
+                          lng: p.lng,
+                        ));
                         setState(() {});
                       },
                     );
@@ -2740,27 +2751,22 @@ void dispose() {
           SnackBar(content: Text('Failed to add favourite: $error')),
         );
       },
-      (_) async {
+      (id) async {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added "$name" to favourites!')),
-        );
-        
+        var favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+        favourites.add(FavouriteEntity(
+          id: id,
+          name: name,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          placeId: placeId,
+        ));
+        Provider.of<UserProvider>(context, listen: false).setFavourites(favourites);
         // Close coordinate panel
         setState(() => _coordinatePanelLatLng = null);
         _panelController.close();
         _notifyNavBar(false);
         
-        // Update favourites and map
-        final updated = await sl<GetFavouritesUseCase>().call();
-        updated.fold(
-          (error) => print('[DEBUG] Failed to reload favourites: $error'),
-          (favs) {
-            if (!mounted) return;
-            Provider.of<UserProvider>(context, listen: false).setFavourites(favs);
-            // _updateAnnotationsWithFavourites(favs);
-          },
-        );
       },
     );
   }

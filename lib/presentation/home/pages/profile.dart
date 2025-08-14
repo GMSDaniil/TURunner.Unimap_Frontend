@@ -584,23 +584,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                         );
                                         if (!mounted) return;
 
-                                        Future<void> refresh() async {
-                                          final getResult = await sl<GetFavouritesUseCase>().call();
-                                          if (!mounted) return;
-                                          getResult.fold((_) {}, (fresh) {
-                                            Provider.of<UserProvider>(context, listen: false).setFavourites(fresh);
-                                          });
-                                        }
 
                                         result.fold(
                                           (error) async {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               SnackBar(content: Text('Failed to delete: $error')),
                                             );
-                                            await refresh();
                                           },
                                           (_) async {
-                                            await refresh();
+                                            var favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+                                            favourites.removeWhere((favourite) => favourite.id == fav.id);
+                                            Provider.of<UserProvider>(context, listen: false).setFavourites(favourites);
                                           },
                                         );
 

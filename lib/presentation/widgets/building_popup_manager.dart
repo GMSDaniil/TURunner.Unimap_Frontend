@@ -1,10 +1,10 @@
 import 'dart:convert';
 
+import 'package:auth_app/domain/entities/favourite.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:auth_app/data/favourites_manager.dart';
 import 'package:auth_app/data/models/pointer.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
@@ -130,6 +130,7 @@ class BuildingPopupManager {
               placeId: pointer.id!, // Ensure placeId is not null
             ),
           );
+          print("Adding favourite");
           Navigator.of(ctx).pop();
           result.fold(
             (error) {
@@ -137,20 +138,11 @@ class BuildingPopupManager {
                 SnackBar(content: Text('Failed to add favourite: $error')),
               );
             },
-            (_) async {
-              final updated = await sl<GetFavouritesUseCase>().call();
-              updated.fold(
-                (error) => print('[DEBUG] Failed to reload favourites: $error'),
-                (favs) {
-                  print(
-                    '[DEBUG] setFavourites called with ${favs.length} items',
-                  );
-                  Provider.of<UserProvider>(
-                    ctx,
-                    listen: false,
-                  ).setFavourites(favs);
-                },
-              );
+            (id) async {
+              print(id);
+              var favourites = Provider.of<UserProvider>(ctx, listen: false).favourites;
+              favourites.add(FavouriteEntity(id: id, name: pointer.name, lat: pointer.lat, lng: pointer.lng, placeId: pointer.id!));
+              Provider.of<UserProvider>(ctx, listen: false).setFavourites(favourites);
               _closeSheet();
               onClose();
             },
@@ -340,14 +332,13 @@ class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
                         );
                       },
                       (_) async {
-                        final updated = await sl<GetFavouritesUseCase>().call();
-                        updated.fold(
-                          (error) {},
-                          (favs) => Provider.of<UserProvider>(
+                        List<FavouriteEntity> favs = [
+                          ...favourites.where((f) => f.id != fav.id),
+                        ];
+                        Provider.of<UserProvider>(
                             context,
                             listen: false,
-                          ).setFavourites(favs),
-                        );
+                          ).setFavourites(favs);
                       },
                     );
                   } else {
@@ -375,15 +366,10 @@ class _SimpleBuildingSheetState extends State<_SimpleBuildingSheet> {
                           ),
                         );
                       },
-                      (_) async {
-                        final updated = await sl<GetFavouritesUseCase>().call();
-                        updated.fold(
-                          (error) {},
-                          (favs) => Provider.of<UserProvider>(
-                            context,
-                            listen: false,
-                          ).setFavourites(favs),
-                        );
+                      (id) async {
+                        var favourites = Provider.of<UserProvider>(context, listen: false).favourites;
+                        favourites.add(FavouriteEntity(id: id, name: widget.pointer.name, lat: widget.pointer.lat, lng: widget.pointer.lng, placeId: widget.pointer.id!));
+                        Provider.of<UserProvider>(context, listen: false).setFavourites(favourites);
                         setState(() {});
                       },
                     );
