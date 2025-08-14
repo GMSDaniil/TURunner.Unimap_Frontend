@@ -174,9 +174,9 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   // same State object, keeping the previously-fetched data alive.
   // ────────────────────────────────────────────────────────────────
   bool _isRaining = false; // raw rain state from API
-  late final Widget _persistentWeather = WeatherWidget(
+  late final Widget _persistentWeather = WeatherWidget.useCurrentLocation(
     key: const ValueKey('persistentWeather'),
-    location: const LatLng(matheLat, matheLon),
+    fallbackLocation: const LatLng(matheLat, matheLon),
     onWeatherChanged: (weather) {
       print('[DEBUG] Weather changed: ${weather.description}');
       final raining = weather.description.toLowerCase().contains('rain') ||
@@ -1063,7 +1063,7 @@ void dispose() {
               final raw = data.customStartName;
               if (raw != null && raw.trim().isNotEmpty) return raw;
               final segs = data.segments;
-              if (segs != null && segs.isNotEmpty) {
+              if (segs.isNotEmpty) {
                 return segs.first.fromStop ?? segs.first.toStop ?? 'Start';
               }
               return 'Start';
@@ -1074,7 +1074,7 @@ void dispose() {
               final raw = data.customEndName;
               if (raw != null && raw.trim().isNotEmpty) return raw;
               final segs = data.segments;
-              if (segs != null && segs.isNotEmpty) {
+              if (segs.isNotEmpty) {
                 return segs.last.toStop ?? segs.last.fromStop ?? 'Destination';
               }
               return 'Destination';
@@ -1626,7 +1626,7 @@ void dispose() {
         segments: segments,
         closestPointCalculator: _closest,
       );
-      final scooterMarkers = buildScooterMarkers(segments);
+  // final scooterMarkers = buildScooterMarkers(segments); // unused for now
 
       // 1. Favourites & Icon aus Provider/Cache holen
 

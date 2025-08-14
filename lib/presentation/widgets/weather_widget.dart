@@ -1,7 +1,7 @@
-import 'package:auth_app/data/models/coordinates.dart';
 import 'package:dartz/dartz.dart' hide State;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:auth_app/service_locator.dart';
 import 'package:auth_app/domain/usecases/get_weather_info.dart';
 import 'package:auth_app/data/models/get_weather_info_req_params.dart';
@@ -11,14 +11,30 @@ import 'package:auth_app/data/models/weather_info.dart';
 /* Widget to display current weather information for a given location
    Uses FutureBuilder to fetch weather data asynchronously*/
 class WeatherWidget extends StatefulWidget {
-    // The location for which weather should be displayed
-  final LatLng location;
+  // The location for which weather should be displayed (used when useCurrentLocation is false)
+  final LatLng? location;
 
-  // If true, displays weather info vertically (column), otherwise horizontally (row)
-  //final bool vertical;
+  // If true, resolve the user's current location once before fetching.
+  final bool useCurrentLocation;
+
+  // Fallback location if current location is unavailable or permissions are denied.
+  final LatLng? fallbackLocation;
+
   final void Function(WeatherInfo weather)? onWeatherChanged;
 
-  const WeatherWidget({super.key, required this.location, this.onWeatherChanged});
+  const WeatherWidget({
+    super.key,
+    required this.location,
+    this.onWeatherChanged,
+  })  : useCurrentLocation = false,
+        fallbackLocation = null;
+
+  const WeatherWidget.useCurrentLocation({
+    super.key,
+    this.fallbackLocation,
+    this.onWeatherChanged,
+  })  : useCurrentLocation = true,
+        location = null;
 
   @override
   State<WeatherWidget> createState() => _WeatherWidgetState();
@@ -27,17 +43,26 @@ class WeatherWidget extends StatefulWidget {
 class _WeatherWidgetState extends State<WeatherWidget> {
   Future<Either<String, WeatherResponse>>? _weatherFuture;
   WeatherResponse? _cached;
+  LatLng? _resolvedLocation; // the actual location used for fetching
 
   // ── shared, in-memory cache across every WeatherWidget instance ──────────
   static final Map<String, WeatherResponse> _globalCache = {};
   static final Map<String, DateTime> _globalFetchTime = {};
 
   void _fetchWeatherIfNeeded({bool force = false}) {
+    // Ensure we have a location to query. If in current-location mode and not yet resolved, skip.
+    final loc = _resolvedLocation;
+    if (loc == null) return;
+    // Prevent spamming multiple requests if build runs repeatedly while a fetch is in-flight
+    if (_weatherFuture != null && !force) {
+      return;
+    }
+
     final now = DateTime.now();
 
     // key with ~100 m precision — plenty for a campus map
-    final key = '${widget.location.latitude.toStringAsFixed(3)},'
-                '${widget.location.longitude.toStringAsFixed(3)}';
+    final key = '${loc.latitude.toStringAsFixed(2)},'
+        '${loc.longitude.toStringAsFixed(2)}';
 
     // If we already fetched <15 min ago, just reuse it
     if (!force &&
@@ -51,8 +76,8 @@ class _WeatherWidgetState extends State<WeatherWidget> {
     // Otherwise fetch fresh data and store it globally
     _weatherFuture = sl<GetWeatherInfoUseCase>().call(
       param: GetWeatherInfoReqParams(
-        lat: widget.location.latitude,
-        lon: widget.location.longitude,
+        lat: loc.latitude,
+        lon: loc.longitude,
       ),
     )..then((either) {
         either.fold((_) => null, (r) {
@@ -65,17 +90,43 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.useCurrentLocation) {
+      _resolveCurrentLocationOnce();
+    } else {
+  // If a static location is provided, use it immediately
+  _resolvedLocation = widget.location;
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant WeatherWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.location != widget.location) {
-      _fetchWeatherIfNeeded(force: true);
-      setState(() {});
+    // If switching from a provided location to another provided location
+    if (!widget.useCurrentLocation && widget.location != null) {
+      final newLoc = widget.location!;
+      if (_resolvedLocation != newLoc) {
+        _resolvedLocation = newLoc;
+        _fetchWeatherIfNeeded(force: false);
+        setState(() {});
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Trigger fetch only when we have a resolved location
     _fetchWeatherIfNeeded();
+    if (_resolvedLocation == null) {
+      // Still resolving location
+      return _weatherBox(
+          child: const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ));
+    }
         // Fetch weather data for the given location using the injected UseCase
     return FutureBuilder<Either<String, WeatherResponse>>(
       future: _weatherFuture,
@@ -171,9 +222,54 @@ class _WeatherWidgetState extends State<WeatherWidget> {
         ),
         child: child,
       );
+
+  Future<void> _resolveCurrentLocationOnce() async {
+    try {
+      // Quick permission check and request once
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _resolvedLocation = widget.fallbackLocation;
+        if (mounted) setState(() {});
+        return;
+      }
+
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        _resolvedLocation = widget.fallbackLocation;
+        if (mounted) setState(() {});
+        return;
+      }
+
+      // One-shot current position with a reasonable timeout
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 8),
+      );
+      final candidate = LatLng(pos.latitude, pos.longitude);
+      // If outside Berlin bounds, prefer campus (fallback) if provided
+      _resolvedLocation = _isWithinBerlinBounds(candidate)
+          ? candidate
+          : (widget.fallbackLocation ?? candidate);
+      if (mounted) setState(() {});
+    } catch (_) {
+      _resolvedLocation = widget.fallbackLocation;
+      if (mounted) setState(() {});
+    }
+  }
+
+  // Berlin bounds: SW (12.964, 52.313) – NE (13.826, 52.727)
+  bool _isWithinBerlinBounds(LatLng p) {
+    const double minLng = 12.964;
+    const double maxLng = 13.826;
+    const double minLat = 52.313;
+    const double maxLat = 52.727;
+    return p.longitude >= minLng &&
+        p.longitude <= maxLng &&
+        p.latitude >= minLat &&
+        p.latitude <= maxLat;
+  }
 }
-class _AqiInfo {
-  final String label;
-  final Color color;
-  _AqiInfo(this.label, this.color);
-}
+// removed unused _AqiInfo class
