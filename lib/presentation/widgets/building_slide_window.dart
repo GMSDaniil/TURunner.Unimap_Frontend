@@ -65,6 +65,7 @@ class GradientActionButton extends StatelessWidget {
 class BuildingSlideWindow extends StatelessWidget {
   final String title;
   final String category;
+  final bool hasRooms;
   final LatLng? coordinates;
   final VoidCallback onCreateRoute;
   final VoidCallback onAddToFavourites;
@@ -75,6 +76,7 @@ class BuildingSlideWindow extends StatelessWidget {
     Key? key,
     required this.title,
     required this.category,
+    this.hasRooms = false,
     this.coordinates,
     required this.onCreateRoute,
     required this.onAddToFavourites,
@@ -214,7 +216,7 @@ class BuildingSlideWindow extends StatelessWidget {
                     ),
                   ],
 
-                  if (!isCoordinatePanel && !isCanteen && onShowMenu != null) ...[
+                  if (!isCoordinatePanel && !isCanteen && onShowMenu != null && hasRooms) ...[
                     const SizedBox(height: 16),
                     GradientActionButton(
                       onPressed: onShowMenu!,

@@ -689,7 +689,7 @@ const buttonRowSpacing = 16.0; // vertical gap between rows
 int rows;
 if (p.category.toLowerCase() == 'canteen') {
   rows = 2; // route + fav + menu для столовой
-} else if (!isCoordinatePanel) {
+} else if (!isCoordinatePanel && p.rooms.isNotEmpty) {
   rows = 2; // route + fav + rooms для обычного здания
 } else {
   rows = 1; // только основные кнопки для координат
@@ -854,6 +854,7 @@ print('Buttons total height: $buttonsTotal');
               return BuildingSlideWindow(
                 title: p.name,
                 category: p.category,
+                hasRooms: p.rooms.isNotEmpty,
                 onCreateRoute: () async {
                   // Slide down the panel, then open route options with slide up
                   setState(() => _buildingPanelPointer = null);
