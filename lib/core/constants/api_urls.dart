@@ -19,6 +19,7 @@ class ApiUrls {
 
   // Student schedule (Moses TU Berlin)
   static String get getStudentSchedule => '${baseURL}student-schedule';
+  static String get getRoomSchedule => '${baseURL}room_schedule';
 
   static String get getStudyPrograms => '${baseURL}StudyProgram';
 

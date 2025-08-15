@@ -1,4 +1,3 @@
-
 import 'package:auth_app/common/providers/theme.dart';
 import 'package:auth_app/common/providers/app_settings.dart';
 import 'dart:async';
@@ -20,6 +19,7 @@ import 'package:auth_app/presentation/widgets/route_details_sheet.dart';
 import 'package:auth_app/presentation/widgets/weather_widget.dart';
 import 'package:auth_app/presentation/widgets/building_slide_window.dart';
 import 'package:auth_app/presentation/widgets/weekly_mensa_plan.dart';
+import 'package:auth_app/presentation/widgets/rooms_list.dart';
 
 // Removed invalid import as the file does not exist
 
@@ -93,6 +93,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   bool _isBuildingZoomed = false;
   static const _animDuration = Duration(milliseconds: 250);
   late double _navBarHeight; // ← height from bottom-nav
+
+
+
+  bool get isCoordinatePanel => _coordinatePanelLatLng != null;
+
+
 
   // ── live flags & sheet controllers ───────────────────────────────
   bool _creatingRoute = false;
@@ -676,16 +682,22 @@ void dispose() {
       // ────────────────────────────────────────────────────────────────
       // 5) Account for the buttons section (one or two rows of gradient buttons)
       // ────────────────────────────────────────────────────────────────
-      const buttonHeight = 48.0; // each button’s height
-      const buttonRowSpacing = 16.0; // vertical gap between rows
+const buttonHeight = 48.0; // each button's height
+const buttonRowSpacing = 16.0; // vertical gap between rows
 
-      // If this is a canteen, we show two rows (route + fav. + menu), otherwise one.
-      final rows = (p.category.toLowerCase() == 'canteen') ? 2 : 1;
+// Изменяем логику подсчёта рядов кнопок
+int rows;
+if (p.category.toLowerCase() == 'canteen') {
+  rows = 2; // route + fav + menu для столовой
+} else if (!isCoordinatePanel) {
+  rows = 2; // route + fav + rooms для обычного здания
+} else {
+  rows = 1; // только основные кнопки для координат
+}
 
-      // Total buttons block = (height × rows) + (spacing between rows)
-      final buttonsTotal =
-          (buttonHeight * rows) + (buttonRowSpacing * (rows - 1));
-      print('Buttons total height: $buttonsTotal');
+// Total buttons block = (height × rows) + (spacing between rows)
+final buttonsTotal = (buttonHeight * rows) + (buttonRowSpacing * (rows - 1));
+print('Buttons total height: $buttonsTotal');
 
       // ────────────────────────────────────────────────────────────────
       // 6) Bottom padding + safe area inset
@@ -695,7 +707,6 @@ void dispose() {
 
       // Final: sum header + buttons + bottom padding + any OS-level safe area
       maxHeight = headerTotal + buttonsTotal + bottomPadding + safeAreaBottom;
-      print('Max height for building panel: $maxHeight');
       // Clamp so it’s never too small or taller than 85% of screen height
       maxHeight = maxHeight.clamp(
         180.0,
@@ -967,45 +978,60 @@ void dispose() {
                   _panelController.close();
                   _notifyNavBar(false);
                 },
-                onShowMenu: p.category.toLowerCase() == 'canteen'
-                    ? () async {
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) =>
-                              const Center(child: CircularProgressIndicator()),
-                        );
-                        final result = await sl<GetMensaMenuUseCase>().call(
-                          param: GetMenuReqParams(mensaName: p.name),
-                        );
-                        Navigator.of(context).pop();
-                        result.fold(
-                          (error) => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('error: $error')),
-                          ),
-                          (menu) =>
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(24),
-                                  ),
-                                ),
-                                builder: (_) => Container(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.9,
-                                  child: WeeklyMensaPlan(menu: menu),
-                                ),
-                              ).then((_) {
-                                setState(() => _buildingPanelPointer = null);
-                                _panelController.close();
-                                _notifyNavBar(false);
-                              }),
-                        );
-                      }
-                    : null,
+                onShowMenu: () async {
+                if (p.category.toLowerCase() == 'canteen') {
+                  // Логика для столовой
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(child: CircularProgressIndicator()),
+                  );
+                  final result = await sl<GetMensaMenuUseCase>().call(
+                    param: GetMenuReqParams(mensaName: p.name),
+                  );
+                  Navigator.of(context).pop();
+                  result.fold(
+                    (error) => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $error')),
+                    ),
+                    (menu) => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      builder: (_) => Container(
+                        height: MediaQuery.of(context).size.height * 0.9,
+                        child: WeeklyMensaPlan(menu: menu),
+                      ),
+                    ).then((_) {
+                      setState(() => _buildingPanelPointer = null);
+                      _panelController.close();
+                      _notifyNavBar(false);
+                    }),
+                  );
+                } else {
+                   // Вместо логики для столовой — открываем список комнат
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    builder: (_) => SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.9,
+                      child: RoomsListPanel(
+                        buildingName: p.name,
+                        rooms: p.rooms,
+                      ),
+                    ),
+                  ).then((_) {
+                    setState(() => _buildingPanelPointer = null);
+                    _panelController.close();
+                    _notifyNavBar(false);
+                  });
+                }
+              },
               );
             }
             if (_panelRoutes != null) {
@@ -2027,6 +2053,8 @@ void dispose() {
     }
   }
 
+  
+
   Marker mapMarker(Pointer pointer) {
     return Marker(
       point: LatLng(pointer.lat, pointer.lng),
@@ -2185,9 +2213,7 @@ void dispose() {
                             onPressed: _cancelCenterPick,
                             child: Text(
                               'Cancel',
-                              style: TextStyle(
-                                color: Theme.of(ctx).colorScheme.onSurface,
-                              ),
+                              style: TextStyle(color: Theme.of(context).colorScheme.secondary),
                             ),
                           ),
                         ),
@@ -2479,7 +2505,7 @@ void dispose() {
   }
 
   // ── animation helper ───────────────────in──────────────────────────
-  // _animatedMapMove removed (unused after transition to mapbox easeTo)
+  // _animatedMapMove removed (unused)
 
   void _animatedMapboxMove(
     LatLng dest,
@@ -2687,31 +2713,26 @@ void dispose() {
           ],
         ),
         actions: [
+          // Cancel button
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Theme.of(context).colorScheme.secondary),
-            ),
+            child: Text('Cancel'),
           ),
-          SizedBox(
-            width: 80,
-            height: 40,
-            child: GradientActionButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isNotEmpty) {
-                  Navigator.pop(context);
-                  _addCoordinateToFavourites(coordinates, name);
-                }
-              },
-              icon: Icons.add,
-              label: 'Add',
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.secondary,
-              ],
-            ),
+          // Add button
+          GradientActionButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.pop(context);
+                _addCoordinateToFavourites(coordinates, name);
+              }
+            },
+            icon: Icons.add,
+            label: 'Add',
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
           ),
         ],
       ),
